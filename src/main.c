@@ -61,6 +61,8 @@ int main(int argc, char* argv[]) {
 				goto exit;
 			if (event.type == SDL_WINDOWEVENT) {
 				if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
+					glViewport(0, 0, event.window.data1, event.window.data2);
+				} else if (event.window.event == SDL_WINDOWEVENT_MAXIMIZED) {
 					SDL_GetWindowSize(roam.window, &sz.x, &sz.y);
 					glViewport(0, 0, sz.x, sz.y);
 				}
@@ -69,6 +71,7 @@ int main(int argc, char* argv[]) {
 
 		glClearColor(0.5f, 0.2f, 0.1f, 1.f);
 		glClearDepth(1.f);
+		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
 		SDL_GL_SwapWindow(roam.window);
 	}
