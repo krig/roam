@@ -1,9 +1,16 @@
 #include "common.h"
+#include "math3d.h"
+
+extern inline void roam_error(const char* msg);
+extern inline unsigned strmcpy(char *target, const char *source, unsigned length);
+extern inline unsigned strmcat(char *target, const char *source, unsigned length);
+
 
 struct Roam {
 	SDL_Window* window;
 	SDL_GLContext context;
 } roam;
+
 
 int main(int argc, char* argv[]) {
 	SDL_Event event;
@@ -49,6 +56,12 @@ int main(int argc, char* argv[]) {
 	       glGetString(GL_RENDERER),
 	       glGetString(GL_SHADING_LANGUAGE_VERSION));
 
+	glEnable(GL_CULL_FACE);
+	glLogicOp(GL_INVERT);
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+	glCullFace(GL_BACK);
+	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
 	SDL_GetWindowSize(roam.window, &sz.x, &sz.y);
 	glViewport(0, 0, sz.x, sz.y);
 
@@ -72,6 +85,8 @@ int main(int argc, char* argv[]) {
 		glClearColor(0.5f, 0.2f, 0.1f, 1.f);
 		glClearDepth(1.f);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+
+		
 
 		SDL_GL_SwapWindow(roam.window);
 	}
