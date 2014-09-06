@@ -19,7 +19,9 @@ int main(int argc, char* argv[]) {
 
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
 	if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
 		return 1;
@@ -37,6 +39,7 @@ int main(int argc, char* argv[]) {
 		roam_error(SDL_GetError());
 
 	SDL_GL_MakeCurrent(roam.window, roam.context);
+	SDL_GL_SetSwapInterval(1);
 
 	glewExperimental = GL_TRUE;
 	if ((rc = glewInit()) != GLEW_OK)
@@ -92,6 +95,8 @@ int main(int argc, char* argv[]) {
 	}
 
 exit:
+	SDL_GL_DeleteContext(roam.context);
+	SDL_DestroyWindow(roam.window);
 	SDL_Quit();
 	return 0;
 }
