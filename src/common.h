@@ -2,6 +2,7 @@
 #define ROAM_COMMON_H_
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -10,7 +11,7 @@
 #include <SDL.h>
 #include <SDL_opengl.h>
 
-inline void
+static inline void
 roam_error(const char* msg) {
 	fprintf(stderr, "Error: %s\n", msg);
 	exit(1);
@@ -20,7 +21,7 @@ roam_error(const char* msg) {
 // Rationale: http://byuu.org/articles/programming/strcpycat
 // length argument includes null-terminator
 // returns: strlen(target)
-inline unsigned
+static inline unsigned
 strmcpy(char *target, const char *source, unsigned length) {
 	const char *origin = target;
 	if(length) { while(*source && --length) *target++ = *source++; *target = 0; }
@@ -31,7 +32,7 @@ strmcpy(char *target, const char *source, unsigned length) {
 // Rationale: http://byuu.org/articles/programming/strcpycat
 // length argument includes null-terminator
 // returns: strlen(target)
-inline unsigned
+static inline unsigned
 strmcat(char *target, const char *source, unsigned length) {
 	const char *origin = target;
 	while(*target && length) target++, length--;
