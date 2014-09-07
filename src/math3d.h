@@ -114,6 +114,16 @@ mlClamp(float t, float lo, float hi) {
 	return (t < lo) ? lo : ((t > hi) ? hi : t);
 }
 
+static inline float
+mlWrap(float t, float lo, float hi) {
+    while (t < lo)
+	    t = hi - (lo - t);
+    while (t > hi)
+	    t = lo + (hi - t);
+    return t;
+}
+
+
 #define mlVec3Assign(v, a, b, c) { (v).x = (a); (v).y = (b); (v).z = (c); }
 
 void mlPerspective(ml_matrix* m, float fovy, float aspect, float zNear, float zFar);
@@ -127,13 +137,14 @@ void mlLookAt(ml_matrix* m,
 
 void mlCopyMatrix(ml_matrix* to, const ml_matrix* from);
 
-void mlFPSMatrix(ml_matrix* to, float eyeX, float eyeY, float eyeZ, float pitch, float yaw);
+void mlFPSMatrix(ml_matrix* to, ml_vec3 eye, float pitch, float yaw);
 
 void mlMulMatrix(ml_matrix* to, const ml_matrix* by);
 
 ml_vec4 mlMulMatVec(const ml_matrix* m, const ml_vec4* v);
 
 void mlTranslate(ml_matrix* m, float x, float y, float z);
+void mlRotate(ml_matrix* m, float x, float y, float z, float angle);
 
 void mlTranspose(ml_matrix* m);
 

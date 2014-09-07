@@ -33,6 +33,10 @@ static ml_matrixstack modelview;
 static material_t materials[MAX_MATERIALS];
 static mesh_t meshes[MAX_MESHES];
 static renderable_t renderables[MAX_RENDERABLES];
+static ml_vec3 camera_pos = {0.283782f, -0.302f, 0.966538f};
+static float camera_pitch = 0.755668f;
+static float camera_yaw = 0.245576f;
+static bool mouse_captured = false;
 
 static void
 gameInit() {
@@ -96,6 +100,9 @@ gameInit() {
 	mlCreateMaterial(&materials[0], basic_vshader, basic_fshader);
 	mlCreateMesh(&meshes[0], 36, tris);
 	mlCreateRenderable(&renderables[0], materials + 0, meshes + 0);
+
+	mouse_captured = true;
+	SDL_SetRelativeMouseMode(SDL_TRUE);
 }
 
 static void
@@ -120,6 +127,10 @@ gameHandleEvent(SDL_Event* event) {
 	case SDL_KEYDOWN:
 		if (event->key.keysym.sym == SDLK_ESCAPE)
 			return false;
+		else if (event->key.keysym.sym == SDLK_p)
+			printf("%f, %f, %f p:%f, y:%f\n",
+			       camera_pos.x, camera_pos.y, camera_pos.z,
+			       camera_pitch, camera_yaw);
 		break;
 	default:
 		break;
@@ -127,8 +138,63 @@ gameHandleEvent(SDL_Event* event) {
 	return true;
 }
 
+static void playerLook(float dyaw, float dpitch) {
+	camera_yaw = mlWrap(camera_yaw - dyaw, 0.f, ML_TWO_PI);
+    camera_pitch = mlClamp(camera_pitch - dpitch, -ML_PI_2, ML_PI_2);
+}
+
+static void playerMove(float right, float forward) {
+	float pitch = camera_pitch;
+	float yaw = camera_yaw;
+	float cosPitch = cosf(pitch);
+	float sinPitch = sinf(pitch);
+	float cosYaw = cosf(yaw);
+	float sinYaw = sinf(yaw);
+	ml_vec3 xaxis = { cosYaw, 0, -sinYaw };
+	ml_vec3 yaxis = {sinYaw * sinPitch, cosPitch, cosYaw * sinPitch };
+	ml_vec3 zaxis = {sinYaw * cosPitch, -sinPitch, cosPitch * cosYaw };
+
+	// calculate look vector in XZ plane
+	// move in that direction or parallel
+	camera_pos.x += xaxis.x * right;
+	camera_pos.z += xaxis.z * right;
+	camera_pos.x += zaxis.x * -forward;
+	camera_pos.z += zaxis.z * -forward;
+}
+
+static void playerJump(float speed) {
+	camera_pos.y += speed;
+}
+
 static void
-gameUpdate() {
+gameUpdate(float dt) {
+	const float xsens = 1.f / ML_TWO_PI;
+	const float ysens = 1.f / ML_TWO_PI;
+	int mouse_dx, mouse_dy;
+	const Uint8* state;
+	float speed = 2.f * dt;
+
+	state = SDL_GetKeyboardState(NULL);
+	if (state[SDL_SCANCODE_A])
+		playerMove(-speed, 0.f);
+	if (state[SDL_SCANCODE_D])
+		playerMove(speed, 0.f);
+	if (state[SDL_SCANCODE_W])
+		playerMove(0.f, speed);
+	if (state[SDL_SCANCODE_S])
+		playerMove(0.f, -speed);
+	if (state[SDL_SCANCODE_SPACE])
+		playerJump(speed);
+	if (state[SDL_SCANCODE_LSHIFT])
+		playerJump(-speed);
+
+	if (mouse_captured) {
+		SDL_GetRelativeMouseState(&mouse_dx, &mouse_dy);
+		playerLook(mouse_dx * dt * xsens, mouse_dy * dt * ysens);
+	} else if (SDL_GetMouseState(0, 0) & SDL_BUTTON(SDL_BUTTON_LEFT)) {
+			mouse_captured = true;
+			SDL_SetRelativeMouseMode(SDL_TRUE);
+	}
 }
 
 static void
@@ -147,32 +213,22 @@ gameRender(SDL_Point* viewport) {
 	glClearDepth(1.f);
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
-	static float pitch = 0.f;
-	static float yaw = 0.f;
-	pitch += 0.01f;
-	if (pitch > ML_PI*0.5f)
-		pitch -= ML_PI;
-	yaw += 0.01f;
-	if (yaw > ML_PI*2.f)
-		yaw -= ML_PI*2.f;
-	//mlFPSMatrix(mlGetMatrix(&modelview), 0, 0, 0, pitch, yaw);
+	mlFPSMatrix(mlGetMatrix(&modelview), camera_pos, camera_pitch, camera_yaw);
 
 	static float f = 0.f;
 	f += 0.01f;
 
-	mlLookAt(mlGetMatrix(&modelview),
-	         sin(f), 2.5f, cos(f),
-	         0, 0.5f, 0.0,
-	         0, 1, 0);
-
-
 	mlPushMatrix(&modelview);
+	mlRotate(mlGetMatrix(&modelview), 0.f, 1.f, 0.f, f);
 	mlTranslate(mlGetMatrix(&modelview), 0.f, 0.5f, 0.f);
 	mlDrawBegin(renderables + 0);
 	mlBindProjection(renderables + 0, mlGetMatrix(&projection));
 	mlBindModelView(renderables + 0, mlGetMatrix(&modelview));
 	mlDrawEnd(renderables + 0);
 	mlPopMatrix(&modelview);
+
+	if (mouse_captured)
+		SDL_WarpMouseInWindow(window, viewport->x >> 1, viewport->y >> 1);
 }
 
 
@@ -241,6 +297,9 @@ int main(int argc, char* argv[]) {
 	gameInit();
 	glCheck(__LINE__);
 
+	int64_t startms, nowms;
+	startms = (int64_t)SDL_GetTicks();
+
 	for (;;) {
 		while (SDL_PollEvent(&event)) {
 			if (event.type == SDL_WINDOWEVENT) {
@@ -254,13 +313,22 @@ int main(int argc, char* argv[]) {
 					mlPerspective(mlGetMatrix(&projection), mlDeg2Rad(70.f),
 					              (float)sz.x / (float)sz.y,
 					              0.1f, 100.f);
+				} else if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
+					SDL_SetRelativeMouseMode(SDL_FALSE);
+					mouse_captured = false;
+				} else if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
+					goto exit;
 				}
 			} else if (!gameHandleEvent(&event)) {
 				goto exit;
 			}
 		}
 
-		gameUpdate();
+		nowms = (int64_t)SDL_GetTicks() - startms;
+		if (nowms < 1)
+			nowms = 1;
+		gameUpdate((float)((double)nowms / 1000.0));
+		startms = (int64_t)SDL_GetTicks();
 		gameRender(&sz);
 
 		SDL_GL_SwapWindow(window);

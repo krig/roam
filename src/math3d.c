@@ -18,12 +18,11 @@ void mlSetIdentity(ml_matrix* m) {
 	m->m[0] = m->m[5] = m->m[10] = m->m[15] = 1.f;
 }
 
-void mlFPSMatrix(ml_matrix* to, float eyeX, float eyeY, float eyeZ, float pitch, float yaw) {
+void mlFPSMatrix(ml_matrix* to, ml_vec3 eye, float pitch, float yaw) {
 	float cosPitch = cosf(pitch);
 	float sinPitch = sinf(pitch);
 	float cosYaw = cosf(yaw);
 	float sinYaw = sinf(yaw);
-	ml_vec3 eye = {eyeX, eyeY, eyeZ };
 	ml_vec3 xaxis = { cosYaw, 0, -sinYaw };
 	ml_vec3 yaxis = {sinYaw * sinPitch, cosPitch, cosYaw * sinPitch };
 	ml_vec3 zaxis = {sinYaw * cosPitch, -sinPitch, cosPitch * cosYaw };
@@ -117,6 +116,21 @@ mlTranslate(ml_matrix* m, float x, float y, float z) {
 	trans.m[14] = z;
 	mlMulMatrix(m, &trans);
 }
+
+void
+mlRotate(ml_matrix* m, float x, float y, float z, float angle) {
+	float cosa = cosf(angle);
+	float sina = sinf(angle);
+	float icosa = 1.f - cosa;
+	float r[16] = {
+		cosa + x*x*icosa, y*x*icosa + z*sina, z*x*icosa - y*sina, 0.f,
+		x*y*icosa - z*sina, cosa + y*y*icosa, z*y*icosa + x*sina, 0.f,
+		x*z*icosa + y*sina, y*z*icosa - x*sina, cosa + z*z*icosa, 0.f,
+		0.f, 0.f, 0.f, 1.f
+	};
+	mlMulMatrix(m, (ml_matrix*)&r);
+}
+
 
 void
 mlTranspose(ml_matrix* m) {
