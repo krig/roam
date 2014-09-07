@@ -83,9 +83,9 @@ mlCopyMatrix(ml_matrix* to, const ml_matrix* from) {
 
 void
 mlMulMatrix(ml_matrix* to, const ml_matrix* by) {
+	const float*__restrict__ a = to->m;
+	const float*__restrict__ b = by->m;
 	float m[16];
-	const float* a = to->m;
-	const float* b = by->m;
 
 	m[0] = a[0] * b[0] + a[4] * b[1] + a[8] * b[2] + a[12] * b[3];
 	m[1] = a[1] * b[0] + a[5] * b[1] + a[9] * b[2] + a[13] * b[3];
