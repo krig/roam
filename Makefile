@@ -1,6 +1,6 @@
 .PHONY: all clean
 
-HEADERS=src/common.h src/math3d.h
+HEADERS=src/common.h src/math3d.h src/easing.h
 SRC=src/main.c src/math3d.c
 
 roam: $(SRC) $(HEADERS)
