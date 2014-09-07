@@ -2,7 +2,7 @@
 #include "math3d.h"
 
 void mlPerspective(ml_matrix* m, float fovy, float aspect, float zNear, float zFar) {
-	mlLoadIdentity(m);
+	mlSetIdentity(m);
 	float r = fovy * 0.5f;
 	float f = cos(r) / sin(r);
 	m->m[0] = f / aspect;
@@ -13,12 +13,12 @@ void mlPerspective(ml_matrix* m, float fovy, float aspect, float zNear, float zF
 	m->m[15] = 0;
 }
 
-void mlLoadIdentity(ml_matrix* m) {
+void mlSetIdentity(ml_matrix* m) {
 	memset(m->m, 0, sizeof(float)*16);
 	m->m[0] = m->m[5] = m->m[10] = m->m[15] = 1.f;
 }
 
-void mlLoadFPSMatrix(ml_matrix* to, float eyeX, float eyeY, float eyeZ, float pitch, float yaw) {
+void mlFPSMatrix(ml_matrix* to, float eyeX, float eyeY, float eyeZ, float pitch, float yaw) {
 	float cosPitch = cosf(pitch);
 	float sinPitch = sinf(pitch);
 	float cosYaw = cosf(yaw);
@@ -73,12 +73,12 @@ void mlLookAt(ml_matrix* m,
 	M.m[10] = -f.z;
 	M.m[3] = M.m[7] = M.m[11] = M.m[12] = M.m[13] = M.m[14] = 0;
 	M.m[15] = 1.f;
-	mlLoadMatrix(m, &M);
+	mlCopyMatrix(m, &M);
 	mlTranslate(m, -eyeX, -eyeY, -eyeZ);
 }
 
 void
-mlLoadMatrix(ml_matrix* to, const ml_matrix* from) {
+mlCopyMatrix(ml_matrix* to, const ml_matrix* from) {
 	memcpy(to, from, sizeof(ml_matrix));
 }
 
@@ -111,12 +111,26 @@ mlMulMatrix(ml_matrix* to, const ml_matrix* by) {
 void
 mlTranslate(ml_matrix* m, float x, float y, float z) {
 	ml_matrix trans;
-	mlLoadIdentity(&trans);
+	mlSetIdentity(&trans);
 	trans.m[12] = x;
 	trans.m[13] = y;
 	trans.m[14] = z;
 	mlMulMatrix(m, &trans);
 }
+
+void
+mlTranspose(ml_matrix* m) {
+	__m128 col1 = _mm_load_ps(&m->m[0]);
+    __m128 col2 = _mm_load_ps(&m->m[4]);
+    __m128 col3 = _mm_load_ps(&m->m[8]);
+    __m128 col4 = _mm_load_ps(&m->m[12]);
+     _MM_TRANSPOSE4_PS(col1, col2, col3, col4);
+     _mm_store_ps(&m->m[0], col1);
+     _mm_store_ps(&m->m[4], col2);
+     _mm_store_ps(&m->m[8], col3);
+     _mm_store_ps(&m->m[12], col4);
+}
+
 
 ml_vec4 mlMulMatVec(const ml_matrix* m, const ml_vec4* v) {
 	ml_vec4 ret;
@@ -240,7 +254,7 @@ void mlInitMatrixStack(ml_matrixstack* stack, size_t size) {
 	stack->top = 0;
 	stack->stack = malloc(sizeof(ml_matrix) * size);
 	for (size_t i = 0; i < size; ++i)
-		mlLoadIdentity(stack->stack + i);
+		mlSetIdentity(stack->stack + i);
 }
 
 void mlFreeMatrixStack(ml_matrixstack* stack) {
@@ -251,12 +265,20 @@ void mlFreeMatrixStack(ml_matrixstack* stack) {
 
 void mlPushMatrix(ml_matrixstack* stack) {
 	++stack->top;
-	mlLoadMatrix(stack->stack + stack->top, stack->stack + stack->top - 1);
+	mlCopyMatrix(stack->stack + stack->top, stack->stack + stack->top - 1);
+}
+
+void mlLoadMatrix(ml_matrixstack* stack, ml_matrix* m) {
+	mlCopyMatrix(stack->stack + stack->top, m);
+}
+
+void mlLoadIdentity(ml_matrixstack* stack) {
+	mlSetIdentity(stack->stack + stack->top);
 }
 
 void mlPushIdentity(ml_matrixstack* stack) {
 	++stack->top;
-	mlLoadIdentity(stack->stack + stack->top);
+	mlSetIdentity(stack->stack + stack->top);
 }
 
 void mlPopMatrix(ml_matrixstack* stack) {

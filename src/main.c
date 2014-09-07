@@ -155,7 +155,7 @@ gameRender(SDL_Point* viewport) {
 	yaw += 0.01f;
 	if (yaw > ML_PI*2.f)
 		yaw -= ML_PI*2.f;
-	//mlLoadFPSMatrix(mlGetMatrix(&modelview), 0, 0, 0, pitch, yaw);
+	//mlFPSMatrix(mlGetMatrix(&modelview), 0, 0, 0, pitch, yaw);
 
 	static float f = 0.f;
 	f += 0.01f;

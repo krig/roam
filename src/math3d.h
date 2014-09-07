@@ -11,29 +11,6 @@
 #define ML_PI_2 1.57079632679489661923
 #define ML_PI_4 0.785398163397448309616
 
-#define mlDeg2Rad(d) (((d) * ML_PI) / 180.f)
-#define mlRad2Deg(r) (((r) * 180.f) / ML_PI)
-
-static inline bool
-mlFIsValid(float f) {
-	return (f >= -FLT_MAX && f <= FLT_MAX);
-}
-
-static inline float
-mlAbs(float x) {
-	return (x >= 0) ? x : -x;
-}
-
-static inline float
-mlSign(float x) {
-	return (x >= 0) ? 1.f : -1.f;
-}
-
-static inline float
-mlClamp(float t, float lo, float hi) {
-	return (t < lo) ? lo : ((t > hi) ? hi : t);
-}
-
 typedef union ml_vec2 {
 	float v[2];
 	struct {
@@ -59,26 +36,106 @@ typedef struct ml_matrix {
 	float m[16];
 } ml_matrix;
 
+typedef struct vtx_pos_clr_t {
+	ml_vec3 pos;
+	uint32_t clr;
+} vtx_pos_clr_t;
+
+typedef struct vtx_pos_clr_n_t {
+	ml_vec3 pos;
+	uint32_t clr;
+	ml_vec3 n;
+} vtx_pos_clr_n_t;
+
+// A material identifies a
+// shader and any special
+// considerations concerning
+// that shader
+typedef struct material_t {
+	GLuint program;
+	GLint projmat;
+	GLint modelview;
+	GLint normalmat;
+	GLint position;
+	GLint color;
+	GLint normal;
+} material_t;
+
+
+// A mesh is a VBO plus metadata
+// that describes how it maps to
+// a material
+typedef struct mesh_t {
+	GLuint vbo;
+	GLint position; // -1 if not present, else offset
+	GLint color;
+	GLint normal;
+	GLsizei stride;
+	GLenum mode;
+	GLsizei count;
+} mesh_t;
+
+// a renderable combines a
+// particular material and a
+// particular mesh into a
+// a renderable object
+typedef struct renderable_t {
+	const material_t* material;
+	const mesh_t* mesh;
+	GLuint vao;
+} renderable_t;
+
+typedef struct ml_matrixstack {
+	int top;
+	ml_matrix* stack;
+} ml_matrixstack;
+
+
+#define mlDeg2Rad(d) (((d) * ML_PI) / 180.f)
+#define mlRad2Deg(r) (((r) * 180.f) / ML_PI)
+
+static inline bool
+mlFIsValid(float f) {
+	return (f >= -FLT_MAX && f <= FLT_MAX);
+}
+
+static inline float
+mlAbs(float x) {
+	return (x >= 0) ? x : -x;
+}
+
+static inline float
+mlSign(float x) {
+	return (x >= 0) ? 1.f : -1.f;
+}
+
+static inline float
+mlClamp(float t, float lo, float hi) {
+	return (t < lo) ? lo : ((t > hi) ? hi : t);
+}
+
 #define mlVec3Assign(v, a, b, c) { (v).x = (a); (v).y = (b); (v).z = (c); }
 
 void mlPerspective(ml_matrix* m, float fovy, float aspect, float zNear, float zFar);
 
-void mlLoadIdentity(ml_matrix* m);
+void mlSetIdentity(ml_matrix* m);
 
 void mlLookAt(ml_matrix* m,
               float eyeX, float eyeY, float eyeZ,
               float atX, float atY, float atZ,
               float upX, float upY, float upZ);
 
-void mlLoadMatrix(ml_matrix* to, const ml_matrix* from);
+void mlCopyMatrix(ml_matrix* to, const ml_matrix* from);
 
-void mlLoadFPSMatrix(ml_matrix* to, float eyeX, float eyeY, float eyeZ, float pitch, float yaw);
+void mlFPSMatrix(ml_matrix* to, float eyeX, float eyeY, float eyeZ, float pitch, float yaw);
 
 void mlMulMatrix(ml_matrix* to, const ml_matrix* by);
 
 ml_vec4 mlMulMatVec(const ml_matrix* m, const ml_vec4* v);
 
 void mlTranslate(ml_matrix* m, float x, float y, float z);
+
+void mlTranspose(ml_matrix* m);
 
 static inline float
 mlVec3Dot(const ml_vec3 a, const ml_vec3 b) {
@@ -140,56 +197,6 @@ glCheck(int line) {
 	} while (err != GL_NO_ERROR);
 }
 
-typedef struct vtx_pos_clr_t {
-	ml_vec3 pos;
-	uint32_t clr;
-} vtx_pos_clr_t;
-
-typedef struct vtx_pos_clr_n_t {
-	ml_vec3 pos;
-	uint32_t clr;
-	ml_vec3 n;
-} vtx_pos_clr_n_t;
-
-// A material identifies a
-// shader and any special
-// considerations concerning
-// that shader
-typedef struct material_t {
-	GLuint program;
-	GLint projmat;
-	GLint modelview;
-	GLint normalmat;
-	GLint position;
-	GLint color;
-	GLint normal;
-} material_t;
-
-
-// A mesh is a VBO plus metadata
-// that describes how it maps to
-// a material
-typedef struct mesh_t {
-	GLuint vbo;
-	GLint position; // -1 if not present, else offset
-	GLint color;
-	GLint normal;
-	GLsizei stride;
-	GLenum mode;
-	GLsizei count;
-} mesh_t;
-
-// a renderable combines a
-// particular material and a
-// particular mesh into a
-// a renderable object
-typedef struct renderable_t {
-	const material_t* material;
-	const mesh_t* mesh;
-	GLuint vao;
-} renderable_t;
-
-
 static inline void
 mlBindProjection(renderable_t* renderable, ml_matrix* projection) {
 	GLint index = renderable->material->projmat;
@@ -227,14 +234,26 @@ void mlCreateMesh(mesh_t* mesh, size_t n, vtx_pos_clr_t* data);
 
 void mlCreateRenderable(renderable_t* renderable, const material_t* material, const mesh_t* mesh);
 
-typedef struct ml_matrixstack {
-	int top;
-	ml_matrix* stack;
-} ml_matrixstack;
+// Matrix stack
 
+// Allocate a stack with max size. Pushes the identity
+// matrix to the bottom of the stack.
 void mlInitMatrixStack(ml_matrixstack* stack, size_t size);
+
 void mlFreeMatrixStack(ml_matrixstack* stack);
+
+// Push a copy of the top matrix to the stack
 void mlPushMatrix(ml_matrixstack* stack);
+
+// Assign the given matrix to the top of the stack
+void mlLoadMatrix(ml_matrixstack* stack, ml_matrix* m);
+
+// Push an identity matrix to the stack
 void mlPushIdentity(ml_matrixstack* stack);
+
+// Set the top of the stack to the identity
+void mlLoadIdentity(ml_matrixstack* stack);
+
 void mlPopMatrix(ml_matrixstack* stack);
+
 ml_matrix* mlGetMatrix(ml_matrixstack* stack);
