@@ -138,3 +138,135 @@ ml_vec4 mlMulMatVec(const ml_matrix* m, const ml_vec4* v) {
 		(v->w * m->m[15]);
 	return ret;
 }
+
+GLuint mlCompileShader(GLenum type, const char* source) {
+	GLuint name;
+	GLint status;
+	name = glCreateShader(type);
+	glShaderSource(name, 1, &source, NULL);
+	glCompileShader(name);
+	glGetShaderiv(name, GL_COMPILE_STATUS, &status);
+	if (status == GL_FALSE) {
+		GLint length;
+		GLchar* msg;
+		glGetShaderiv(name, GL_INFO_LOG_LENGTH, &length);
+		msg = (GLchar*)malloc(length);
+		glGetShaderInfoLog(name, length, NULL, msg);
+		fprintf(stderr, "glCompileShader failed: %s\n", msg);
+		free(msg);
+		glDeleteShader(name);
+		name = 0;
+	}
+	return name;
+}
+
+GLuint mlLinkProgram(GLuint vsh, GLuint fsh) {
+	GLuint program;
+	GLint status;
+	program = glCreateProgram();
+	glAttachShader(program, vsh);
+	glAttachShader(program, fsh);
+	glLinkProgram(program);
+	glGetProgramiv(program, GL_LINK_STATUS, &status);
+	if (status == GL_FALSE) {
+		GLint length;
+		GLchar* msg;
+		glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
+		msg = (GLchar*)malloc(length);
+		glGetProgramInfoLog(program, length, NULL, msg);
+		fprintf(stderr, "glLinkProgram failed: %s\n", msg);
+		free(msg);
+		glDeleteProgram(program);
+		program = 0;
+	}
+	glDetachShader(program, vsh);
+	glDetachShader(program, fsh);
+	return program;
+}
+
+
+void mlCreateMaterial(material_t* material, const char* vsource, const char* fsource) {
+	GLuint vshader, fshader, program;
+	vshader = mlCompileShader(GL_VERTEX_SHADER, vsource);
+	fshader = mlCompileShader(GL_FRAGMENT_SHADER, fsource);
+	if (vshader > 0 && fshader > 0) {
+		program = mlLinkProgram(vshader, fshader);
+	}
+	if (vshader != 0)
+		glDeleteShader(vshader);
+	if (fshader != 0)
+		glDeleteShader(fshader);
+	material->program = program;
+	glUseProgram(program);
+	material->projmat = glGetUniformLocation(program, "projmat");
+	material->modelview = glGetUniformLocation(program, "modelview");
+	material->normalmat = glGetUniformLocation(program, "normalmat");
+	material->position = glGetAttribLocation(program, "position");
+	material->color = glGetAttribLocation(program, "color");
+	material->normal = glGetAttribLocation(program, "normal");
+	glUseProgram(0);
+}
+
+void mlCreateMesh(mesh_t* mesh, size_t n, vtx_pos_clr_t* data) {
+	glGenBuffers(1, &mesh->vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
+	glBufferData(GL_ARRAY_BUFFER, n * sizeof(vtx_pos_clr_t), data, GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	mesh->position = 0;
+	mesh->color = 3 * sizeof(float);
+	mesh->normal = -1;
+	mesh->stride = sizeof(vtx_pos_clr_t);
+	mesh->mode = GL_TRIANGLES;
+	mesh->count = n;
+}
+
+void mlCreateRenderable(renderable_t* renderable, const material_t* material, const mesh_t* mesh) {
+	glGenVertexArrays(1, &renderable->vao);
+	glBindVertexArray(renderable->vao);
+	renderable->material = material;
+	renderable->mesh = mesh;
+
+	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, mesh->stride, 0);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, mesh->stride, (const void*)((ptrdiff_t)mesh->color));
+	glEnableVertexAttribArray(1);
+	glBindVertexArray(0);
+}
+
+void mlInitMatrixStack(ml_matrixstack* stack, size_t size) {
+	if (size == 0)
+		roamError("Matrix stack too small");
+	stack->top = 0;
+	stack->stack = malloc(sizeof(ml_matrix) * size);
+	for (size_t i = 0; i < size; ++i)
+		mlLoadIdentity(stack->stack + i);
+}
+
+void mlFreeMatrixStack(ml_matrixstack* stack) {
+	free(stack->stack);
+	stack->top = -1;
+	stack->stack = NULL;
+}
+
+void mlPushMatrix(ml_matrixstack* stack) {
+	++stack->top;
+	mlLoadMatrix(stack->stack + stack->top, stack->stack + stack->top - 1);
+}
+
+void mlPushIdentity(ml_matrixstack* stack) {
+	++stack->top;
+	mlLoadIdentity(stack->stack + stack->top);
+}
+
+void mlPopMatrix(ml_matrixstack* stack) {
+	if (stack->top < 0)
+		roamError("Matrix stack underflow");
+	--stack->top;
+}
+
+ml_matrix* mlGetMatrix(ml_matrixstack* stack) {
+	if (stack->top < 0)
+		roamError("Matrix stack underflow");
+	return stack->stack + stack->top;
+}

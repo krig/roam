@@ -1,22 +1,19 @@
 #include "common.h"
 #include "math3d.h"
 
-struct Roam {
-	SDL_Window* window;
-	SDL_GLContext context;
-} roam;
-
-const char* basic_vshader = "#version 130\n"
-	"uniform mat4 MVP;\n"
+static const char* basic_vshader = "#version 130\n"
+	"uniform mat4 projmat;\n"
+	"uniform mat4 modelview;\n"
+	"uniform mat4 normalmat;\n"
 	"in vec3 position;\n"
-	"in vec4 in_color;\n"
+	"in vec4 color;\n"
 	"out vec4 out_color;\n"
 	"void main() {\n"
-	"out_color = in_color;\n"
-	"gl_Position = MVP * vec4(position, 1);\n"
+	"out_color = color;\n"
+	"gl_Position = projmat * modelview * vec4(position, 1);\n"
 	"}\n";
 
-const char* basic_fshader = "#version 130\n"
+static const char* basic_fshader = "#version 130\n"
 	"precision highp float;\n"
 	"in vec4 out_color;\n"
 	"out vec4 fragment;\n"
@@ -24,225 +21,131 @@ const char* basic_fshader = "#version 130\n"
 	"fragment = out_color;\n"
 	"}\n";
 
-static GLuint
-compile_shader(GLenum type, const char* source) {
-	GLuint name;
-	GLint status;
-	name = glCreateShader(type);
-	glShaderSource(name, 1, &source, NULL);
-	glCompileShader(name);
-	glGetShaderiv(name, GL_COMPILE_STATUS, &status);
-	if (status == GL_FALSE) {
-		GLint length;
-		GLchar* msg;
-		glGetShaderiv(name, GL_INFO_LOG_LENGTH, &length);
-		msg = (GLchar*)malloc(length);
-		glGetShaderInfoLog(name, length, NULL, msg);
-		fprintf(stderr, "glCompileShader failed: %s\n", msg);
-		free(msg);
-		glDeleteShader(name);
-		name = 0;
-	}
-	return name;
-}
 
-static GLuint
-link_program(GLuint vsh, GLuint fsh) {
-	GLuint program;
-	GLint status;
-	program = glCreateProgram();
-	glAttachShader(program, vsh);
-	glAttachShader(program, fsh);
-	glLinkProgram(program);
-	glGetProgramiv(program, GL_LINK_STATUS, &status);
-	if (status == GL_FALSE) {
-		GLint length;
-		GLchar* msg;
-		glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
-		msg = (GLchar*)malloc(length);
-		glGetProgramInfoLog(program, length, NULL, msg);
-		fprintf(stderr, "glLinkProgram failed: %s\n", msg);
-		free(msg);
-		glDeleteProgram(program);
-		program = 0;
-	}
-	glDetachShader(program, vsh);
-	glDetachShader(program, fsh);
-	return program;
-}
+#define MAX_MATERIALS 64
+#define MAX_MESHES 100
+#define MAX_RENDERABLES 100
+
+static SDL_Window* window;
+static SDL_GLContext context;
+static ml_matrixstack projection;
+static ml_matrixstack modelview;
+static material_t materials[MAX_MATERIALS];
+static mesh_t meshes[MAX_MESHES];
+static renderable_t renderables[MAX_RENDERABLES];
 
 static void
-check_gl_error(int line) {
-	GLenum err;
-	char* msg;
-	do {
-		err = glGetError();
-		switch (err) {
-		case GL_INVALID_ENUM: msg = "GL_INVALID_ENUM"; break;
-		case GL_INVALID_VALUE: msg = "GL_INVALID_VALUE"; break;
-		case GL_INVALID_OPERATION: msg = "GL_INVALID_OPERATION"; break;
-		case GL_INVALID_FRAMEBUFFER_OPERATION: msg = "GL_INVALID_FRAMEBUFFER_OPERATION"; break;
-		case GL_OUT_OF_MEMORY: msg = "GL_OUT_OF_MEMORY"; break;
-		default: msg = "(other)"; break;
-		}
-		if (err != GL_NO_ERROR)
-			fprintf(stderr, "GL error (%d): (0x%x) %s\n", line, err, msg);
-	} while (err != GL_NO_ERROR);
-}
-
-typedef struct material_t {
-	GLuint program;
-	GLuint mvp;
-} material_t;
-
-material_t basic_material;
-
-typedef struct mesh_t {
-	GLuint vao;
-	GLuint vbo;
-	GLenum type;
-	size_t nelements;
-} mesh_t;
-
-mesh_t test_mesh;
-
-typedef struct vertex_t {
-	ml_vec3 pos;
-	uint32_t clr;
-} vertex_t;
-
-static void
-create_material(material_t* material, const char* vsource, const char* fsource) {
-	GLuint vshader, fshader, program;
-	vshader = compile_shader(GL_VERTEX_SHADER, vsource);
-	fshader = compile_shader(GL_FRAGMENT_SHADER, fsource);
-	if (vshader > 0 && fshader > 0) {
-		program = link_program(vshader, fshader);
-	}
-	if (vshader != 0)
-		glDeleteShader(vshader);
-	if (fshader != 0)
-		glDeleteShader(fshader);
-	material->program = program;
-	glUseProgram(program);
-	material->mvp = glGetUniformLocation(program, "MVP");
-	glUseProgram(0);
-}
-
-static void
-create_mesh(mesh_t* mesh, size_t n, vertex_t* data) {
-	glGenVertexArrays(1, &mesh->vao);
-	glBindVertexArray(mesh->vao);
-	glGenBuffers(1, &mesh->vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
-	glBufferData(GL_ARRAY_BUFFER, n * sizeof(vertex_t), data, GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertex_t), 0);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(vertex_t), (const void*)(3*sizeof(float)));
-	glEnableVertexAttribArray(1);
-	glBindVertexArray(0);
-	mesh->type = GL_TRIANGLES;
-	mesh->nelements = n;
-}
-
-static void
-game_init() {
-	ml_vec3 corners[8] = {
-		{-0.5f,-0.5f,-0.5f}, // bottom
-		{ 0.5f,-0.5f,-0.5f},
-		{-0.5f,-0.5f, 0.5f},
-		{ 0.5f,-0.5f, 0.5f},
-		{-0.5f, 0.5f,-0.5f}, // top
-		{-0.5f, 0.5f, 0.5f},
-		{ 0.5f, 0.5f,-0.5f},
-		{ 0.5f, 0.5f, 0.5f}
+gameInit() {
+	uint32_t top, bottom;
+	top = 0xff24C6DC;
+	bottom = 0xff514A9D;
+	vtx_pos_clr_t corners[8] = {
+		{{-0.5f,-0.5f,-0.5f}, bottom },
+		{{ 0.5f,-0.5f,-0.5f}, bottom },
+		{{-0.5f,-0.5f, 0.5f}, bottom },
+		{{ 0.5f,-0.5f, 0.5f}, bottom },
+		{{-0.5f, 0.5f,-0.5f}, top },
+		{{-0.5f, 0.5f, 0.5f}, top },
+		{{ 0.5f, 0.5f,-0.5f}, top },
+		{{ 0.5f, 0.5f, 0.5f}, top }
 	};
 
-	vertex_t tris[] = {
-		{ corners[0], 0xfff0ffff },
-		{ corners[1], 0xffff0fff },
-		{ corners[2], 0xfffff0ff },
-		{ corners[1], 0xffffff0f },
-		{ corners[3], 0xfffffff0 },
-		{ corners[2], 0xff0fffff },
+	vtx_pos_clr_t tris[] = {
+		corners[0],
+		corners[1],
+		corners[2],
+		corners[1],
+		corners[3],
+		corners[2],
 
-		{ corners[4], 0xff0fffff },
-		{ corners[5], 0xfff0ffff },
-		{ corners[6], 0xffff0fff },
-		{ corners[6], 0xfffff0ff },
-		{ corners[5], 0xffffff0f },
-		{ corners[7], 0xfffffff0 },
+		corners[4],
+		corners[5],
+		corners[6],
+		corners[6],
+		corners[5],
+		corners[7],
 
-		{ corners[2], 0xfffffff0 },
-		{ corners[3], 0xffffff0f },
-		{ corners[5], 0xfffff0ff },
-		{ corners[3], 0xffff0fff },
-		{ corners[7], 0xfff0ffff },
-		{ corners[5], 0xff0fffff },
+		corners[2],
+		corners[3],
+		corners[5],
+		corners[3],
+		corners[7],
+		corners[5],
 
-		{ corners[0], 0xffff0fff },
-		{ corners[4], 0xfffff0ff },
-		{ corners[1], 0xfff0ffff },
-		{ corners[1], 0xff0fffff },
-		{ corners[4], 0xfffffff0 },
-		{ corners[6], 0xffffff0f },
+		corners[0],
+		corners[4],
+		corners[1],
+		corners[1],
+		corners[4],
+		corners[6],
 
-		{ corners[2], 0xff0fffff },
-		{ corners[4], 0xfffffff0 },
-		{ corners[0], 0xfff0ffff },
-		{ corners[2], 0xffffff0f },
-		{ corners[5], 0xffff0fff },
-		{ corners[4], 0xfffff0ff },
+		corners[2],
+		corners[4],
+		corners[0],
+		corners[2],
+		corners[5],
+		corners[4],
 
-		{ corners[3], 0xfffffff0 },
-		{ corners[1], 0xfff0ffff },
-		{ corners[6], 0xffffff0f },
-		{ corners[3], 0xffff0fff },
-		{ corners[6], 0xfffff0ff },
-		{ corners[7], 0xff0fffff }
+		corners[3],
+		corners[1],
+		corners[6],
+		corners[3],
+		corners[6],
+		corners[7]
 	};
-	create_material(&basic_material, basic_vshader, basic_fshader);
-	check_gl_error(__LINE__);
-	create_mesh(&test_mesh, 36, tris);
-	check_gl_error(__LINE__);
+	mlCreateMaterial(&materials[0], basic_vshader, basic_fshader);
+	mlCreateMesh(&meshes[0], 36, tris);
+	mlCreateRenderable(&renderables[0], materials + 0, meshes + 0);
 }
 
 static void
-game_exit() {
-	glDeleteProgram(basic_material.program);
-	glDeleteBuffers(1, &test_mesh.vbo);
-	glDeleteVertexArrays(1, &test_mesh.vao);
+gameExit() {
+	int i;
+	for (i = 0; i < MAX_MATERIALS; ++i)
+		if (materials[i].program != 0)
+			glDeleteProgram(materials[i].program);
+	for (i = 0; i < MAX_MESHES; ++i)
+		if (meshes[i].vbo != 0)
+			glDeleteBuffers(1, &meshes[i].vbo);
+	for (i = 0; i < MAX_RENDERABLES; ++i)
+		if (renderables[i].vao != 0)
+			glDeleteVertexArrays(1, &renderables[i].vao);
+}
+
+static bool
+gameHandleEvent(SDL_Event* event) {
+	switch (event->type) {
+	case SDL_QUIT:
+		return false;
+	case SDL_KEYDOWN:
+		if (event->key.keysym.sym == SDLK_ESCAPE)
+			return false;
+		break;
+	default:
+		break;
+	}
+	return true;
 }
 
 static void
-game_handle_event(SDL_Event* event) {
+gameUpdate() {
 }
 
 static void
-game_update() {
-}
-
-static void
-print_matrix(ml_matrix* m) {
+printMatrix(ml_matrix* m) {
 	printf("%.1f %.1f %.1f %.1f ", m->m[0], m->m[1], m->m[2], m->m[3]);
 	printf("%.1f %.1f %.1f %.1f ", m->m[4], m->m[5], m->m[6], m->m[7]);
 	printf("%.1f %.1f %.1f %.1f ", m->m[8], m->m[9], m->m[10], m->m[11]);
 	printf("%.1f %.1f %.1f %.1f\n", m->m[12], m->m[13], m->m[14], m->m[15]);
 }
 
-static void
-game_render(SDL_Point* viewport) {
-	ml_matrix proj;
-	ml_matrix modelview;
-	ml_matrix mvp;
+#define RGB2F(r, g, b) (float)(0x##r)/255.f, (float)(0x##g)/255.f, (float)(0x##b)/255.f
 
-	glClearColor(0.1f, 0.1f, 0.1f, 1.f);
+static void
+gameRender(SDL_Point* viewport) {
+	glClearColor(RGB2F(28, 30, 48), 1.f);
 	glClearDepth(1.f);
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-
-	mlPerspective(&proj, mlDeg2Rad(70.f),
-	              (float)viewport->x / (float)viewport->y,
-	              0.1f, 100.f);
 
 	static float pitch = 0.f;
 	static float yaw = 0.f;
@@ -252,29 +155,24 @@ game_render(SDL_Point* viewport) {
 	yaw += 0.01f;
 	if (yaw > ML_PI*2.f)
 		yaw -= ML_PI*2.f;
-	mlLoadFPSMatrix(&modelview, 0, 0, 0, pitch, yaw);
+	//mlLoadFPSMatrix(mlGetMatrix(&modelview), 0, 0, 0, pitch, yaw);
 
 	static float f = 0.f;
 	f += 0.01f;
 
-	mlLookAt(&modelview,
+	mlLookAt(mlGetMatrix(&modelview),
 	         sin(f), 2.5f, cos(f),
 	         0, 0.5f, 0.0,
 	         0, 1, 0);
 
 
-	glUseProgram(basic_material.program);
-	glBindVertexArray(test_mesh.vao);
-
-	mlLoadMatrix(&mvp, &proj);
-	mlTranslate(&modelview, 0.f, 0.5f, 0.f);
-	mlMulMatrix(&mvp, &modelview);
-
-	glUniformMatrix4fv(basic_material.mvp, 1, GL_FALSE, mvp.m);
-
-	glDrawArrays(test_mesh.type, 0, test_mesh.nelements);
-
-	glBindVertexArray(0);
+	mlPushMatrix(&modelview);
+	mlTranslate(mlGetMatrix(&modelview), 0.f, 0.5f, 0.f);
+	mlDrawBegin(renderables + 0);
+	mlBindProjection(renderables + 0, mlGetMatrix(&projection));
+	mlBindModelView(renderables + 0, mlGetMatrix(&modelview));
+	mlDrawEnd(renderables + 0);
+	mlPopMatrix(&modelview);
 }
 
 
@@ -292,24 +190,24 @@ int main(int argc, char* argv[]) {
 	if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
 		return 1;
 
-	roam.window = SDL_CreateWindow("roam",
+	window = SDL_CreateWindow("roam",
 	                               SDL_WINDOWPOS_UNDEFINED,
 	                               SDL_WINDOWPOS_UNDEFINED,
 	                               1100, 550,
 	                               SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
-	if (roam.window == NULL)
-		roam_error(SDL_GetError());
+	if (window == NULL)
+		roamError(SDL_GetError());
 
-	roam.context = SDL_GL_CreateContext(roam.window);
-	if (roam.context == NULL)
-		roam_error(SDL_GetError());
+	context = SDL_GL_CreateContext(window);
+	if (context == NULL)
+		roamError(SDL_GetError());
 
-	SDL_GL_MakeCurrent(roam.window, roam.context);
+	SDL_GL_MakeCurrent(window, context);
 	SDL_GL_SetSwapInterval(1);
 
 	glewExperimental = GL_TRUE;
 	if ((rc = glewInit()) != GLEW_OK)
-		roam_error(glewGetErrorString(rc));
+		roamError(glewGetErrorString(rc));
 
 	int major, minor;
 	glGetIntegerv(GL_MAJOR_VERSION, &major);
@@ -330,43 +228,49 @@ int main(int argc, char* argv[]) {
 	glLogicOp(GL_INVERT);
 	glDepthFunc(GL_LESS);
 	glCullFace(GL_BACK);
-	SDL_GetWindowSize(roam.window, &sz.x, &sz.y);
+	SDL_GetWindowSize(window, &sz.x, &sz.y);
 	glViewport(0, 0, sz.x, sz.y);
 
-	game_init();
-	check_gl_error(__LINE__);
+	mlInitMatrixStack(&projection, 3);
+	mlInitMatrixStack(&modelview, 16);
+
+	mlPerspective(mlGetMatrix(&projection), mlDeg2Rad(70.f),
+	              (float)sz.x / (float)sz.y,
+	              0.1f, 100.f);
+
+	gameInit();
+	glCheck(__LINE__);
 
 	for (;;) {
 		while (SDL_PollEvent(&event)) {
-			if (event.type == SDL_QUIT ||
-			    (event.type == SDL_KEYDOWN &&
-			     event.key.keysym.sym == SDLK_ESCAPE)) {
-				goto exit;
-			} else if (event.type == SDL_WINDOWEVENT) {
+			if (event.type == SDL_WINDOWEVENT) {
 				if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
 					glViewport(0, 0, event.window.data1, event.window.data2);
 					sz.x = event.window.data1;
 					sz.y = event.window.data2;
 				} else if (event.window.event == SDL_WINDOWEVENT_MAXIMIZED) {
-					SDL_GetWindowSize(roam.window, &sz.x, &sz.y);
+					SDL_GetWindowSize(window, &sz.x, &sz.y);
 					glViewport(0, 0, sz.x, sz.y);
+					mlPerspective(mlGetMatrix(&projection), mlDeg2Rad(70.f),
+					              (float)sz.x / (float)sz.y,
+					              0.1f, 100.f);
 				}
-			} else {
-				game_handle_event(&event);
+			} else if (!gameHandleEvent(&event)) {
+				goto exit;
 			}
 		}
 
-		game_update();
-		game_render(&sz);
+		gameUpdate();
+		gameRender(&sz);
 
-		SDL_GL_SwapWindow(roam.window);
-		check_gl_error(__LINE__);
+		SDL_GL_SwapWindow(window);
+		glCheck(__LINE__);
 	}
 
 exit:
-	game_exit();
-	SDL_GL_DeleteContext(roam.context);
-	SDL_DestroyWindow(roam.window);
+	gameExit();
+	SDL_GL_DeleteContext(context);
+	SDL_DestroyWindow(window);
 	SDL_Quit();
 	return 0;
 }

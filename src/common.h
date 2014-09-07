@@ -1,5 +1,4 @@
-#ifndef ROAM_COMMON_H_
-#define ROAM_COMMON_H_
+#pragma once
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -12,7 +11,7 @@
 #include <SDL_opengl.h>
 
 static inline void
-roam_error(const char* msg) {
+roamError(const char* msg) {
 	fprintf(stderr, "Error: %s\n", msg);
 	exit(1);
 }
@@ -39,5 +38,3 @@ strmcat(char *target, const char *source, unsigned length) {
 	return (target - origin) + strmcpy(target, source, length);
 }
 
-
-#endif/*ROAM_COMMON_H_*/

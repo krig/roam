@@ -1,5 +1,4 @@
-#ifndef ROAM_MATH3D_H_
-#define ROAM_MATH3D_H_
+#pragma once
 
 #include <stdbool.h>
 
@@ -119,5 +118,123 @@ mlVec3Invert(const ml_vec3 v) {
 	return to;
 }
 
+/*
+  TODO: disable in debug
+ */
+static inline void
+glCheck(int line) {
+	GLenum err;
+	char* msg;
+	do {
+		err = glGetError();
+		switch (err) {
+		case GL_INVALID_ENUM: msg = "GL_INVALID_ENUM"; break;
+		case GL_INVALID_VALUE: msg = "GL_INVALID_VALUE"; break;
+		case GL_INVALID_OPERATION: msg = "GL_INVALID_OPERATION"; break;
+		case GL_INVALID_FRAMEBUFFER_OPERATION: msg = "GL_INVALID_FRAMEBUFFER_OPERATION"; break;
+		case GL_OUT_OF_MEMORY: msg = "GL_OUT_OF_MEMORY"; break;
+		default: msg = "(other)"; break;
+		}
+		if (err != GL_NO_ERROR)
+			fprintf(stderr, "GL error (%d): (0x%x) %s\n", line, err, msg);
+	} while (err != GL_NO_ERROR);
+}
 
-#endif/*ROAM_MATH3D_H_*/
+typedef struct vtx_pos_clr_t {
+	ml_vec3 pos;
+	uint32_t clr;
+} vtx_pos_clr_t;
+
+typedef struct vtx_pos_clr_n_t {
+	ml_vec3 pos;
+	uint32_t clr;
+	ml_vec3 n;
+} vtx_pos_clr_n_t;
+
+// A material identifies a
+// shader and any special
+// considerations concerning
+// that shader
+typedef struct material_t {
+	GLuint program;
+	GLint projmat;
+	GLint modelview;
+	GLint normalmat;
+	GLint position;
+	GLint color;
+	GLint normal;
+} material_t;
+
+
+// A mesh is a VBO plus metadata
+// that describes how it maps to
+// a material
+typedef struct mesh_t {
+	GLuint vbo;
+	GLint position; // -1 if not present, else offset
+	GLint color;
+	GLint normal;
+	GLsizei stride;
+	GLenum mode;
+	GLsizei count;
+} mesh_t;
+
+// a renderable combines a
+// particular material and a
+// particular mesh into a
+// a renderable object
+typedef struct renderable_t {
+	const material_t* material;
+	const mesh_t* mesh;
+	GLuint vao;
+} renderable_t;
+
+
+static inline void
+mlBindProjection(renderable_t* renderable, ml_matrix* projection) {
+	GLint index = renderable->material->projmat;
+	if (index != -1)
+		glUniformMatrix4fv(index, 1, GL_FALSE, projection->m);
+}
+
+static inline void
+mlBindModelView(renderable_t* renderable, ml_matrix* modelview) {
+	GLint index = renderable->material->modelview;
+	if (index != -1)
+		glUniformMatrix4fv(index, 1, GL_FALSE, modelview->m);
+}
+
+static inline void
+mlDrawBegin(renderable_t* renderable) {
+	glUseProgram(renderable->material->program);
+	glBindVertexArray(renderable->vao);
+}
+
+static inline void
+mlDrawEnd(renderable_t* renderable) {
+	glDrawArrays(renderable->mesh->mode, 0, renderable->mesh->count);
+	glBindVertexArray(0);
+	glUseProgram(0);
+}
+
+GLuint mlCompileShader(GLenum type, const char* source);
+
+GLuint mlLinkProgram(GLuint vsh, GLuint fsh);
+
+void mlCreateMaterial(material_t* material, const char* vsource, const char* fsource);
+
+void mlCreateMesh(mesh_t* mesh, size_t n, vtx_pos_clr_t* data);
+
+void mlCreateRenderable(renderable_t* renderable, const material_t* material, const mesh_t* mesh);
+
+typedef struct ml_matrixstack {
+	int top;
+	ml_matrix* stack;
+} ml_matrixstack;
+
+void mlInitMatrixStack(ml_matrixstack* stack, size_t size);
+void mlFreeMatrixStack(ml_matrixstack* stack);
+void mlPushMatrix(ml_matrixstack* stack);
+void mlPushIdentity(ml_matrixstack* stack);
+void mlPopMatrix(ml_matrixstack* stack);
+ml_matrix* mlGetMatrix(ml_matrixstack* stack);
