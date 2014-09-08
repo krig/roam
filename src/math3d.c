@@ -18,6 +18,22 @@ void mlSetIdentity(ml_matrix* m) {
 	m->m[0] = m->m[5] = m->m[10] = m->m[15] = 1.f;
 }
 
+void mlFPSRotation(float pitch, float yaw, ml_vec3* x, ml_vec3* y, ml_vec3* z) {
+	float cosPitch = cosf(pitch);
+	float sinPitch = sinf(pitch);
+	float cosYaw = cosf(yaw);
+	float sinYaw = sinf(yaw);
+	x->x = cosYaw;
+	x->y = 0;
+	x->z = -sinYaw;
+	y->x = sinYaw * sinPitch;
+	y->y = cosPitch;
+	y->z = cosYaw * sinPitch;
+	z->x = sinYaw * cosPitch;
+	z->y = -sinPitch;
+	z->z = cosPitch * cosYaw;
+}
+
 void mlFPSMatrix(ml_matrix* to, ml_vec3 eye, float pitch, float yaw) {
 	float cosPitch = cosf(pitch);
 	float sinPitch = sinf(pitch);

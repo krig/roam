@@ -138,31 +138,24 @@ gameHandleEvent(SDL_Event* event) {
 	return true;
 }
 
-static void playerLook(float dyaw, float dpitch) {
+static void
+playerLook(float dyaw, float dpitch) {
 	camera_yaw = mlWrap(camera_yaw - dyaw, 0.f, ML_TWO_PI);
-    camera_pitch = mlClamp(camera_pitch - dpitch, -ML_PI_2, ML_PI_2);
+	camera_pitch = mlClamp(camera_pitch - dpitch, -ML_PI_2, ML_PI_2);
 }
 
-static void playerMove(float right, float forward) {
-	float pitch = camera_pitch;
-	float yaw = camera_yaw;
-	float cosPitch = cosf(pitch);
-	float sinPitch = sinf(pitch);
-	float cosYaw = cosf(yaw);
-	float sinYaw = sinf(yaw);
-	ml_vec3 xaxis = { cosYaw, 0, -sinYaw };
-	ml_vec3 yaxis = {sinYaw * sinPitch, cosPitch, cosYaw * sinPitch };
-	ml_vec3 zaxis = {sinYaw * cosPitch, -sinPitch, cosPitch * cosYaw };
-
-	// calculate look vector in XZ plane
-	// move in that direction or parallel
+static void
+playerMove(float right, float forward) {
+	ml_vec3 xaxis, yaxis, zaxis;
+	mlFPSRotation(camera_pitch, camera_yaw, &xaxis, &yaxis, &zaxis);
 	camera_pos.x += xaxis.x * right;
 	camera_pos.z += xaxis.z * right;
 	camera_pos.x += zaxis.x * -forward;
 	camera_pos.z += zaxis.z * -forward;
 }
 
-static void playerJump(float speed) {
+static void
+playerJump(float speed) {
 	camera_pos.y += speed;
 }
 
@@ -232,7 +225,8 @@ gameRender(SDL_Point* viewport) {
 }
 
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[]) {
 	SDL_Event event;
 	SDL_Point sz;
 	GLenum rc;
@@ -298,6 +292,7 @@ int main(int argc, char* argv[]) {
 	glCheck(__LINE__);
 
 	int64_t startms, nowms;
+	float frametime;
 	startms = (int64_t)SDL_GetTicks();
 
 	for (;;) {
@@ -327,7 +322,8 @@ int main(int argc, char* argv[]) {
 		nowms = (int64_t)SDL_GetTicks() - startms;
 		if (nowms < 1)
 			nowms = 1;
-		gameUpdate((float)((double)nowms / 1000.0));
+		frametime = (float)((double)nowms / 1000.0);
+		gameUpdate(frametime);
 		startms = (int64_t)SDL_GetTicks();
 		gameRender(&sz);
 

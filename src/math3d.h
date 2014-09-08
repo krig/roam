@@ -137,6 +137,7 @@ void mlLookAt(ml_matrix* m,
 
 void mlCopyMatrix(ml_matrix* to, const ml_matrix* from);
 
+void mlFPSRotation(float pitch, float yaw, ml_vec3* x, ml_vec3* y, ml_vec3* z);
 void mlFPSMatrix(ml_matrix* to, ml_vec3 eye, float pitch, float yaw);
 
 void mlMulMatrix(ml_matrix* to, const ml_matrix* by);
