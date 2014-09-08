@@ -212,7 +212,7 @@ gameRender(SDL_Point* viewport) {
 	f += 0.01f;
 
 	mlPushMatrix(&modelview);
-	mlRotate(mlGetMatrix(&modelview), 0.f, 1.f, 0.f, f);
+	mlRotate(mlGetMatrix(&modelview), f, 0.f, 1.f, 0.f);
 	mlTranslate(mlGetMatrix(&modelview), 0.f, 0.5f, 0.f);
 	mlDrawBegin(renderables + 0);
 	mlBindProjection(renderables + 0, mlGetMatrix(&projection));

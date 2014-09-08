@@ -134,7 +134,7 @@ mlTranslate(ml_matrix* m, float x, float y, float z) {
 }
 
 void
-mlRotate(ml_matrix* m, float x, float y, float z, float angle) {
+mlRotate(ml_matrix* m, float angle, float x, float y, float z) {
 	float cosa = cosf(angle);
 	float sina = sinf(angle);
 	float icosa = 1.f - cosa;
@@ -150,15 +150,23 @@ mlRotate(ml_matrix* m, float x, float y, float z, float angle) {
 
 void
 mlTranspose(ml_matrix* m) {
+	mlSwap(m->m[1], m->m[4]);
+	mlSwap(m->m[2], m->m[8]);
+	mlSwap(m->m[3], m->m[12]);
+	mlSwap(m->m[6], m->m[9]);
+	mlSwap(m->m[7], m->m[13]);
+	mlSwap(m->m[11], m->m[14]);
+#if 0
 	__m128 col1 = _mm_load_ps(&m->m[0]);
-    __m128 col2 = _mm_load_ps(&m->m[4]);
-    __m128 col3 = _mm_load_ps(&m->m[8]);
-    __m128 col4 = _mm_load_ps(&m->m[12]);
-     _MM_TRANSPOSE4_PS(col1, col2, col3, col4);
-     _mm_store_ps(&m->m[0], col1);
-     _mm_store_ps(&m->m[4], col2);
-     _mm_store_ps(&m->m[8], col3);
-     _mm_store_ps(&m->m[12], col4);
+	__m128 col2 = _mm_load_ps(&m->m[4]);
+	__m128 col3 = _mm_load_ps(&m->m[8]);
+	__m128 col4 = _mm_load_ps(&m->m[12]);
+	_MM_TRANSPOSE4_PS(col1, col2, col3, col4);
+	_mm_store_ps(&m->m[0], col1);
+	_mm_store_ps(&m->m[4], col2);
+	_mm_store_ps(&m->m[8], col3);
+	_mm_store_ps(&m->m[12], col4);
+#endif
 }
 
 

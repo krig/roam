@@ -93,6 +93,9 @@ typedef struct ml_matrixstack {
 
 #define mlDeg2Rad(d) (((d) * ML_PI) / 180.f)
 #define mlRad2Deg(r) (((r) * 180.f) / ML_PI)
+#define mlSwap(a, b) do { __typeof__ (a) _swap_##__LINE__ = (a); (a) = (b); (b) = _swap_##__LINE__; } while (0)
+#define mlMax(a, b) do { __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; } while(0)
+#define mlMin(a, b) do { __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _b : _a; } while(0)
 
 static inline bool
 mlFIsValid(float f) {
@@ -145,7 +148,7 @@ void mlMulMatrix(ml_matrix* to, const ml_matrix* by);
 ml_vec4 mlMulMatVec(const ml_matrix* m, const ml_vec4* v);
 
 void mlTranslate(ml_matrix* m, float x, float y, float z);
-void mlRotate(ml_matrix* m, float x, float y, float z, float angle);
+void mlRotate(ml_matrix* m, float angle, float x, float y, float z);
 
 void mlTranspose(ml_matrix* m);
 
