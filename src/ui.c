@@ -9,6 +9,7 @@ static GLint ui_tex0_index = -1;
 static GLuint ui_vao = -1;
 static GLuint ui_vbo = -1;
 static size_t ui_count = 0;
+static float ui_scale = 2;
 
 #define MAX_UI_VERTICES 2048
 static ml_vtx_ui ui_vertices[MAX_UI_VERTICES];
@@ -69,6 +70,10 @@ void uiDraw(SDL_Point* viewport) {
 	glEnable(GL_DEPTH_TEST);
 }
 
+void uiSetScale(float scale) {
+	ui_scale = scale;
+}
+
 void uiText(float x, float y, uint32_t clr, const char* str, ...) {
 	char buf[256];
 	size_t len;
@@ -83,7 +88,7 @@ void uiText(float x, float y, uint32_t clr, const char* str, ...) {
 	if (ui_count + len*6 > MAX_UI_VERTICES)
 		return;
 
-	scale = 16.f;
+	scale = ui_scale * 8.f;
 	d = 8.f / 1024.f;
 
 	ml_vec2 rpos = {x, y};
@@ -100,21 +105,18 @@ void uiText(float x, float y, uint32_t clr, const char* str, ...) {
 		ml_vec2 p2 = {rpos.x + scale, rpos.y + scale};
 		ml_vec2 t1 = {tc.x, 0.f};
 		ml_vec2 t2 = {tc.x + d, 1.f};
+		ml_vtx_ui quad[6] = {
+			{ p1, { t1.x, t2.y }, clr },
+			{ p2, { t2.x, t1.y }, clr },
+			{ { p1.x, p2.y }, t1, clr },
+			{ p2, { t2.x, t1.y }, clr },
+			{ p1, { t1.x, t2.y }, clr },
+			{ { p2.x, p1.y }, t2, clr },
+		};
 
-		ptr->pos = p1; ptr->tc.x = t1.x; ptr->tc.y = t2.y; ptr->clr = clr;
-		++ptr; ++ui_count;
-		ptr->pos = p2; ptr->tc.x = t2.x; ptr->tc.y = t1.y; ptr->clr = clr;
-		++ptr; ++ui_count;
-		ptr->pos.x = p1.x; ptr->pos.y = p2.y; ptr->tc = t1; ptr->clr = clr;
-		++ptr; ++ui_count;
-
-		ptr->pos = p2; ptr->tc.x = t2.x; ptr->tc.y = t1.y; ptr->clr = clr;
-		++ptr; ++ui_count;
-		ptr->pos = p1; ptr->tc.x = t1.x; ptr->tc.y = t2.y; ptr->clr = clr;
-		++ptr; ++ui_count;
-		ptr->pos.x = p2.x; ptr->pos.y = p1.y; ptr->tc = t2; ptr->clr = clr;
-		++ptr; ++ui_count;
-
+		memcpy(ptr, quad, sizeof(quad));
+		ptr += 6;
+		ui_count += 6;
 		rpos.x += scale;
 	}
 }
