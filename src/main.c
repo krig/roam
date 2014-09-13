@@ -246,7 +246,7 @@ gameRender(SDL_Point* viewport) {
 	mlPopMatrix(&modelview);
 
 	uiBegin();
-	uiText(5, 5, 0xffffffff, "hello world!");
+	uiText(5, 5, 0xafaaaaaa, "hello world!");
 	uiDraw(viewport);
 
 	if (mouse_captured)
