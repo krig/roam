@@ -221,15 +221,15 @@ gameRender(SDL_Point* viewport) {
 	static float f = 0.f;
 	f += 0.01f;
 
-	ml_vec4 amb_color = { RGB2F(61, 04, 5F), 0.2f };
+	ml_vec4 amb_color = { RGB2F(61, 04, 5F), 0.3f };
 	ml_vec4 fog_color = { RGB2F(28, 30, 48), 0.15f };
 	ml_vec3 light_dir = { 0.5f, 1.f, 0.5f };
+	ml_matrix33 normalmat;
 
 	mlPushMatrix(&modelview);
 
-	ml_matrix33 normalmat;
-	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
 	// transform light into eye space
+	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
 	light_dir = mlMulMat33Vec(&normalmat, &light_dir);
 
 	mlRotate(mlGetMatrix(&modelview), f, 0.f, 1.f, 0.f);
