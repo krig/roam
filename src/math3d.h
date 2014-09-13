@@ -44,6 +44,11 @@ typedef struct ml_matrix {
 	float m[16];
 } ml_matrix;
 
+typedef struct ml_matrix33 {
+	float m[9];
+} ml_matrix33;
+
+
 #pragma pack(push, 4)
 
 typedef struct ml_vtx_pos_clr {
@@ -51,11 +56,11 @@ typedef struct ml_vtx_pos_clr {
 	uint32_t clr;
 } ml_vtx_pos_clr;
 
-typedef struct ml_vtx_pos_clr_n {
+typedef struct ml_vtx_pos_n_clr {
 	ml_vec3 pos;
-	uint32_t clr;
 	ml_vec3 n;
-} ml_vtx_pos_clr_n;
+	uint32_t clr;
+} ml_vtx_pos_n_clr;
 
 typedef struct ml_vtx_ui {
 	ml_vec2 pos;
@@ -74,6 +79,9 @@ typedef struct ml_material {
 	GLint projmat;
 	GLint modelview;
 	GLint normalmat;
+	GLint amb_color;
+	GLint fog_color;
+	GLint light_dir;
 	GLint position;
 	GLint color;
 	GLint normal;
@@ -86,11 +94,13 @@ typedef struct ml_material {
 typedef struct ml_mesh {
 	GLuint vbo;
 	GLint position; // -1 if not present, else offset
-	GLint color;
 	GLint normal;
+	GLint texcoord;
+	GLint color;
 	GLsizei stride;
 	GLenum mode;
 	GLsizei count;
+	GLenum flags;
 } ml_mesh;
 
 typedef struct ml_tex2d {
@@ -174,6 +184,8 @@ ml_vec4 mlMulMatVec(const ml_matrix* m, const ml_vec4* v);
 void mlTranslate(ml_matrix* m, float x, float y, float z);
 void mlRotate(ml_matrix* m, float angle, float x, float y, float z);
 
+void mlGetRotationMatrix(ml_matrix33* to, const ml_matrix* from);
+
 void mlTranspose(ml_matrix* m);
 
 static inline float
@@ -237,17 +249,45 @@ glCheck(int line) {
 }
 
 static inline void
-mlBindProjection(ml_renderable* renderable, ml_matrix* projection) {
-	GLint index = renderable->material->projmat;
+mlUniformMatrix(GLint index, ml_matrix* mat) {
 	if (index != -1)
-		glUniformMatrix4fv(index, 1, GL_FALSE, projection->m);
+		glUniformMatrix4fv(index, 1, GL_FALSE, mat->m);
 }
 
 static inline void
-mlBindModelView(ml_renderable* renderable, ml_matrix* modelview) {
-	GLint index = renderable->material->modelview;
+mlUniformMatrix33(GLint index, ml_matrix33* mat) {
 	if (index != -1)
-		glUniformMatrix4fv(index, 1, GL_FALSE, modelview->m);
+		glUniformMatrix3fv(index, 1, GL_FALSE, mat->m);
+}
+
+static inline void
+mlUniformVec2(GLint index, ml_vec2* v) {
+	if (index != -1)
+		glUniform2fv(index, 1, v->v);
+}
+
+static inline void
+mlUniformVec3(GLint index, ml_vec3* v) {
+	if (index != -1)
+		glUniform3fv(index, 1, v->v);
+}
+
+static inline void
+mlUniformVec4(GLint index, ml_vec4* v) {
+	if (index != -1)
+		glUniform4fv(index, 1, v->v);
+}
+
+static inline void
+mlUniform1i(GLint index, int i) {
+	if (index != -1)
+		glUniform1i(index, i);
+}
+
+static inline void
+mlBindMatrix(GLint index, ml_matrix* mat) {
+	if (index != -1)
+		glUniformMatrix4fv(index, 1, GL_FALSE, mat->m);
 }
 
 static inline void
@@ -269,7 +309,15 @@ GLuint mlLinkProgram(GLuint vsh, GLuint fsh);
 
 void mlCreateMaterial(ml_material* material, const char* vsource, const char* fsource);
 
-void mlCreateMesh(ml_mesh* mesh, size_t n, ml_vtx_pos_clr* data);
+enum ML_MeshFlags {
+	ML_POS_2F = 1,
+	ML_POS_3F = 2,
+	ML_N_3F = 4,
+	ML_TC_2F = 8,
+	ML_CLR_4UB = 16
+};
+
+void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags);
 
 void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, const ml_mesh* mesh);
 

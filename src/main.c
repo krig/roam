@@ -29,63 +29,84 @@ gameInit() {
 	uint32_t top, bottom;
 	top = 0xff24C6DC;
 	bottom = 0xff514A9D;
-	ml_vtx_pos_clr corners[8] = {
-		{{-0.5f,-0.5f,-0.5f}, bottom },
-		{{ 0.5f,-0.5f,-0.5f}, bottom },
-		{{-0.5f,-0.5f, 0.5f}, bottom },
-		{{ 0.5f,-0.5f, 0.5f}, bottom },
-		{{-0.5f, 0.5f,-0.5f}, top },
-		{{-0.5f, 0.5f, 0.5f}, top },
-		{{ 0.5f, 0.5f,-0.5f}, top },
-		{{ 0.5f, 0.5f, 0.5f}, top }
+	ml_vtx_pos_n_clr corners[8] = {
+		{{-0.5f,-0.5f,-0.5f}, {0, 0, 0}, bottom },
+		{{ 0.5f,-0.5f,-0.5f}, {0, 0, 0}, bottom },
+		{{-0.5f,-0.5f, 0.5f}, {0, 0, 0}, bottom },
+		{{ 0.5f,-0.5f, 0.5f}, {0, 0, 0}, bottom },
+		{{-0.5f, 0.5f,-0.5f}, {0, 0, 0}, top },
+		{{-0.5f, 0.5f, 0.5f}, {0, 0, 0}, top },
+		{{ 0.5f, 0.5f,-0.5f}, {0, 0, 0}, top },
+		{{ 0.5f, 0.5f, 0.5f}, {0, 0, 0}, top }
 	};
 
-	ml_vtx_pos_clr tris[] = {
-		corners[0],
+	ml_vtx_pos_n_clr tris[] = {
+		corners[0], // bottom
 		corners[1],
 		corners[2],
 		corners[1],
 		corners[3],
 		corners[2],
 
-		corners[4],
+		corners[4], // top
 		corners[5],
 		corners[6],
 		corners[6],
 		corners[5],
 		corners[7],
 
-		corners[2],
+		corners[2], // front
 		corners[3],
 		corners[5],
 		corners[3],
 		corners[7],
 		corners[5],
 
-		corners[0],
+		corners[0], // back
 		corners[4],
 		corners[1],
 		corners[1],
 		corners[4],
 		corners[6],
 
-		corners[2],
+		corners[2], // left
 		corners[4],
 		corners[0],
 		corners[2],
 		corners[5],
 		corners[4],
 
-		corners[3],
+		corners[3], // right
 		corners[1],
 		corners[6],
 		corners[3],
 		corners[6],
 		corners[7]
 	};
+
+	ml_vec3 normals[6] = {
+		{0, -1, 0},
+		{0, 1, 0},
+		{0, 0, 1},
+		{0, 0, -1},
+		{-1, 0, 0},
+		{1, 0, 0}
+	};
+
+	for (int i = 0; i < 6; ++i) {
+		tris[i*6 + 0].n = normals[i];
+		tris[i*6 + 1].n = normals[i];
+		tris[i*6 + 2].n = normals[i];
+		tris[i*6 + 3].n = normals[i];
+		tris[i*6 + 4].n = normals[i];
+		tris[i*6 + 5].n = normals[i];
+	}
+
+	printf("making basic material...\n");
 	mlCreateMaterial(&materials[MAT_BASIC], basic_vshader, basic_fshader);
+	printf("making ui material...\n");
 	mlCreateMaterial(&materials[MAT_UI], ui_vshader, ui_fshader);
-	mlCreateMesh(&meshes[0], 36, tris);
+	mlCreateMesh(&meshes[0], 36, tris, ML_POS_3F | ML_N_3F | ML_CLR_4UB);
 	mlCreateRenderable(&renderables[0], materials + MAT_BASIC, meshes + 0);
 	uiInit(materials + MAT_UI);
 
@@ -200,12 +221,22 @@ gameRender(SDL_Point* viewport) {
 	static float f = 0.f;
 	f += 0.01f;
 
+	ml_vec4 amb_color = { RGB2F(ff, ff, ff), 0.2f };
+	ml_vec4 fog_color = { RGB2F(28, 30, 48), 0.15f };
+	ml_vec3 light_dir = { 0.2f, -1.f, 0.2f };
+
 	mlPushMatrix(&modelview);
 	mlRotate(mlGetMatrix(&modelview), f, 0.f, 1.f, 0.f);
 	mlTranslate(mlGetMatrix(&modelview), 0.f, 0.5f, 0.f);
 	mlDrawBegin(renderables + 0);
-	mlBindProjection(renderables + 0, mlGetMatrix(&projection));
-	mlBindModelView(renderables + 0, mlGetMatrix(&modelview));
+	mlUniformMatrix(renderables[0].material->projmat, mlGetMatrix(&projection));
+	mlUniformMatrix(renderables[0].material->modelview, mlGetMatrix(&modelview));
+	ml_matrix33 normalmat;
+	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
+	mlUniformMatrix33(renderables[0].material->normalmat, &normalmat);
+	mlUniformVec4(renderables[0].material->amb_color, &amb_color);
+	mlUniformVec4(renderables[0].material->fog_color, &fog_color);
+	mlUniformVec3(renderables[0].material->light_dir, &light_dir);
 	mlDrawEnd(renderables + 0);
 	mlPopMatrix(&modelview);
 

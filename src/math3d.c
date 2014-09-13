@@ -99,6 +99,20 @@ mlCopyMatrix(ml_matrix* to, const ml_matrix* from) {
 	memcpy(to, from, sizeof(ml_matrix));
 }
 
+void mlGetRotationMatrix(ml_matrix33* to, const ml_matrix* from) {
+	float*__restrict__ a = to->m;
+	const float*__restrict__ b = from->m;
+	a[0] = b[0];
+	a[1] = b[1];
+	a[2] = b[2];
+	a[3] = b[4];
+	a[4] = b[5];
+	a[5] = b[6];
+	a[6] = b[8];
+	a[7] = b[9];
+	a[8] = b[10];
+}
+
 void
 mlMulMatrix(ml_matrix* to, const ml_matrix* by) {
 	const float*__restrict__ a = to->m;
@@ -152,12 +166,6 @@ mlRotate(ml_matrix* m, float angle, float x, float y, float z) {
 
 void
 mlTranspose(ml_matrix* m) {
-	mlSwap(m->m[1], m->m[4]);
-	mlSwap(m->m[2], m->m[8]);
-	mlSwap(m->m[3], m->m[12]);
-	mlSwap(m->m[6], m->m[9]);
-	mlSwap(m->m[7], m->m[13]);
-	mlSwap(m->m[11], m->m[14]);
 #if 0
 	__m128 col1 = _mm_load_ps(&m->m[0]);
 	__m128 col2 = _mm_load_ps(&m->m[4]);
@@ -168,6 +176,13 @@ mlTranspose(ml_matrix* m) {
 	_mm_store_ps(&m->m[4], col2);
 	_mm_store_ps(&m->m[8], col3);
 	_mm_store_ps(&m->m[12], col4);
+#else
+	mlSwap(m->m[1], m->m[4]);
+	mlSwap(m->m[2], m->m[8]);
+	mlSwap(m->m[3], m->m[12]);
+	mlSwap(m->m[6], m->m[9]);
+	mlSwap(m->m[7], m->m[13]);
+	mlSwap(m->m[11], m->m[14]);
 #endif
 }
 
@@ -255,23 +270,40 @@ void mlCreateMaterial(ml_material* material, const char* vsource, const char* fs
 	material->projmat = glGetUniformLocation(program, "projmat");
 	material->modelview = glGetUniformLocation(program, "modelview");
 	material->normalmat = glGetUniformLocation(program, "normalmat");
+	material->amb_color = glGetUniformLocation(program, "amb_color");
+	material->fog_color = glGetUniformLocation(program, "fog_color");
+	material->light_dir = glGetUniformLocation(program, "light_dir");
 	material->position = glGetAttribLocation(program, "position");
 	material->color = glGetAttribLocation(program, "color");
 	material->normal = glGetAttribLocation(program, "normal");
 	glUseProgram(0);
 }
 
-void mlCreateMesh(ml_mesh* mesh, size_t n, ml_vtx_pos_clr* data) {
+void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags) {
+	size_t stride =
+		((flags & ML_POS_2F) ? 8 : 0) +
+		((flags & ML_POS_3F) ? 12 : 0) +
+		((flags & ML_CLR_4UB) ? 4 : 0) +
+		((flags & ML_N_3F) ? 12 : 0) +
+		((flags & ML_TC_2F) ? 8 : 0);
 	glGenBuffers(1, &mesh->vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
-	glBufferData(GL_ARRAY_BUFFER, n * sizeof(ml_vtx_pos_clr), data, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, n * stride, data, GL_STATIC_DRAW);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	mesh->position = 0;
-	mesh->color = 3 * sizeof(float);
-	mesh->normal = -1;
-	mesh->stride = sizeof(ml_vtx_pos_clr);
+
+	GLint offset = 0;
+	mesh->position = (flags & ML_POS_2F || flags & ML_POS_3F) ? offset : -1;
+	offset += (flags & ML_POS_2F) ? 8 : ((flags & ML_POS_3F) ? 12 : 0);
+	mesh->normal = (flags & ML_N_3F) ? offset : -1;
+	offset += (flags & ML_N_3F) ? 12 : 0;
+	mesh->texcoord = (flags & ML_TC_2F) ? offset : -1;
+	offset += (flags & ML_TC_2F) ? 8 : 0;
+	mesh->color = (flags & ML_CLR_4UB) ? offset : -1;
+	offset += (flags & ML_CLR_4UB) ? 4 : 0;
+	mesh->stride = stride;
 	mesh->mode = GL_TRIANGLES;
 	mesh->count = n;
+	mesh->flags = flags;
 }
 
 void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, const ml_mesh* mesh) {
@@ -281,10 +313,24 @@ void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, 
 	renderable->mesh = mesh;
 
 	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, mesh->stride, 0);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, mesh->stride, (const void*)((ptrdiff_t)mesh->color));
-	glEnableVertexAttribArray(1);
+	int vap = 0;
+	if (mesh->position > -1) {
+		size_t ecount = (mesh->flags & ML_POS_2F) ? 2 : 3;
+		glVertexAttribPointer(vap, ecount, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->position));
+		glEnableVertexAttribArray(vap++);
+	}
+	if (mesh->normal > -1) {
+		glVertexAttribPointer(vap, 3, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->normal));
+		glEnableVertexAttribArray(vap++);
+	}
+	if (mesh->texcoord > -1) {
+		glVertexAttribPointer(vap, 2, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->texcoord));
+		glEnableVertexAttribArray(vap++);
+	}
+	if (mesh->color > -1) {
+		glVertexAttribPointer(vap, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->color));
+		glEnableVertexAttribArray(vap++);
+	}
 	glBindVertexArray(0);
 }
 
