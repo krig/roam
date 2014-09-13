@@ -223,15 +223,20 @@ gameRender(SDL_Point* viewport) {
 
 	ml_vec4 amb_color = { RGB2F(61, 04, 5F), 0.2f };
 	ml_vec4 fog_color = { RGB2F(28, 30, 48), 0.15f };
-	ml_vec3 light_dir = { 0.2f, 1.f, 0.2f };
+	ml_vec3 light_dir = { 0.5f, 1.f, 0.5f };
 
 	mlPushMatrix(&modelview);
+
+	ml_matrix33 normalmat;
+	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
+	// transform light into eye space
+	light_dir = mlMulMat33Vec(&normalmat, &light_dir);
+
 	mlRotate(mlGetMatrix(&modelview), f, 0.f, 1.f, 0.f);
 	mlTranslate(mlGetMatrix(&modelview), 0.f, 0.5f, 0.f);
 	mlDrawBegin(renderables + 0);
 	mlUniformMatrix(renderables[0].material->projmat, mlGetMatrix(&projection));
 	mlUniformMatrix(renderables[0].material->modelview, mlGetMatrix(&modelview));
-	ml_matrix33 normalmat;
 	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
 	mlUniformMatrix33(renderables[0].material->normalmat, &normalmat);
 	mlUniformVec4(renderables[0].material->amb_color, &amb_color);

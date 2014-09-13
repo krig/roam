@@ -113,6 +113,20 @@ void mlGetRotationMatrix(ml_matrix33* to, const ml_matrix* from) {
 	a[8] = b[10];
 }
 
+ml_vec3 mlMulMat33Vec(const ml_matrix33* m, const ml_vec3* v) {
+	ml_vec3 ret;
+	ret.x = (v->x * m->m[0]) +
+		(v->y * m->m[3]) +
+		(v->z * m->m[6]);
+	ret.y = (v->x * m->m[1]) +
+		(v->y * m->m[4]) +
+		(v->z * m->m[7]);
+	ret.z = (v->x * m->m[2]) +
+		(v->y * m->m[5]) +
+		(v->z * m->m[8]);
+	return ret;
+}
+
 void
 mlMulMatrix(ml_matrix* to, const ml_matrix* by) {
 	const float*__restrict__ a = to->m;

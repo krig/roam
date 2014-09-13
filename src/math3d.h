@@ -185,6 +185,7 @@ void mlTranslate(ml_matrix* m, float x, float y, float z);
 void mlRotate(ml_matrix* m, float angle, float x, float y, float z);
 
 void mlGetRotationMatrix(ml_matrix33* to, const ml_matrix* from);
+ml_vec3 mlMulMat33Vec(const ml_matrix33* m, const ml_vec3* v);
 
 void mlTranspose(ml_matrix* m);
 
