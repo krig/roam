@@ -221,9 +221,9 @@ gameRender(SDL_Point* viewport) {
 	static float f = 0.f;
 	f += 0.01f;
 
-	ml_vec4 amb_color = { RGB2F(ff, ff, ff), 0.2f };
+	ml_vec4 amb_color = { RGB2F(61, 04, 5F), 0.2f };
 	ml_vec4 fog_color = { RGB2F(28, 30, 48), 0.15f };
-	ml_vec3 light_dir = { 0.2f, -1.f, 0.2f };
+	ml_vec3 light_dir = { 0.2f, 1.f, 0.2f };
 
 	mlPushMatrix(&modelview);
 	mlRotate(mlGetMatrix(&modelview), f, 0.f, 1.f, 0.f);

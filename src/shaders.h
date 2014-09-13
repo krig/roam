@@ -35,9 +35,10 @@ static const char* basic_fshader = "#version 130\n"
 	"}\n"
 	"void main() {\n"
 	"    float intensity = max(0.0, dot(normalize(out_normal), normalize(light_dir)));\n"
-	"    float amb_intensity = max(amb_color.w, 1.0 - intensity);\n"
+//	"    float amb_intensity = max(amb_color.w, 1.0 - intensity);\n"
+	"    float amb_intensity = 0.2;\n"
 	"    vec3 basecolor = out_color.xyz * intensity + amb_color.xyz * amb_intensity;\n"
-	"    vec3 fogged = fog(out_color.xyz, fog_color.xyz, out_depth, fog_color.w);\n"
+	"    vec3 fogged = fog(basecolor, fog_color.xyz, out_depth, fog_color.w);\n"
 	"    fragment = vec4(fogged, 1);\n"
 	"}\n";
 
