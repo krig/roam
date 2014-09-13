@@ -32,26 +32,44 @@ typedef union ml_vec4 {
 	};
 } ml_vec4;
 
+typedef union ml_clr {
+	uint32_t argb;
+	struct {
+		uint8_t a, r, g, b;
+	};
+} ml_clr;
+
+
 typedef struct ml_matrix {
 	float m[16];
 } ml_matrix;
 
-typedef struct vtx_pos_clr_t {
+#pragma pack(push, 4)
+
+typedef struct ml_vtx_pos_clr {
 	ml_vec3 pos;
 	uint32_t clr;
-} vtx_pos_clr_t;
+} ml_vtx_pos_clr;
 
-typedef struct vtx_pos_clr_n_t {
+typedef struct ml_vtx_pos_clr_n {
 	ml_vec3 pos;
 	uint32_t clr;
 	ml_vec3 n;
-} vtx_pos_clr_n_t;
+} ml_vtx_pos_clr_n;
+
+typedef struct ml_vtx_ui {
+	ml_vec2 pos;
+	ml_vec2 tc;
+	uint32_t clr;
+} ml_vtx_ui;
+
+#pragma pack(pop)
 
 // A material identifies a
 // shader and any special
 // considerations concerning
 // that shader
-typedef struct material_t {
+typedef struct ml_material {
 	GLuint program;
 	GLint projmat;
 	GLint modelview;
@@ -59,13 +77,13 @@ typedef struct material_t {
 	GLint position;
 	GLint color;
 	GLint normal;
-} material_t;
+} ml_material;
 
 
 // A mesh is a VBO plus metadata
 // that describes how it maps to
 // a material
-typedef struct mesh_t {
+typedef struct ml_mesh {
 	GLuint vbo;
 	GLint position; // -1 if not present, else offset
 	GLint color;
@@ -73,17 +91,23 @@ typedef struct mesh_t {
 	GLsizei stride;
 	GLenum mode;
 	GLsizei count;
-} mesh_t;
+} ml_mesh;
+
+typedef struct ml_tex2d {
+	GLuint id;
+	uint16_t w;
+	uint16_t h;
+} ml_tex2d;
 
 // a renderable combines a
 // particular material and a
 // particular mesh into a
 // a renderable object
-typedef struct renderable_t {
-	const material_t* material;
-	const mesh_t* mesh;
+typedef struct ml_renderable {
+	const ml_material* material;
+	const ml_mesh* mesh;
 	GLuint vao;
-} renderable_t;
+} ml_renderable;
 
 typedef struct ml_matrixstack {
 	int top;
@@ -213,27 +237,27 @@ glCheck(int line) {
 }
 
 static inline void
-mlBindProjection(renderable_t* renderable, ml_matrix* projection) {
+mlBindProjection(ml_renderable* renderable, ml_matrix* projection) {
 	GLint index = renderable->material->projmat;
 	if (index != -1)
 		glUniformMatrix4fv(index, 1, GL_FALSE, projection->m);
 }
 
 static inline void
-mlBindModelView(renderable_t* renderable, ml_matrix* modelview) {
+mlBindModelView(ml_renderable* renderable, ml_matrix* modelview) {
 	GLint index = renderable->material->modelview;
 	if (index != -1)
 		glUniformMatrix4fv(index, 1, GL_FALSE, modelview->m);
 }
 
 static inline void
-mlDrawBegin(renderable_t* renderable) {
+mlDrawBegin(ml_renderable* renderable) {
 	glUseProgram(renderable->material->program);
 	glBindVertexArray(renderable->vao);
 }
 
 static inline void
-mlDrawEnd(renderable_t* renderable) {
+mlDrawEnd(ml_renderable* renderable) {
 	glDrawArrays(renderable->mesh->mode, 0, renderable->mesh->count);
 	glBindVertexArray(0);
 	glUseProgram(0);
@@ -243,11 +267,11 @@ GLuint mlCompileShader(GLenum type, const char* source);
 
 GLuint mlLinkProgram(GLuint vsh, GLuint fsh);
 
-void mlCreateMaterial(material_t* material, const char* vsource, const char* fsource);
+void mlCreateMaterial(ml_material* material, const char* vsource, const char* fsource);
 
-void mlCreateMesh(mesh_t* mesh, size_t n, vtx_pos_clr_t* data);
+void mlCreateMesh(ml_mesh* mesh, size_t n, ml_vtx_pos_clr* data);
 
-void mlCreateRenderable(renderable_t* renderable, const material_t* material, const mesh_t* mesh);
+void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, const ml_mesh* mesh);
 
 // Matrix stack
 
@@ -272,3 +296,10 @@ void mlLoadIdentity(ml_matrixstack* stack);
 void mlPopMatrix(ml_matrixstack* stack);
 
 ml_matrix* mlGetMatrix(ml_matrixstack* stack);
+
+void mlLoadTexture2D(ml_tex2d* tex, const char* filename);
+void mlFreeTexture2D(ml_tex2d* tex);
+void mlBindTexture2D(ml_tex2d* tex, int index);
+
+
+// TODO: GL state stack - track state as a stack of uint64_ts...

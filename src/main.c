@@ -1,26 +1,7 @@
 #include "common.h"
 #include "math3d.h"
-
-static const char* basic_vshader = "#version 130\n"
-	"uniform mat4 projmat;\n"
-	"uniform mat4 modelview;\n"
-	"uniform mat4 normalmat;\n"
-	"in vec3 position;\n"
-	"in vec4 color;\n"
-	"out vec4 out_color;\n"
-	"void main() {\n"
-	"out_color = color;\n"
-	"gl_Position = projmat * modelview * vec4(position, 1);\n"
-	"}\n";
-
-static const char* basic_fshader = "#version 130\n"
-	"precision highp float;\n"
-	"in vec4 out_color;\n"
-	"out vec4 fragment;\n"
-	"void main() {\n"
-	"fragment = out_color;\n"
-	"}\n";
-
+#include "shaders.h"
+#include "ui.h"
 
 #define MAX_MATERIALS 64
 #define MAX_MESHES 100
@@ -30,20 +11,25 @@ static SDL_Window* window;
 static SDL_GLContext context;
 static ml_matrixstack projection;
 static ml_matrixstack modelview;
-static material_t materials[MAX_MATERIALS];
-static mesh_t meshes[MAX_MESHES];
-static renderable_t renderables[MAX_RENDERABLES];
+static ml_material materials[MAX_MATERIALS];
+static ml_mesh meshes[MAX_MESHES];
+static ml_renderable renderables[MAX_RENDERABLES];
 static ml_vec3 camera_pos = {0.283782f, -0.302f, 0.966538f};
 static float camera_pitch = 0.755668f;
 static float camera_yaw = 0.245576f;
 static bool mouse_captured = false;
+
+enum E_Materials {
+	MAT_BASIC,
+	MAT_UI,
+};
 
 static void
 gameInit() {
 	uint32_t top, bottom;
 	top = 0xff24C6DC;
 	bottom = 0xff514A9D;
-	vtx_pos_clr_t corners[8] = {
+	ml_vtx_pos_clr corners[8] = {
 		{{-0.5f,-0.5f,-0.5f}, bottom },
 		{{ 0.5f,-0.5f,-0.5f}, bottom },
 		{{-0.5f,-0.5f, 0.5f}, bottom },
@@ -54,7 +40,7 @@ gameInit() {
 		{{ 0.5f, 0.5f, 0.5f}, top }
 	};
 
-	vtx_pos_clr_t tris[] = {
+	ml_vtx_pos_clr tris[] = {
 		corners[0],
 		corners[1],
 		corners[2],
@@ -97,9 +83,11 @@ gameInit() {
 		corners[6],
 		corners[7]
 	};
-	mlCreateMaterial(&materials[0], basic_vshader, basic_fshader);
+	mlCreateMaterial(&materials[MAT_BASIC], basic_vshader, basic_fshader);
+	mlCreateMaterial(&materials[MAT_UI], ui_vshader, ui_fshader);
 	mlCreateMesh(&meshes[0], 36, tris);
-	mlCreateRenderable(&renderables[0], materials + 0, meshes + 0);
+	mlCreateRenderable(&renderables[0], materials + MAT_BASIC, meshes + 0);
+	uiInit(materials + MAT_UI);
 
 	mouse_captured = true;
 	SDL_SetRelativeMouseMode(SDL_TRUE);
@@ -108,6 +96,7 @@ gameInit() {
 static void
 gameExit() {
 	int i;
+	uiExit();
 	for (i = 0; i < MAX_MATERIALS; ++i)
 		if (materials[i].program != 0)
 			glDeleteProgram(materials[i].program);
@@ -219,6 +208,10 @@ gameRender(SDL_Point* viewport) {
 	mlBindModelView(renderables + 0, mlGetMatrix(&modelview));
 	mlDrawEnd(renderables + 0);
 	mlPopMatrix(&modelview);
+
+	uiBegin();
+	uiText(5, 5, 0xffffffff, "hello world!");
+	uiDraw(viewport);
 
 	if (mouse_captured)
 		SDL_WarpMouseInWindow(window, viewport->x >> 1, viewport->y >> 1);

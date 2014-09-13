@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -11,8 +12,14 @@
 #include <SDL_opengl.h>
 
 static inline void
-roamError(const char* msg) {
-	fprintf(stderr, "Error: %s\n", msg);
+roamError(const char* msg, ...) {
+	char buf[512];
+	size_t len;
+	va_list va_args;
+	va_start(va_args, msg);
+	vsnprintf(buf, 512, msg, va_args);
+	va_end(va_args);
+	fprintf(stderr, "Error: %s\n", buf);
 	exit(1);
 }
 

@@ -1,5 +1,7 @@
 #include "common.h"
 #include "math3d.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 void mlPerspective(ml_matrix* m, float fovy, float aspect, float zNear, float zFar) {
 	mlSetIdentity(m);
@@ -237,7 +239,7 @@ GLuint mlLinkProgram(GLuint vsh, GLuint fsh) {
 }
 
 
-void mlCreateMaterial(material_t* material, const char* vsource, const char* fsource) {
+void mlCreateMaterial(ml_material* material, const char* vsource, const char* fsource) {
 	GLuint vshader, fshader, program;
 	vshader = mlCompileShader(GL_VERTEX_SHADER, vsource);
 	fshader = mlCompileShader(GL_FRAGMENT_SHADER, fsource);
@@ -259,20 +261,20 @@ void mlCreateMaterial(material_t* material, const char* vsource, const char* fso
 	glUseProgram(0);
 }
 
-void mlCreateMesh(mesh_t* mesh, size_t n, vtx_pos_clr_t* data) {
+void mlCreateMesh(ml_mesh* mesh, size_t n, ml_vtx_pos_clr* data) {
 	glGenBuffers(1, &mesh->vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
-	glBufferData(GL_ARRAY_BUFFER, n * sizeof(vtx_pos_clr_t), data, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, n * sizeof(ml_vtx_pos_clr), data, GL_STATIC_DRAW);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	mesh->position = 0;
 	mesh->color = 3 * sizeof(float);
 	mesh->normal = -1;
-	mesh->stride = sizeof(vtx_pos_clr_t);
+	mesh->stride = sizeof(ml_vtx_pos_clr);
 	mesh->mode = GL_TRIANGLES;
 	mesh->count = n;
 }
 
-void mlCreateRenderable(renderable_t* renderable, const material_t* material, const mesh_t* mesh) {
+void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, const ml_mesh* mesh) {
 	glGenVertexArrays(1, &renderable->vao);
 	glBindVertexArray(renderable->vao);
 	renderable->material = material;
@@ -330,3 +332,55 @@ ml_matrix* mlGetMatrix(ml_matrixstack* stack) {
 		roamError("Matrix stack underflow");
 	return stack->stack + stack->top;
 }
+
+void mlLoadTexture2D(ml_tex2d* tex, const char* filename) {
+	GLenum format;
+	int x, y, n;
+	unsigned char* data;
+
+	memset(tex, 0, sizeof(ml_tex2d));
+	data = stbi_load(filename, &x, &y, &n, 0);
+	if (data == NULL) {
+		roamError("Failed to load image %s", filename);
+	}
+
+	glActiveTexture(GL_TEXTURE0);
+	glGenTextures(1, &tex->id);
+	glBindTexture(GL_TEXTURE_2D, tex->id);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    tex->w = x;
+    tex->h = y;
+
+    switch (n) {
+    case 4:
+	    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+	    break;
+    case 3:
+	    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, x, y, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+	    break;
+    case 1:
+	    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, x, y, 0, GL_RED, GL_UNSIGNED_BYTE, data);
+	    break;
+    default:
+	    roamError("bad pixel depth %d for %s", n, filename);
+    }
+
+	stbi_image_free(data);
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void mlFreeTexture2D(ml_tex2d* tex) {
+	glDeleteTextures(1, &tex->id);
+	memset(tex, 0, sizeof(ml_tex2d));
+
+}
+
+void mlBindTexture2D(ml_tex2d* tex, int index) {
+	glActiveTexture(GL_TEXTURE0 + index);
+	glBindTexture(GL_TEXTURE_2D, tex->id);
+}
+
+
