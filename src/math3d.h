@@ -203,6 +203,18 @@ mlVec3Cross(const ml_vec3 a, const ml_vec3 b) {
 	return to;
 }
 
+static inline ml_vec3
+mlVec3Add(const ml_vec3 a, const ml_vec3 b) {
+	ml_vec3 to = {a.x + b.x, a.y + b.y, a.z + b.z};
+	return to;
+}
+
+static inline ml_vec3
+mlVec3Scalef(const ml_vec3 a, float f) {
+	ml_vec3 to = {a.x * f, a.y * f, a.z * f};
+	return to;
+}
+
 static inline float
 mlVec3Length2(const ml_vec3 v) {
 	return v.x*v.x + v.y*v.y + v.z*v.z;
@@ -213,12 +225,10 @@ mlVec3Length(const ml_vec3 v) {
 	return sqrtf(v.x*v.x + v.y*v.y + v.z*v.z);
 }
 
-static inline void
-mlVec3Normalize(ml_vec3* v) {
-	float invlen = 1.f / mlVec3Length(*v);
-	v->x *= invlen;
-	v->y *= invlen;
-	v->z *= invlen;
+static inline ml_vec3
+mlVec3Normalize(ml_vec3 v) {
+	float invlen = 1.f / mlVec3Length(v);
+	return mlVec3Scalef(v, invlen);
 }
 
 static inline ml_vec3

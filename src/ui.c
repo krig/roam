@@ -2,6 +2,7 @@
 #include "math3d.h"
 #include "ui.h"
 
+// UI drawing
 static ml_material* ui_material = NULL;
 static ml_tex2d ui_8x8font;
 static GLint ui_screensize_index = -1;
@@ -10,19 +11,33 @@ static GLuint ui_vao = -1;
 static GLuint ui_vbo = -1;
 static size_t ui_count = 0;
 static float ui_scale = 2;
-
 #define MAX_UI_VERTICES 2048
 static ml_vtx_ui ui_vertices[MAX_UI_VERTICES];
 
-void uiInit(ml_material* m) {
-	memset(ui_vertices, 0, sizeof(ml_vtx_ui)*MAX_UI_VERTICES);
-	ui_material = m;
-	ui_screensize_index = glGetUniformLocation(m->program, "screensize");
-	ui_tex0_index = glGetUniformLocation(m->program, "tex0");
+// debug 3d drawing
+#define MAX_DEBUG_LINEVERTS 2048
+static ml_material* debug_material = NULL;
+static GLint debug_projmat_index = -1;
+static GLint debug_modelview_index = -1;
+static ml_vtx_pos_clr debug_lines[MAX_DEBUG_LINEVERTS];
+static size_t debug_linevertcount = 0;
+static GLuint debug_vao = -1;
+static GLuint debug_vbo = -1;
+
+
+void uiInit(ml_material* uimat, ml_material* debugmat) {
+	ui_material = uimat;
+	ui_screensize_index = glGetUniformLocation(uimat->program, "screensize");
+	ui_tex0_index = glGetUniformLocation(uimat->program, "tex0");
+
+	debug_material = debugmat;
+	debug_projmat_index = glGetUniformLocation(debugmat->program, "projmat");
+	debug_modelview_index = glGetUniformLocation(debugmat->program, "modelview");
+	printf("projmat: %d, modelview: %d\n", debug_projmat_index, debug_modelview_index);
+
 	mlLoadTexture2D(&ui_8x8font, "data/8x8font.png");
 
 	glGenBuffers(1, &ui_vbo);
-
 	glGenVertexArrays(1, &ui_vao);
 	glBindVertexArray(ui_vao);
 	glBindBuffer(GL_ARRAY_BUFFER, ui_vbo);
@@ -33,41 +48,52 @@ void uiInit(ml_material* m) {
 	glEnableVertexAttribArray(1);
 	glEnableVertexAttribArray(2);
 	glBindVertexArray(0);
+	ui_count = 0;
+
+	glGenBuffers(1, &debug_vbo);
+	glGenVertexArrays(1, &debug_vao);
+	glBindVertexArray(debug_vao);
+	glBindBuffer(GL_ARRAY_BUFFER, debug_vbo);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(ml_vtx_pos_clr), 0);
+	glVertexAttribPointer(1, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(ml_vtx_pos_clr), (void*)(sizeof(ml_vec3)));
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glBindVertexArray(0);
+	debug_linevertcount = 0;
 }
 
 void uiExit() {
 	mlFreeTexture2D(&ui_8x8font);
 	glDeleteBuffers(1, &ui_vbo);
 	glDeleteVertexArrays(1, &ui_vao);
-}
-
-void uiBegin() {
-	ui_count = 0;
+	glDeleteBuffers(1, &debug_vbo);
+	glDeleteVertexArrays(1, &debug_vao);
 }
 
 void uiDraw(SDL_Point* viewport) {
-	if (ui_count <= 0)
-		return;
-
-	ml_vec2 screensize = {(float)viewport->x, (float)viewport->y};
-
-	glEnable(GL_BLEND);
-	glDisable(GL_CULL_FACE);
-	glDisable(GL_DEPTH_TEST);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glUseProgram(ui_material->program);
-	mlBindTexture2D(&ui_8x8font, 0);
-	glUniform2fv(ui_screensize_index, 1, (float*)&screensize);
-	glUniform1i(ui_tex0_index, 0);
-	glBindVertexArray(ui_vao);
-	glBindBuffer(GL_ARRAY_BUFFER, ui_vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(ml_vtx_ui)*ui_count, ui_vertices, GL_DYNAMIC_DRAW);
-	glDrawArrays(GL_TRIANGLES, 0, ui_count);
-	glBindVertexArray(0);
-	glUseProgram(0);
-	glDisable(GL_BLEND);
-	glEnable(GL_CULL_FACE);
-	glEnable(GL_DEPTH_TEST);
+	if (ui_count > 0) {
+		ml_vec2 screensize = {(float)viewport->x, (float)viewport->y};
+		glEnable(GL_TEXTURE_2D);
+		glEnable(GL_BLEND);
+		glDisable(GL_CULL_FACE);
+		glDisable(GL_DEPTH_TEST);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glUseProgram(ui_material->program);
+		mlBindTexture2D(&ui_8x8font, 0);
+		glUniform2fv(ui_screensize_index, 1, (float*)&screensize);
+		glUniform1i(ui_tex0_index, 0);
+		glBindVertexArray(ui_vao);
+		glBindBuffer(GL_ARRAY_BUFFER, ui_vbo);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(ml_vtx_ui)*ui_count, ui_vertices, GL_DYNAMIC_DRAW);
+		glDrawArrays(GL_TRIANGLES, 0, ui_count);
+		glBindVertexArray(0);
+		glUseProgram(0);
+		glDisable(GL_BLEND);
+		glEnable(GL_CULL_FACE);
+		glEnable(GL_DEPTH_TEST);
+		glDisable(GL_TEXTURE_2D);
+		ui_count = 0;
+	}
 }
 
 void uiSetScale(float scale) {
@@ -120,3 +146,101 @@ void uiText(float x, float y, uint32_t clr, const char* str, ...) {
 		rpos.x += scale;
 	}
 }
+
+void uiDebugLine(ml_vec3 p1, ml_vec3 p2, uint32_t clr) {
+	if (debug_linevertcount + 2 > MAX_DEBUG_LINEVERTS)
+		return;
+	debug_lines[debug_linevertcount + 0].pos = p1;
+	debug_lines[debug_linevertcount + 0].clr = clr;
+	debug_lines[debug_linevertcount + 1].pos = p2;
+	debug_lines[debug_linevertcount + 1].clr = clr;
+	debug_linevertcount += 2;
+
+	//printf("(%.1f, %.1f, %.1f) - (%.1f, %.1f, %.1f)\n",
+	//       p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
+}
+
+void uiDebugAABB(ml_vec3 minp, ml_vec3 maxp, uint32_t clr) {
+	ml_vec3 corners[8] = {
+		{minp.x, minp.y, minp.z},
+		{maxp.x, minp.y, minp.z},
+		{minp.x, minp.y, maxp.z},
+		{maxp.x, minp.y, maxp.z},
+
+		{minp.x, maxp.y, minp.z},
+		{maxp.x, maxp.y, minp.z},
+		{minp.x, maxp.y, maxp.z},
+		{maxp.x, maxp.y, maxp.z},
+	};
+	uiDebugLine(corners[0], corners[1], clr);
+	uiDebugLine(corners[1], corners[2], clr);
+	uiDebugLine(corners[2], corners[3], clr);
+	uiDebugLine(corners[3], corners[0], clr);
+	uiDebugLine(corners[4], corners[5], clr);
+	uiDebugLine(corners[5], corners[6], clr);
+	uiDebugLine(corners[6], corners[7], clr);
+	uiDebugLine(corners[7], corners[4], clr);
+	uiDebugLine(corners[0], corners[4], clr);
+	uiDebugLine(corners[1], corners[5], clr);
+	uiDebugLine(corners[2], corners[6], clr);
+	uiDebugLine(corners[3], corners[7], clr);
+}
+
+void uiDebugPoint(ml_vec3 p, uint32_t clr) {
+	ml_vec3 p0, p1, p2, p3, p4, p5;
+	p0 = p1 = p2 = p3 = p4 = p5 = p;
+	p0.x -= 0.05f;
+	p1.x += 0.05f;
+	p2.y -= 0.05f;
+	p3.y += 0.05f;
+	p4.z -= 0.05f;
+	p5.z += 0.05f;
+	uiDebugLine(p0, p1, clr);
+	uiDebugLine(p2, p3, clr);
+	uiDebugLine(p4, p5, clr);
+}
+
+void uiDebugSphere(ml_vec3 p, float r, uint32_t clr) {
+	#define SPHERE_NDIV 7
+
+	uiDebugPoint(p, clr);
+
+	for (int i = 0; i < SPHERE_NDIV; ++i) {
+		float st = sin(((float)i / SPHERE_NDIV) * ML_TWO_PI);
+		float ct = cos(((float)i / SPHERE_NDIV) * ML_TWO_PI);
+		int i2 = i + 1;
+		if (i2 == SPHERE_NDIV)
+			i2 = 0;
+		float st1 = sin(((float)i2 / SPHERE_NDIV) * ML_TWO_PI);
+		float ct1 = cos(((float)i2 / SPHERE_NDIV) * ML_TWO_PI);
+		ml_vec3 p1 = {p.x + r * st, p.y, p.z + r * ct};
+		ml_vec3 p2 = {p.x + r * st1, p.y, p.z + r * ct1};
+		ml_vec3 p3 = {p.x + r * st, p.y + r * ct, p.z};
+		ml_vec3 p4 = {p.x + r * st1, p.y + r * ct1, p.z};
+		uiDebugLine(p1, p2, clr);
+		uiDebugLine(p3, p4, clr);
+	}
+}
+
+void uiDrawDebug(ml_matrixstack* projection, ml_matrixstack* modelview) {
+	if (debug_linevertcount > 0) {
+		glEnable(GL_BLEND);
+		glEnable(GL_DEPTH_TEST);
+		glDepthMask(GL_FALSE);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glUseProgram(debug_material->program);
+		mlUniformMatrix(debug_projmat_index, mlGetMatrix(projection));
+		mlUniformMatrix(debug_modelview_index, mlGetMatrix(modelview));
+		glBindVertexArray(debug_vao);
+		glBindBuffer(GL_ARRAY_BUFFER, debug_vbo);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(ml_vtx_pos_clr)*debug_linevertcount, debug_lines, GL_DYNAMIC_DRAW);
+		glDrawArrays(GL_LINES, 0, debug_linevertcount);
+		glBindVertexArray(0);
+		glUseProgram(0);
+		glDisable(GL_BLEND);
+		glEnable(GL_DEPTH_TEST);
+		glDepthMask(GL_TRUE);
+		debug_linevertcount = 0;
+	}
+}
+

@@ -22,6 +22,7 @@ static bool mouse_captured = false;
 enum E_Materials {
 	MAT_BASIC,
 	MAT_UI,
+	MAT_DEBUG
 };
 
 static void
@@ -102,13 +103,12 @@ gameInit() {
 		tris[i*6 + 5].n = normals[i];
 	}
 
-	printf("making basic material...\n");
 	mlCreateMaterial(&materials[MAT_BASIC], basic_vshader, basic_fshader);
-	printf("making ui material...\n");
 	mlCreateMaterial(&materials[MAT_UI], ui_vshader, ui_fshader);
+	mlCreateMaterial(&materials[MAT_DEBUG], debug_vshader, debug_fshader);
 	mlCreateMesh(&meshes[0], 36, tris, ML_POS_3F | ML_N_3F | ML_CLR_4UB);
 	mlCreateRenderable(&renderables[0], materials + MAT_BASIC, meshes + 0);
-	uiInit(materials + MAT_UI);
+	uiInit(materials + MAT_UI, materials + MAT_DEBUG);
 
 	mouse_captured = true;
 	SDL_SetRelativeMouseMode(SDL_TRUE);
@@ -226,6 +226,9 @@ gameRender(SDL_Point* viewport) {
 	ml_vec3 light_dir = { 0.5f, 1.f, 0.5f };
 	ml_matrix33 normalmat;
 
+	light_dir.x = sin(fmod(f*0.33f, ML_TWO_PI));
+	light_dir.y = cos(fmod(f*0.66f, ML_TWO_PI));
+
 	mlPushMatrix(&modelview);
 
 	// transform light into eye space
@@ -245,7 +248,13 @@ gameRender(SDL_Point* viewport) {
 	mlDrawEnd(renderables + 0);
 	mlPopMatrix(&modelview);
 
-	uiBegin();
+	ml_vec3 mc = mlVec3Scalef(mlVec3Normalize(light_dir), 4.f);
+	ml_vec3 mc2 = mlVec3Scalef(mlVec3Normalize(light_dir), 5.f);
+	uiDebugLine(mc, mc2, 0xffff7f00);
+	uiDebugSphere(mc2, 0.15f, 0xffcf9f3f);
+
+	uiDrawDebug(&projection, &modelview);
+
 	uiText(5, 5, 0xafaaaaaa, "hello world!");
 	uiDraw(viewport);
 

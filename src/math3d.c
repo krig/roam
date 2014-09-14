@@ -72,12 +72,10 @@ void mlLookAt(ml_matrix* m,
 	ml_vec3 f, u, s;
 
 	mlVec3Assign(f, atX - eyeX, atY - eyeY, atZ - eyeZ);
-	mlVec3Normalize(&f);
+	f = mlVec3Normalize(f);
 	mlVec3Assign(u, upX, upY, upZ);
-	s = mlVec3Cross(f, u);
-	mlVec3Normalize(&s);
-	u = mlVec3Cross(s, f);
-	mlVec3Normalize(&u);
+	s = mlVec3Normalize(mlVec3Cross(f, u));
+	u = mlVec3Normalize(mlVec3Cross(s, f));
 
 	M.m[0] = s.x;
 	M.m[4] = s.y;
