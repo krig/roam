@@ -14,32 +14,26 @@ static bool
 readLine(char* to, const char** data) {
 	char* wp = to;
 	const char* buf = *data;
-
-retry:
-	if (!*buf)
-		return false;
-
-	while (*buf && isspace(*buf))
-		++buf;
-
-	if (*buf == '#') {
-		while (*buf && *buf != '\n')
+	while (wp == to) {
+		if (!*buf)
+			return false;
+		// skip whitespace
+		while (*buf && isspace(*buf))
 			++buf;
-		if (*buf)
-			++buf;
-		goto retry;
+		// skip comments
+		if (*buf == '#') {
+			while (*buf && *buf != '\n')
+				++buf;
+			continue;
+		}
+		// copy line data
+		while (*buf && *buf != '\n') {
+			*wp++ = *buf++;
+			if (wp - to >= LINEBUF_SIZE)
+				roamError("objLoad: Line too long");
+		}
 	}
-
-	while (*buf && *buf != '\n') {
-		*wp++ = *buf++;
-		if (wp - to >= LINEBUF_SIZE)
-			roamError("objLoad: Line too long");
-	}
-
-	if (*buf && wp == to)
-		goto retry;
-
-	*data = buf + 1;
+	*data = buf;
 	*wp = '\0';
 	return true;
 }
@@ -48,7 +42,7 @@ bool objLoad(const char* data) {
 	char linebuf[LINEBUF_SIZE];
 
 	while (readLine(linebuf, &data)) {
-		printf("line: %s\n", linebuf);
+		printf("line: %s %d\n", linebuf, strlen(linebuf));
 	}
 
 	return false;

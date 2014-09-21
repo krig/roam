@@ -14,7 +14,6 @@
 static inline void
 roamError(const char* msg, ...) {
 	char buf[512];
-	size_t len;
 	va_list va_args;
 	va_start(va_args, msg);
 	vsnprintf(buf, 512, msg, va_args);
