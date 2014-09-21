@@ -2,6 +2,7 @@
 #include "math3d.h"
 #include "shaders.h"
 #include "ui.h"
+#include "objfile.h"
 
 #define MAX_MATERIALS 64
 #define MAX_MESHES 100
@@ -262,12 +263,16 @@ gameRender(SDL_Point* viewport) {
 		SDL_WarpMouseInWindow(window, viewport->x >> 1, viewport->y >> 1);
 }
 
-
 int
 main(int argc, char* argv[]) {
 	SDL_Event event;
 	SDL_Point sz;
 	GLenum rc;
+
+	char* fdata = osReadWholeFile("data/teapot.obj");
+	objLoad(fdata);
+	free(fdata);
+	exit(0);
 
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);

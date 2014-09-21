@@ -1,7 +1,7 @@
 .PHONY: all clean
 
-HEADERS=src/common.h src/math3d.h src/easing.h src/shaders.h src/ui.h
-SRC=src/main.c src/math3d.c src/ui.c
+HEADERS=src/common.h src/math3d.h src/easing.h src/shaders.h src/ui.h src/objfile.h
+SRC=src/main.c src/math3d.c src/ui.c src/objfile.c
 
 roam: $(SRC) $(HEADERS)
 	@gcc -g -O0 -std=c11 -Istb -o roam $(SRC) -lm \

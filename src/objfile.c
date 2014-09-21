@@ -39,12 +39,12 @@ retry:
 	if (*buf && wp == to)
 		goto retry;
 
+	*data = buf + 1;
 	*wp = '\0';
 	return true;
 }
 
-
-bool objLoad(obj_mesh* mesh, const char* data) {
+bool objLoad(const char* data) {
 	char linebuf[LINEBUF_SIZE];
 
 	while (readLine(linebuf, &data)) {
@@ -52,5 +52,17 @@ bool objLoad(obj_mesh* mesh, const char* data) {
 	}
 
 	return false;
+}
+
+char* osReadWholeFile(const char* filename) {
+	FILE* f = fopen(filename, "r");
+	fseek(f, 0, SEEK_END);
+	long flen = ftell(f);
+	fseek(f, 0, SEEK_SET);
+	char* data = (char*)malloc(flen + 1);
+	fread(data, flen, 1, f);
+	data[flen] = '\0';
+	fclose(f);
+	return data;
 }
 
