@@ -107,9 +107,23 @@ gameInit() {
 	mlCreateMaterial(&materials[MAT_BASIC], basic_vshader, basic_fshader);
 	mlCreateMaterial(&materials[MAT_UI], ui_vshader, ui_fshader);
 	mlCreateMaterial(&materials[MAT_DEBUG], debug_vshader, debug_fshader);
+
 	mlCreateMesh(&meshes[0], 36, tris, ML_POS_3F | ML_N_3F | ML_CLR_4UB);
 	mlCreateRenderable(&renderables[0], materials + MAT_BASIC, meshes + 0);
+
+	{
+		char* teapot = osReadWholeFile("data/teapot.obj");
+		obj_mesh m;
+		objLoad(&m, teapot, 0.1f);
+		objCreateMesh(&meshes[1], &m, objGenNormalsFn);
+		mlCreateRenderable(&renderables[1], materials + MAT_BASIC, meshes + 1);
+		objFree(&m);
+		free(teapot);
+	}
+
 	uiInit(materials + MAT_UI, materials + MAT_DEBUG);
+
+	glCheck(__LINE__);
 
 	mouse_captured = true;
 	SDL_SetRelativeMouseMode(SDL_TRUE);
@@ -213,6 +227,8 @@ printMatrix(ml_matrix* m) {
 
 static void
 gameRender(SDL_Point* viewport) {
+	glCheck(__LINE__);
+
 	glClearColor(RGB2F(28, 30, 48), 1.f);
 	glClearDepth(1.f);
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
@@ -225,6 +241,7 @@ gameRender(SDL_Point* viewport) {
 	ml_vec4 amb_color = {  .v = { RGB2F(61, 04, 5F), 0.3f } };
 	ml_vec4 fog_color = {  .v = { RGB2F(28, 30, 48), 0.15f } };
 	ml_vec3 light_dir = {  .v = { 0.5f, 1.f, 0.5f } };
+	ml_vec3 tlight;
 	ml_matrix33 normalmat;
 
 	light_dir.x = sin(fmod(f*0.33f, ML_TWO_PI));
@@ -234,7 +251,7 @@ gameRender(SDL_Point* viewport) {
 
 	// transform light into eye space
 	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
-	light_dir = mlMulMat33Vec(&normalmat, &light_dir);
+	tlight = mlMulMat33Vec(&normalmat, &light_dir);
 
 	mlRotate(mlGetMatrix(&modelview), f, 0.f, 1.f, 0.f);
 	mlTranslate(mlGetMatrix(&modelview), 0.f, 0.5f, 0.f);
@@ -245,8 +262,26 @@ gameRender(SDL_Point* viewport) {
 	mlUniformMatrix33(renderables[0].material->normalmat, &normalmat);
 	mlUniformVec4(renderables[0].material->amb_color, &amb_color);
 	mlUniformVec4(renderables[0].material->fog_color, &fog_color);
-	mlUniformVec3(renderables[0].material->light_dir, &light_dir);
+	mlUniformVec3(renderables[0].material->light_dir, &tlight);
 	mlDrawEnd(renderables + 0);
+	mlPopMatrix(&modelview);
+
+	mlPushMatrix(&modelview);
+
+	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
+	tlight = mlMulMat33Vec(&normalmat, &light_dir);
+
+	mlRotate(mlGetMatrix(&modelview), -f, 0.f, 1.f, 0.f);
+	mlTranslate(mlGetMatrix(&modelview), 0.f, -0.4f, 0.f);
+	mlDrawBegin(renderables + 1);
+	mlUniformMatrix(renderables[0].material->projmat, mlGetMatrix(&projection));
+	mlUniformMatrix(renderables[0].material->modelview, mlGetMatrix(&modelview));
+	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
+	mlUniformMatrix33(renderables[1].material->normalmat, &normalmat);
+	mlUniformVec4(renderables[1].material->amb_color, &amb_color);
+	mlUniformVec4(renderables[1].material->fog_color, &fog_color);
+	mlUniformVec3(renderables[1].material->light_dir, &tlight);
+	mlDrawEnd(renderables + 1);
 	mlPopMatrix(&modelview);
 
 	ml_vec3 mc = mlVec3Scalef(mlVec3Normalize(light_dir), 4.f);
@@ -271,8 +306,11 @@ main(int argc, char* argv[]) {
 
 	if (argc == 3 && strcmp(argv[1], "objtest") == 0) {
 		char* fdata = osReadWholeFile(argv[2]);
-		objLoad(fdata);
+		obj_mesh obj;
+		objLoad(&obj, fdata, 0.1f);
+		printf("loaded %s: %zu verts, %zu faces\n", argv[2], obj.nverts / 3, obj.nindices / 3);
 		free(fdata);
+		objFree(&obj);
 		exit(0);
 	}
 

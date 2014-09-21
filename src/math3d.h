@@ -62,6 +62,11 @@ typedef struct ml_vtx_pos_n_clr {
 	uint32_t clr;
 } ml_vtx_pos_n_clr;
 
+typedef struct ml_vtx_pos_n {
+	ml_vec3 pos;
+	ml_vec3 n;
+} ml_vtx_pos_n;
+
 typedef struct ml_vtx_ui {
 	ml_vec2 pos;
 	ml_vec2 tc;
@@ -83,6 +88,7 @@ typedef struct ml_material {
 	GLint fog_color;
 	GLint light_dir;
 	GLint position;
+	GLint texcoord;
 	GLint color;
 	GLint normal;
 } ml_material;
@@ -212,6 +218,12 @@ mlVec3Add(const ml_vec3 a, const ml_vec3 b) {
 }
 
 static inline ml_vec3
+mlVec3Sub(const ml_vec3 a, const ml_vec3 b) {
+	ml_vec3 to = { .v = { a.x - b.x, a.y - b.y, a.z - b.z} };
+	return to;
+}
+
+static inline ml_vec3
 mlVec3Scalef(const ml_vec3 a, float f) {
 	ml_vec3 to = { .v = { a.x * f, a.y * f, a.z * f} };
 	return to;
@@ -336,6 +348,8 @@ enum ML_MeshFlags {
 };
 
 void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags);
+
+void mlCreateIndexedMesh(ml_mesh* mesh, size_t n, void* data, size_t ilen, GLenum indextype, void* indices, GLenum flags);
 
 void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, const ml_mesh* mesh);
 

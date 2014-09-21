@@ -286,6 +286,7 @@ void mlCreateMaterial(ml_material* material, const char* vsource, const char* fs
 	material->fog_color = glGetUniformLocation(program, "fog_color");
 	material->light_dir = glGetUniformLocation(program, "light_dir");
 	material->position = glGetAttribLocation(program, "position");
+	material->texcoord = glGetAttribLocation(program, "texcoord");
 	material->color = glGetAttribLocation(program, "color");
 	material->normal = glGetAttribLocation(program, "normal");
 	glUseProgram(0);
@@ -320,7 +321,56 @@ void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags) {
 	mesh->mode = GL_TRIANGLES;
 	mesh->count = n;
 	mesh->flags = flags;
+	glCheck(__LINE__);
 }
+
+void mlCreateIndexedMesh(ml_mesh* mesh, size_t n, void* data, size_t ilen, GLenum indextype, void* indices, GLenum flags) {
+	size_t stride =
+		((flags & ML_POS_2F) ? 8 : 0) +
+		((flags & ML_POS_3F) ? 12 : 0) +
+		((flags & ML_CLR_4UB) ? 4 : 0) +
+		((flags & ML_N_3F) ? 12 : 0) +
+		((flags & ML_TC_2F) ? 8 : 0);
+	glGenBuffers(1, &mesh->vbo);
+	glGenBuffers(1, &mesh->ibo);
+
+	size_t isize = 0;
+	switch (indextype) {
+	case GL_UNSIGNED_BYTE:
+		isize = 1; break;
+	case GL_UNSIGNED_SHORT:
+		isize = 2; break;
+	case GL_UNSIGNED_INT:
+		isize = 4; break;
+	default:
+		roamError("indextype must be one of GL_UNSIGNED_[BYTE|SHORT|INT]");
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
+	glBufferData(GL_ARRAY_BUFFER, n * stride, data, GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ibo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, n * isize, indices, GL_STATIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+	GLint offset = 0;
+	mesh->position = (flags & ML_POS_2F || flags & ML_POS_3F) ? offset : -1;
+	offset += (flags & ML_POS_2F) ? 8 : ((flags & ML_POS_3F) ? 12 : 0);
+	mesh->normal = (flags & ML_N_3F) ? offset : -1;
+	offset += (flags & ML_N_3F) ? 12 : 0;
+	mesh->texcoord = (flags & ML_TC_2F) ? offset : -1;
+	offset += (flags & ML_TC_2F) ? 8 : 0;
+	mesh->color = (flags & ML_CLR_4UB) ? offset : -1;
+	offset += (flags & ML_CLR_4UB) ? 4 : 0;
+	mesh->stride = stride;
+	mesh->mode = GL_TRIANGLES;
+	mesh->count = ilen;
+	mesh->flags = flags;
+	mesh->ibotype = indextype;
+	glCheck(__LINE__);
+}
+
 
 void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, const ml_mesh* mesh) {
 	glGenVertexArrays(1, &renderable->vao);
@@ -333,26 +383,43 @@ void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, 
 	if (mesh->ibo > 0)
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ibo);
 
-	int vap = 0;
-	if (mesh->position > -1) {
-		size_t ecount = (mesh->flags & ML_POS_2F) ? 2 : 3;
-		glVertexAttribPointer(vap, ecount, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->position));
-		glEnableVertexAttribArray(vap++);
+	if (material->position > -1) {
+		if (mesh->position > -1) {
+			size_t ecount = (mesh->flags & ML_POS_2F) ? 2 : 3;
+			glVertexAttribPointer(material->position, ecount, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->position));
+			glEnableVertexAttribArray(material->position);
+		} else {
+			glDisableVertexAttribArray(material->position);
+		}
 	}
-	if (mesh->normal > -1) {
-		glVertexAttribPointer(vap, 3, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->normal));
-		glEnableVertexAttribArray(vap++);
+	if (material->normal > -1) {
+		if (mesh->normal > -1) {
+			glVertexAttribPointer(material->normal, 3, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->normal));
+			glEnableVertexAttribArray(material->normal);
+		} else {
+			glDisableVertexAttribArray(material->normal);
+		}
 	}
-	if (mesh->texcoord > -1) {
-		glVertexAttribPointer(vap, 2, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->texcoord));
-		glEnableVertexAttribArray(vap++);
+	if (material->texcoord > -1) {
+		if (mesh->texcoord > -1) {
+			glVertexAttribPointer(material->texcoord, 2, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->texcoord));
+			glEnableVertexAttribArray(material->texcoord);
+		} else {
+			glDisableVertexAttribArray(material->texcoord);
+		}
 	}
-	if (mesh->color > -1) {
-		glVertexAttribPointer(vap, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->color));
-		glEnableVertexAttribArray(vap++);
+	if (material->color > -1) {
+		if (mesh->color > -1) {
+			glVertexAttribPointer(material->color, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->color));
+			glEnableVertexAttribArray(material->color);
+		} else {
+			glDisableVertexAttribArray(material->color);
+			glVertexAttrib4Nub(material->color, 0xff, 0xff, 0xff, 0xff);
+		}
 	}
 
 	glBindVertexArray(0);
+	glCheck(__LINE__);
 }
 
 void mlInitMatrixStack(ml_matrixstack* stack, size_t size) {
