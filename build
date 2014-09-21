@@ -5,21 +5,34 @@ configure() {
         echo "CMAKE not found."
         exit 1
 	fi
-	which clang >/dev/null 2>&1 && CC=clang
-	export CC
+	if which clang >/dev/null 2>&1; then
+		export CC=clang
+		export CXX=clang
+	fi
 	mkdir -p obj
 	cd obj
 	cmake -G Ninja ..
 	cd ..
 }
 
-if [ "$1x" == "cleanx" ]; then
+if [ "$1x" == "configurex" ]; then
     rm -rf obj
+	configure
 	exit $?
+fi
+
+if [ "$1x" == "cleanx" ]; then
+	[[ ! -d obj ]] && configure
+	cd obj
+	ninja clean
+	cd ..
+	rm -f ./roam
+	exit 0
 fi
 
 [[ ! -d obj ]] && configure
 cd obj
 ninja "$@"
+rc=$?
 cd ..
-cp obj/roam ./roam
+[ $rc ] && cp obj/roam ./roam
