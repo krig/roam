@@ -269,10 +269,12 @@ main(int argc, char* argv[]) {
 	SDL_Point sz;
 	GLenum rc;
 
-	char* fdata = osReadWholeFile("data/teapot.obj");
-	objLoad(fdata);
-	free(fdata);
-	exit(0);
+	if (argc == 3 && strcmp(argv[1], "objtest") == 0) {
+		char* fdata = osReadWholeFile(argv[2]);
+		objLoad(fdata);
+		free(fdata);
+		exit(0);
+	}
 
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
