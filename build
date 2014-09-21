@@ -9,7 +9,7 @@ configure() {
 	export CC
 	mkdir -p obj
 	cd obj
-	cmake ..
+	cmake -G Ninja ..
 	cd ..
 }
 
@@ -20,6 +20,6 @@ fi
 
 [[ ! -d obj ]] && configure
 cd obj
-make -j 6 "$@"
+ninja "$@"
 cd ..
 cp obj/roam ./roam
