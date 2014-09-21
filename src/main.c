@@ -15,7 +15,7 @@ static ml_matrixstack modelview;
 static ml_material materials[MAX_MATERIALS];
 static ml_mesh meshes[MAX_MESHES];
 static ml_renderable renderables[MAX_RENDERABLES];
-static ml_vec3 camera_pos = {0.283782f, -0.302f, 0.966538f};
+static ml_vec3 camera_pos = { .v = { 0.283782f, -0.302f, 0.966538f } };
 static float camera_pitch = 0.755668f;
 static float camera_yaw = 0.245576f;
 static bool mouse_captured = false;
@@ -32,14 +32,14 @@ gameInit() {
 	top = 0xff24C6DC;
 	bottom = 0xff514A9D;
 	ml_vtx_pos_n_clr corners[8] = {
-		{{-0.5f,-0.5f,-0.5f}, {0, 0, 0}, bottom },
-		{{ 0.5f,-0.5f,-0.5f}, {0, 0, 0}, bottom },
-		{{-0.5f,-0.5f, 0.5f}, {0, 0, 0}, bottom },
-		{{ 0.5f,-0.5f, 0.5f}, {0, 0, 0}, bottom },
-		{{-0.5f, 0.5f,-0.5f}, {0, 0, 0}, top },
-		{{-0.5f, 0.5f, 0.5f}, {0, 0, 0}, top },
-		{{ 0.5f, 0.5f,-0.5f}, {0, 0, 0}, top },
-		{{ 0.5f, 0.5f, 0.5f}, {0, 0, 0}, top }
+		{{ .v = {-0.5f,-0.5f,-0.5f } }, { .v = { 0, 0, 0 } }, bottom },
+		{{ .v = { 0.5f,-0.5f,-0.5f } }, { .v = { 0, 0, 0 } }, bottom },
+		{{ .v = {-0.5f,-0.5f, 0.5f } }, { .v = { 0, 0, 0 } }, bottom },
+		{{ .v = { 0.5f,-0.5f, 0.5f } }, { .v = { 0, 0, 0 } }, bottom },
+		{{ .v = {-0.5f, 0.5f,-0.5f } }, { .v = { 0, 0, 0 } }, top },
+		{{ .v = {-0.5f, 0.5f, 0.5f } }, { .v = { 0, 0, 0 } }, top },
+		{{ .v = { 0.5f, 0.5f,-0.5f } }, { .v = { 0, 0, 0 } }, top },
+		{{ .v = { 0.5f, 0.5f, 0.5f } }, { .v = { 0, 0, 0 } }, top }
 	};
 
 	ml_vtx_pos_n_clr tris[] = {
@@ -87,12 +87,12 @@ gameInit() {
 	};
 
 	ml_vec3 normals[6] = {
-		{0, -1, 0},
-		{0, 1, 0},
-		{0, 0, 1},
-		{0, 0, -1},
-		{-1, 0, 0},
-		{1, 0, 0}
+		{ .v = { 0, -1, 0 } },
+		{ .v = { 0, 1, 0 } },
+		{ .v = { 0, 0, 1 } },
+		{ .v = { 0, 0, -1 } },
+		{ .v = {-1, 0, 0 } },
+		{ .v = { 1, 0, 0 } }
 	};
 
 	for (int i = 0; i < 6; ++i) {
@@ -222,9 +222,9 @@ gameRender(SDL_Point* viewport) {
 	static float f = 0.f;
 	f += 0.01f;
 
-	ml_vec4 amb_color = { RGB2F(61, 04, 5F), 0.3f };
-	ml_vec4 fog_color = { RGB2F(28, 30, 48), 0.15f };
-	ml_vec3 light_dir = { 0.5f, 1.f, 0.5f };
+	ml_vec4 amb_color = {  .v = { RGB2F(61, 04, 5F), 0.3f } };
+	ml_vec4 fog_color = {  .v = { RGB2F(28, 30, 48), 0.15f } };
+	ml_vec3 light_dir = {  .v = { 0.5f, 1.f, 0.5f } };
 	ml_matrix33 normalmat;
 
 	light_dir.x = sin(fmod(f*0.33f, ML_TWO_PI));
@@ -300,7 +300,7 @@ main(int argc, char* argv[]) {
 
 	glewExperimental = GL_TRUE;
 	if ((rc = glewInit()) != GLEW_OK)
-		roamError(glewGetErrorString(rc));
+		roamError((const char*)glewGetErrorString(rc));
 
 	int major, minor;
 	glGetIntegerv(GL_MAJOR_VERSION, &major);

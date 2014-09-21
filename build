@@ -1,17 +1,15 @@
 #!/bin/bash
 
 configure() {
-	if ! which cmake >/dev/null; then
+	if ! which cmake >/dev/null 2>&1; then
         echo "CMAKE not found."
         exit 1
 	fi
+	which clang >/dev/null 2>&1 && CC=clang
+	export CC
 	mkdir -p obj
 	cd obj
-	if which ninja >/dev/null; then
-		cmake -G Ninja ..
-	else
-		cmake ..
-	fi
+	cmake ..
 	cd ..
 }
 
@@ -22,10 +20,6 @@ fi
 
 [[ ! -d obj ]] && configure
 cd obj
-if which ninja >/dev/null; then
-	ninja "$@"
-else
-    make "$@"
-fi
+make -j 6 "$@"
 cd ..
 cp obj/roam ./roam

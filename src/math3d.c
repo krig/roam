@@ -41,9 +41,9 @@ void mlFPSMatrix(ml_matrix* to, ml_vec3 eye, float pitch, float yaw) {
 	float sinPitch = sinf(pitch);
 	float cosYaw = cosf(yaw);
 	float sinYaw = sinf(yaw);
-	ml_vec3 xaxis = { cosYaw, 0, -sinYaw };
-	ml_vec3 yaxis = {sinYaw * sinPitch, cosPitch, cosYaw * sinPitch };
-	ml_vec3 zaxis = {sinYaw * cosPitch, -sinPitch, cosPitch * cosYaw };
+	ml_vec3 xaxis = { .v = { cosYaw, 0, -sinYaw } };
+	ml_vec3 yaxis = { .v = { sinYaw * sinPitch, cosPitch, cosYaw * sinPitch } };
+	ml_vec3 zaxis = { .v = { sinYaw * cosPitch, -sinPitch, cosPitch * cosYaw } };
 	to->m[0] = xaxis.x;
 	to->m[1] = yaxis.x;
 	to->m[2] = zaxis.x;
@@ -270,13 +270,13 @@ void mlCreateMaterial(ml_material* material, const char* vsource, const char* fs
 	GLuint vshader, fshader, program;
 	vshader = mlCompileShader(GL_VERTEX_SHADER, vsource);
 	fshader = mlCompileShader(GL_FRAGMENT_SHADER, fsource);
-	if (vshader > 0 && fshader > 0) {
-		program = mlLinkProgram(vshader, fshader);
-	}
-	if (vshader != 0)
-		glDeleteShader(vshader);
-	if (fshader != 0)
-		glDeleteShader(fshader);
+	if (vshader == 0)
+		roamError("vshader source: %s", vsource);
+	if (fshader == 0)
+		roamError("fshader source: %s", fsource);
+	program = mlLinkProgram(vshader, fshader);
+	glDeleteShader(vshader);
+	glDeleteShader(fshader);
 	material->program = program;
 	glUseProgram(program);
 	material->projmat = glGetUniformLocation(program, "projmat");
@@ -392,7 +392,6 @@ ml_matrix* mlGetMatrix(ml_matrixstack* stack) {
 }
 
 void mlLoadTexture2D(ml_tex2d* tex, const char* filename) {
-	GLenum format;
 	int x, y, n;
 	unsigned char* data;
 

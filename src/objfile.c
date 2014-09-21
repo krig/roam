@@ -42,7 +42,7 @@ bool objLoad(const char* data) {
 	char linebuf[LINEBUF_SIZE];
 
 	while (readLine(linebuf, &data)) {
-		printf("line: %s %d\n", linebuf, strlen(linebuf));
+		printf("line: %s %zd\n", linebuf, strlen(linebuf));
 	}
 
 	return false;
