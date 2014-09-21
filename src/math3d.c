@@ -303,6 +303,10 @@ void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags) {
 	glBufferData(GL_ARRAY_BUFFER, n * stride, data, GL_STATIC_DRAW);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+	// no indices in this mesh
+	mesh->ibo = 0;
+	mesh->ibotype = 0;
+
 	GLint offset = 0;
 	mesh->position = (flags & ML_POS_2F || flags & ML_POS_3F) ? offset : -1;
 	offset += (flags & ML_POS_2F) ? 8 : ((flags & ML_POS_3F) ? 12 : 0);
@@ -325,6 +329,10 @@ void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, 
 	renderable->mesh = mesh;
 
 	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
+
+	if (mesh->ibo > 0)
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ibo);
+
 	int vap = 0;
 	if (mesh->position > -1) {
 		size_t ecount = (mesh->flags & ML_POS_2F) ? 2 : 3;
@@ -343,6 +351,7 @@ void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, 
 		glVertexAttribPointer(vap, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->color));
 		glEnableVertexAttribArray(vap++);
 	}
+
 	glBindVertexArray(0);
 }
 

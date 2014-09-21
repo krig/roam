@@ -92,13 +92,15 @@ typedef struct ml_material {
 // that describes how it maps to
 // a material
 typedef struct ml_mesh {
-	GLuint vbo;
+	GLuint vbo; // vertex buffer
+	GLuint ibo; // index buffer (may be 0 if not used)
 	GLint position; // -1 if not present, else offset
 	GLint normal;
 	GLint texcoord;
 	GLint color;
 	GLsizei stride;
 	GLenum mode;
+	GLenum ibotype;
 	GLsizei count;
 	GLenum flags;
 } ml_mesh;
@@ -309,7 +311,12 @@ mlDrawBegin(ml_renderable* renderable) {
 
 static inline void
 mlDrawEnd(ml_renderable* renderable) {
-	glDrawArrays(renderable->mesh->mode, 0, renderable->mesh->count);
+	ml_mesh mesh;
+	memcpy(&mesh, renderable->mesh, sizeof(ml_mesh));
+	if (mesh.ibo > 0)
+		glDrawElements(mesh.mode, mesh.count, mesh.ibotype, 0);
+	else
+		glDrawArrays(mesh.mode, 0, mesh.count);
 	glBindVertexArray(0);
 	glUseProgram(0);
 }
