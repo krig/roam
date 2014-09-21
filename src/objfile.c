@@ -80,8 +80,8 @@ void objLoad(obj_mesh* mesh, const char* data, float vscale) {
 	size_t i;
 
 	memset(mesh, 0, sizeof(obj_mesh));
-	mesh->vcap = 256;
-	mesh->fcap = 256;
+	mesh->vcap = 1024;
+	mesh->fcap = 1024;
 	mesh->verts = malloc(mesh->vcap * sizeof(float));
 	mesh->indices = malloc(mesh->fcap * sizeof(uint32_t));
 
@@ -108,6 +108,7 @@ void objLoad(obj_mesh* mesh, const char* data, float vscale) {
 			} while (*tok != '\0');
 			pushFace(mesh, tmpindex, i);
 		} else {
+			// TODO: vt, vn, f v/vt/vn
 			roamError("Unhandled token: '%s'", tokbuf);
 		}
 	}
