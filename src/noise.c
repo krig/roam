@@ -97,14 +97,14 @@ void osnInitPerm(const uint8_t* userperm) {
 	}
 }
 
-void osnInitRand(int (*randomFunction)(void*), void* randomState) {
+void osnInitRand(unsigned long (*randomFunction)(void*), void* randomState) {
 	uint8_t source[256];
 	memset(perm, 0, 256);
 	memset(permGradIndex3D, 0, 256);
 	for (int i = 0; i < 256; i++)
 		source[i] = i;
 	for (int i = 255; i >= 0; i--) {
-		int r = (*randomFunction)(randomState) % ((1 << (i + 1)) - 1);
+		unsigned int r = (*randomFunction)(randomState) % (i + 1);
 		perm[i] = source[r];
 		permGradIndex3D[i] = ((perm[i] % (NUM_GRADIENTS / 3)) * 3);
 		source[r] = source[i];

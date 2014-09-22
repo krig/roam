@@ -35,7 +35,27 @@ void osnInit();
 /* init the noise function with the given 256-entry permutation table */
 void osnInitPerm(const uint8_t* userperm);
 /* init the noise function using the given random generator */
-void osnInitRand(int (*randomFunction)(void*), void* randomState);
+void osnInitRand(unsigned long (*randomFunction)(void*), void* randomState);
 
 /* generate 3D noise data */
 double osnNoise(double x, double y, double z);
+
+/* LCG random generator, based on stb.h */
+typedef struct osn_lcgrand {
+	unsigned long seed;
+} osn_lcgrand;
+
+static inline void osnSRandLCG(osn_lcgrand* state, unsigned long seed) {
+	state->seed = seed;
+}
+
+static inline unsigned long osnRandLCG(osn_lcgrand* state) {
+	state->seed = state->seed * 2147001325 + 715136305; // BCPL generator
+   // shuffle non-random bits to the middle, and xor to decorrelate with seed
+   return 0x31415926 ^ ((state->seed >> 16) + (state->seed << 16));
+}
+
+static inline double osnFRandLCG(osn_lcgrand* state) {
+	return osnRandLCG(state) / ((double) (1 << 16) * (1 << 16));
+}
+

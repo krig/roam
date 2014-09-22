@@ -1,8 +1,10 @@
+#include <time.h>
 #include "common.h"
 #include "math3d.h"
 #include "shaders.h"
 #include "ui.h"
 #include "objfile.h"
+#include "noise.h"
 
 #define MAX_MATERIALS 64
 #define MAX_MESHES 100
@@ -127,6 +129,10 @@ gameInit() {
 
 	mouse_captured = true;
 	SDL_SetRelativeMouseMode(SDL_TRUE);
+
+	osn_lcgrand r;
+	osnSRandLCG(&r, time(NULL));
+	osnInitRand((unsigned long (*)(void*))&osnRandLCG, &r);
 }
 
 static void
@@ -291,7 +297,7 @@ gameRender(SDL_Point* viewport) {
 
 	uiDrawDebug(&projection, &modelview);
 
-	uiText(5, 5, 0xafaaaaaa, "hello world!");
+	uiText(5, 5, 0xafaaaaaa, "%g", osnNoise(camera_pos.x, camera_pos.y, camera_pos.z));
 	uiDraw(viewport);
 
 	if (mouse_captured)
