@@ -2,14 +2,12 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <float.h>
-#include <GL/glew.h>
-#include <SDL.h>
-#include <SDL_opengl.h>
 
 static inline void
 roamError(const char* msg, ...) {

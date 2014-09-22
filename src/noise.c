@@ -1,36 +1,36 @@
 /*
- * an implementation of...
+ * A C port of "OpenSimplex (Simplectic) Noise in Java".
  * https://gist.github.com/KdotJPG/b1270127455a94ac5d19
- * OpenSimplex (Simplectic) Noise in Java.
+ *
  * (v1.0.1 With new gradient set and corresponding normalization factor, 9/19/14)
-
-This is free and unencumbered software released into the public domain.
-
-Anyone is free to copy, modify, publish, use, compile, sell, or
-distribute this software, either in source code form or as a compiled
-binary, for any purpose, commercial or non-commercial, and by any
-means.
-
-In jurisdictions that recognize copyright laws, the author or authors
-of this software dedicate any and all copyright interest in the
-software to the public domain. We make this dedication for the benefit
-of the public at large and to the detriment of our heirs and
-successors. We intend this dedication to be an overt act of
-relinquishment in perpetuity of all present and future rights to this
-software under copyright law.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
-OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
-ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
-OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * This is free and unencumbered software released into the public domain.
+ *
+ * Anyone is free to copy, modify, publish, use, compile, sell, or
+ * distribute this software, either in source code form or as a compiled
+ * binary, for any purpose, commercial or non-commercial, and by any
+ * means.
+ *
+ * In jurisdictions that recognize copyright laws, the author or authors
+ * of this software dedicate any and all copyright interest in the
+ * software to the public domain. We make this dedication for the benefit
+ * of the public at large and to the detriment of our heirs and
+ * successors. We intend this dedication to be an overt act of
+ * relinquishment in perpetuity of all present and future rights to this
+ * software under copyright law.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+ * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-
-#include "common.h"
-#include "math3d.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
 #include "noise.h"
 
 #define STRETCH_CONSTANT_3D (-1.0 / 6.0)
@@ -86,23 +86,18 @@ static inline double extrapolate(int xsb, int ysb, int zsb, double dx, double dy
 		+ gradients3D[index + 2] * dz;
 }
 
-void initOpenSimplexNoise() {
-	initOpenSimplexNoisePerm(PERM_DEFAULT);
+void osnInit() {
+	osnInitPerm(PERM_DEFAULT);
 }
 
-void initOpenSimplexNoisePerm(const uint8_t* userperm) {
+void osnInitPerm(const uint8_t* userperm) {
 	memcpy(perm, userperm, 256);
 	for (int i = 0; i < 256; i++) {
 		permGradIndex3D[i] = ((perm[i] % (NUM_GRADIENTS / 3)) * 3);
 	}
 }
 
-/*
-  Initializes the class using a permutation array generated from a 64-bit seed.
-  Generates a proper permutation (i.e. doesn't merely perform N successive pair swaps on a base array)
-  Needs a source of randomness
-*/
-void initOpenSimplexNoiseRand(int (*randomFunction)(void*), void* randomState) {
+void osnInitRand(int (*randomFunction)(void*), void* randomState) {
 	uint8_t source[256];
 	memset(perm, 0, 256);
 	memset(permGradIndex3D, 0, 256);
@@ -117,8 +112,7 @@ void initOpenSimplexNoiseRand(int (*randomFunction)(void*), void* randomState) {
 }
 
 
-//3D OpenSimplex (Simplectic) Noise.
-double openSimplexNoise(double x, double y, double z) {
+double osnNoise(double x, double y, double z) {
 
 	//Place input coordinates on simplectic lattice.
 	double stretchOffset = (x + y + z) * STRETCH_CONSTANT_3D;
