@@ -130,9 +130,8 @@ gameInit() {
 	mouse_captured = true;
 	SDL_SetRelativeMouseMode(SDL_TRUE);
 
-	osn_lcgrand r;
-	osnSRandLCG(&r, time(NULL));
-	osnInitRand((unsigned long (*)(void*))&osnRandLCG, &r);
+	unsigned long lcg = time(NULL);
+	osnInitRand((unsigned long (*)(void*))&lcg_rand, &lcg);
 }
 
 static void

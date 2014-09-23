@@ -41,21 +41,25 @@ void osnInitRand(unsigned long (*randomFunction)(void*), void* randomState);
 double osnNoise(double x, double y, double z);
 
 /* LCG random generator, based on stb.h */
-typedef struct osn_lcgrand {
-	unsigned long seed;
-} osn_lcgrand;
 
-static inline void osnSRandLCG(osn_lcgrand* state, unsigned long seed) {
+static inline void lcg_srand(unsigned long* state, unsigned long seed) {
 	state->seed = seed;
 }
 
-static inline unsigned long osnRandLCG(osn_lcgrand* state) {
-	state->seed = state->seed * 2147001325 + 715136305; // BCPL generator
+static inline unsigned long lcg_rand(unsigned long* seed) {
+	*seed = *seed * 2147001325 + 715136305; // BCPL generator
    // shuffle non-random bits to the middle, and xor to decorrelate with seed
-   return 0x31415926 ^ ((state->seed >> 16) + (state->seed << 16));
+   return 0x31415926 ^ ((*seed >> 16) + (*seed << 16));
 }
 
-static inline double osnFRandLCG(osn_lcgrand* state) {
-	return osnRandLCG(state) / ((double) (1 << 16) * (1 << 16));
+static inline double lcg_frand(unsigned long* seed) {
+	return lcg_rand(state) / ((double) (1 << 16) * (1 << 16));
 }
 
+static inline unsigned long djb2_hash(unsigned char *str) {
+    unsigned long hash = 5381;
+    int c;
+    while (c = *str++)
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+    return hash;
+}
