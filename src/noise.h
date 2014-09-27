@@ -43,7 +43,7 @@ double osnNoise(double x, double y, double z);
 /* LCG random generator, based on stb.h */
 
 static inline void lcg_srand(unsigned long* state, unsigned long seed) {
-	state->seed = seed;
+	*state = seed;
 }
 
 static inline unsigned long lcg_rand(unsigned long* seed) {
@@ -53,13 +53,13 @@ static inline unsigned long lcg_rand(unsigned long* seed) {
 }
 
 static inline double lcg_frand(unsigned long* seed) {
-	return lcg_rand(state) / ((double) (1 << 16) * (1 << 16));
+	return lcg_rand(seed) / ((double) (1 << 16) * (1 << 16));
 }
 
 static inline unsigned long djb2_hash(unsigned char *str) {
     unsigned long hash = 5381;
     int c;
-    while (c = *str++)
+    while ((c = *str++) != 0)
         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
     return hash;
 }
