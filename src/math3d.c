@@ -296,8 +296,10 @@ void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags) {
 	size_t stride =
 		((flags & ML_POS_2F) ? 8 : 0) +
 		((flags & ML_POS_3F) ? 12 : 0) +
+		((flags & ML_POS_4UB) ? 4 : 0) +
 		((flags & ML_CLR_4UB) ? 4 : 0) +
 		((flags & ML_N_3F) ? 12 : 0) +
+		((flags & ML_N_4UB) ? 4 : 0) +
 		((flags & ML_TC_2F) ? 8 : 0);
 	glGenBuffers(1, &mesh->vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
@@ -309,10 +311,10 @@ void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags) {
 	mesh->ibotype = 0;
 
 	GLint offset = 0;
-	mesh->position = (flags & ML_POS_2F || flags & ML_POS_3F) ? offset : -1;
-	offset += (flags & ML_POS_2F) ? 8 : ((flags & ML_POS_3F) ? 12 : 0);
-	mesh->normal = (flags & ML_N_3F) ? offset : -1;
-	offset += (flags & ML_N_3F) ? 12 : 0;
+	mesh->position = (flags & (ML_POS_2F + ML_POS_3F + ML_POS_4UB)) ? offset : -1;
+	offset += (flags & ML_POS_2F) ? 8 : ((flags & ML_POS_3F) ? 12 : (flags & ML_POS_4UB ? 4 : 0));
+	mesh->normal = (flags & (ML_N_3F + ML_N_4UB)) ? offset : -1;
+	offset += (flags & ML_N_3F) ? 12 : ((flags & ML_N_4UB) ? 4 : 0);
 	mesh->texcoord = (flags & ML_TC_2F) ? offset : -1;
 	offset += (flags & ML_TC_2F) ? 8 : 0;
 	mesh->color = (flags & ML_CLR_4UB) ? offset : -1;
@@ -328,8 +330,10 @@ void mlCreateIndexedMesh(ml_mesh* mesh, size_t n, void* data, size_t ilen, GLenu
 	size_t stride =
 		((flags & ML_POS_2F) ? 8 : 0) +
 		((flags & ML_POS_3F) ? 12 : 0) +
+		((flags & ML_POS_4UB) ? 4 : 0) +
 		((flags & ML_CLR_4UB) ? 4 : 0) +
 		((flags & ML_N_3F) ? 12 : 0) +
+		((flags & ML_N_4UB) ? 4 : 0) +
 		((flags & ML_TC_2F) ? 8 : 0);
 	glGenBuffers(1, &mesh->vbo);
 	glGenBuffers(1, &mesh->ibo);
@@ -355,10 +359,10 @@ void mlCreateIndexedMesh(ml_mesh* mesh, size_t n, void* data, size_t ilen, GLenu
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	GLint offset = 0;
-	mesh->position = (flags & ML_POS_2F || flags & ML_POS_3F) ? offset : -1;
-	offset += (flags & ML_POS_2F) ? 8 : ((flags & ML_POS_3F) ? 12 : 0);
-	mesh->normal = (flags & ML_N_3F) ? offset : -1;
-	offset += (flags & ML_N_3F) ? 12 : 0;
+	mesh->position = (flags & (ML_POS_2F + ML_POS_3F + ML_POS_4UB)) ? offset : -1;
+	offset += (flags & ML_POS_2F) ? 8 : ((flags & ML_POS_3F) ? 12 : (flags & ML_POS_4UB ? 4 : 0));
+	mesh->normal = (flags & (ML_N_3F + ML_N_4UB)) ? offset : -1;
+	offset += (flags & ML_N_3F) ? 12 : ((flags & ML_N_4UB) ? 4 : 0);
 	mesh->texcoord = (flags & ML_TC_2F) ? offset : -1;
 	offset += (flags & ML_TC_2F) ? 8 : 0;
 	mesh->color = (flags & ML_CLR_4UB) ? offset : -1;

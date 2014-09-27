@@ -342,11 +342,13 @@ GLuint mlLinkProgram(GLuint vsh, GLuint fsh);
 void mlCreateMaterial(ml_material* material, const char* vsource, const char* fsource);
 
 enum ML_MeshFlags {
-	ML_POS_2F = 1,
-	ML_POS_3F = 2,
-	ML_N_3F = 4,
-	ML_TC_2F = 8,
-	ML_CLR_4UB = 16
+	ML_POS_2F  = 0x01,
+	ML_POS_3F  = 0x02,
+	ML_POS_4UB = 0x04,
+	ML_N_3F    = 0x08,
+	ML_N_4UB   = 0x10,
+	ML_TC_2F   = 0x20,
+	ML_CLR_4UB = 0x40
 };
 
 void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags);
