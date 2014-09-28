@@ -18,10 +18,11 @@ static ml_matrixstack modelview;
 static ml_material materials[MAX_MATERIALS];
 static ml_mesh meshes[MAX_MESHES];
 static ml_renderable renderables[MAX_RENDERABLES];
-static ml_vec3 camera_pos = { .v = { 0.283782f, -0.302f, 0.966538f } };
-static float camera_pitch = 0.755668f;
-static float camera_yaw = 0.245576f;
+static ml_vec3 camera_pos = { .v = { 2.537648, 1.336000, 0.514751 } };
+static float camera_pitch = -0.544628;
+static float camera_yaw = 1.056371;
 static bool mouse_captured = false;
+static bool wireframe_mode = false;
 
 enum E_Materials {
 	MAT_BASIC,
@@ -173,6 +174,8 @@ gameHandleEvent(SDL_Event* event) {
 			printf("%f, %f, %f p:%f, y:%f\n",
 			       camera_pos.x, camera_pos.y, camera_pos.z,
 			       camera_pitch, camera_yaw);
+		else if (event->key.keysym.sym == SDLK_o)
+			wireframe_mode = !wireframe_mode;
 		break;
 	default:
 		break;
@@ -189,7 +192,7 @@ playerLook(float dyaw, float dpitch) {
 static void
 playerMove(float right, float forward) {
 	ml_vec3 xaxis, yaxis, zaxis;
-	mlFPSRotation(camera_pitch, camera_yaw, &xaxis, &yaxis, &zaxis);
+	mlFPSRotation(0, camera_yaw, &xaxis, &yaxis, &zaxis);
 	camera_pos.x += xaxis.x * right;
 	camera_pos.z += xaxis.z * right;
 	camera_pos.x += zaxis.x * -forward;
@@ -246,9 +249,18 @@ static void
 gameRender(SDL_Point* viewport) {
 	glCheck(__LINE__);
 
+	glEnable(GL_DEPTH_TEST);
+	glLogicOp(GL_INVERT);
+	glDepthFunc(GL_LESS);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
 	glClearColor(RGB2F(28, 30, 48), 1.f);
 	glClearDepth(1.f);
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+
+	if (wireframe_mode)
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
 
 	mlFPSMatrix(mlGetMatrix(&modelview), camera_pos, camera_pitch, camera_yaw);
 
@@ -256,7 +268,7 @@ gameRender(SDL_Point* viewport) {
 	f += 0.01f;
 
 	ml_vec4 amb_color = {  .v = { RGB2F(61, 04, 5F), 0.3f } };
-	ml_vec4 fog_color = {  .v = { RGB2F(28, 30, 48), 0.15f } };
+	ml_vec4 fog_color = {  .v = { RGB2F(28, 30, 48), 0.025f } };
 	ml_vec3 light_dir = {  .v = { 0.5f, 1.f, 0.5f } };
 	ml_vec3 tlight;
 	ml_matrix33 normalmat;
@@ -264,7 +276,6 @@ gameRender(SDL_Point* viewport) {
 	light_dir.x = sin(fmod(f*0.33f, ML_TWO_PI));
 	light_dir.y = cos(fmod(f*0.66f, ML_TWO_PI));
 
-	/*
 	// transform light into eye space
 	mlPushMatrix(&modelview);
 	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
@@ -285,8 +296,8 @@ gameRender(SDL_Point* viewport) {
 	mlPushMatrix(&modelview);
 	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
 	tlight = mlMulMat33Vec(&normalmat, &light_dir);
+	mlTranslate(mlGetMatrix(&modelview), 1.5f, 0.4f, 0.f);
 	mlRotate(mlGetMatrix(&modelview), -f, 0.f, 1.f, 0.f);
-	mlTranslate(mlGetMatrix(&modelview), 0.f, -0.4f, 0.f);
 	mlDrawBegin(&renderables[1]);
 	mlUniformMatrix(renderables[1].material->projmat, mlGetMatrix(&projection));
 	mlUniformMatrix(renderables[1].material->modelview, mlGetMatrix(&modelview));
@@ -297,7 +308,6 @@ gameRender(SDL_Point* viewport) {
 	mlUniformVec3(renderables[1].material->light_dir, &tlight);
 	mlDrawEnd(&renderables[1]);
 	mlPopMatrix(&modelview);
-	*/
 
 	mlPushMatrix(&modelview);
 	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
@@ -307,18 +317,32 @@ gameRender(SDL_Point* viewport) {
 	mlUniformMatrix(renderables[2].material->modelview, mlGetMatrix(&modelview));
 	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
 	mlUniformMatrix33(renderables[2].material->normalmat, &normalmat);
+	ml_vec3 chunk_offset = { .v={-1, -1, -1} };
+	mlUniformVec3(renderables[2].material->chunk_offset, &chunk_offset);
 	mlUniformVec4(renderables[2].material->amb_color, &amb_color);
 	mlUniformVec4(renderables[2].material->fog_color, &fog_color);
 	mlUniformVec3(renderables[2].material->light_dir, &tlight);
 	mlDrawEnd(&renderables[2]);
 	mlPopMatrix(&modelview);
 
+	if (wireframe_mode)
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
 	ml_vec3 mc = mlVec3Scalef(mlVec3Normalize(light_dir), 4.f);
 	ml_vec3 mc2 = mlVec3Scalef(mlVec3Normalize(light_dir), 5.f);
 	uiDebugLine(mc, mc2, 0xffff7f00);
 	uiDebugSphere(mc2, 0.15f, 0xffcf9f3f);
 
+	ml_vec3 origo = { .v={0, 0, 0} };
+	ml_vec3 xaxis = { .v={1, 0, 0} };
+	ml_vec3 yaxis = { .v={0, 1, 0} };
+	ml_vec3 zaxis = { .v={0, 0, 1} };
+	uiDebugLine(origo, xaxis, 0xff00ff00);
+	uiDebugLine(origo, yaxis, 0xffff0000);
+	uiDebugLine(origo, zaxis, 0xff0000ff);
+
 	uiDrawDebug(&projection, &modelview);
+
 
 	uiText(5, 5, 0xafaaaaaa, "%g", osnNoise(camera_pos.x, camera_pos.y, camera_pos.z));
 	uiDraw(viewport);
@@ -385,11 +409,6 @@ main(int argc, char* argv[]) {
 	       glGetString(GL_RENDERER),
 	       glGetString(GL_SHADING_LANGUAGE_VERSION));
 
-	glEnable(GL_CULL_FACE);
-	glEnable(GL_DEPTH_TEST);
-	glLogicOp(GL_INVERT);
-	glDepthFunc(GL_LESS);
-	glCullFace(GL_BACK);
 	SDL_GetWindowSize(window, &sz.x, &sz.y);
 	glViewport(0, 0, sz.x, sz.y);
 

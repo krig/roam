@@ -75,7 +75,7 @@ void uiDraw(SDL_Point* viewport) {
 		ml_vec2 screensize = { .v = { (float)viewport->x, (float)viewport->y} };
 		glEnable(GL_TEXTURE_2D);
 		glEnable(GL_BLEND);
-		glDisable(GL_CULL_FACE);
+//		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glUseProgram(ui_material->program);
@@ -89,7 +89,7 @@ void uiDraw(SDL_Point* viewport) {
 		glBindVertexArray(0);
 		glUseProgram(0);
 		glDisable(GL_BLEND);
-		glEnable(GL_CULL_FACE);
+//		glEnable(GL_CULL_FACE);
 		glEnable(GL_DEPTH_TEST);
 		glDisable(GL_TEXTURE_2D);
 		ui_count = 0;
