@@ -30,12 +30,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/* init the noise function using the default permutation table */
-void osnInit();
-/* init the noise function with the given 256-entry permutation table */
-void osnInitPerm(const uint8_t* userperm);
 /* init the noise function using the given random generator */
-void osnInitRand(unsigned long (*randomFunction)(void*), void* randomState);
+void osnInit(unsigned long (*randomFunction)(void*), void* randomState);
 
 /* generate 3D noise data */
 double osnNoise(double x, double y, double z);
@@ -63,3 +59,23 @@ static inline unsigned long djb2_hash(unsigned char *str) {
         hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
     return hash;
 }
+
+/*
+ * A speed-improved simplex noise algorithm for 2D
+ *
+ * Based on example code by Stefan Gustavson (stegu@itn.liu.se).
+ * Optimisations by Peter Eastman (peastman@drizzle.stanford.edu).
+ * Better rank ordering method by Stefan Gustavson in 2012.
+ *
+ * This could be speeded up even further, but it's useful as it is.
+ *
+ * Version 2012-03-09
+ *
+ * This code was placed in the public domain by its original author,
+ * Stefan Gustavson. You may use it as you see fit, but
+ * attribution is appreciated.
+ *
+ */
+
+void simplexInit(unsigned long (*randomFunction)(void*), void* randomState);
+double simplexNoise(double x, double y);

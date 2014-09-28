@@ -3,12 +3,6 @@
 #include "voxelmap.h"
 #include "noise.h"
 
-/*
-  Theory for how to render:
-  Each chunk renders as chunk-relative coordinates + an offset from the players chunk
-  Render all chunks as instances where the chunk offset is passed per instance
- */
-
 #define CHUNK_SCALE (1.0/16.0)
 #define CHUNK_AT(c,x,y,z) ((c)->data[(z)*256 + (y)*16 + (x)])
 
@@ -30,7 +24,7 @@ void gameGenerateChunk(game_chunk* chunk, int x, int y, int z) {
 			double ddy = dz + CHUNK_SCALE * (double)iy;
 			for (ix = 0; ix < 16; ++ix) {
 				double ddx = dx + CHUNK_SCALE*(double)ix;
-				CHUNK_AT(chunk, ix, iy, iz) = gameGenerateBlock(ddx, ddy, ddz);;//(ix == 0 && iy == 0 && iz == 0) ? BLOCK_STONE : BLOCK_AIR;//
+				CHUNK_AT(chunk, ix, iy, iz) = gameGenerateBlock(ddx, ddy, ddz);
 			}
 		}
 	}
