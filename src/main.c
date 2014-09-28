@@ -267,7 +267,7 @@ gameRender(SDL_Point* viewport) {
 	static float f = 0.f;
 	f += 0.01f;
 
-	ml_vec4 amb_color = {  .v = { RGB2F(61, 04, 5F), 0.3f } };
+	ml_vec4 amb_color = {  .v = { RGB2F(61, 04, 5F), 0.4f } };
 	ml_vec4 fog_color = {  .v = { RGB2F(28, 30, 48), 0.025f } };
 	ml_vec3 light_dir = {  .v = { 0.5f, 1.f, 0.5f } };
 	ml_vec3 tlight;
