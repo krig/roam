@@ -5,6 +5,7 @@
 #include "ui.h"
 #include "objfile.h"
 #include "noise.h"
+#include "voxelmap.h"
 
 #define MAX_MATERIALS 64
 #define MAX_MESHES 100
@@ -25,7 +26,8 @@ static bool mouse_captured = false;
 enum E_Materials {
 	MAT_BASIC,
 	MAT_UI,
-	MAT_DEBUG
+	MAT_DEBUG,
+	MAT_CHUNK
 };
 
 static void
@@ -106,14 +108,17 @@ gameInit() {
 		tris[i*6 + 5].n = normals[i];
 	}
 
+	printf("materials...\n");
 	mlCreateMaterial(&materials[MAT_BASIC], basic_vshader, basic_fshader);
 	mlCreateMaterial(&materials[MAT_UI], ui_vshader, ui_fshader);
 	mlCreateMaterial(&materials[MAT_DEBUG], debug_vshader, debug_fshader);
+	mlCreateMaterial(&materials[MAT_CHUNK], chunk_vshader, chunk_fshader);
 
 	mlCreateMesh(&meshes[0], 36, tris, ML_POS_3F | ML_N_3F | ML_CLR_4UB);
 	mlCreateRenderable(&renderables[0], materials + MAT_BASIC, meshes + 0);
 
 	{
+		printf("teapot...\n");
 		char* teapot = osReadWholeFile("data/teapot.obj");
 		obj_mesh m;
 		objLoad(&m, teapot, 0.1f);
@@ -123,6 +128,7 @@ gameInit() {
 		free(teapot);
 	}
 
+	printf("ui...\n");
 	uiInit(materials + MAT_UI, materials + MAT_DEBUG);
 
 	glCheck(__LINE__);
@@ -132,6 +138,12 @@ gameInit() {
 
 	unsigned long lcg = time(NULL);
 	osnInitRand((unsigned long (*)(void*))&lcg_rand, &lcg);
+
+	printf("chunk...\n");
+	game_chunk chunk;
+	gameGenerateChunk(&chunk, 0, 0, 0);
+	gameTesselateChunk(&meshes[2], &chunk);
+	mlCreateRenderable(&renderables[2], materials + MAT_CHUNK, meshes + 2);
 }
 
 static void
@@ -252,15 +264,13 @@ gameRender(SDL_Point* viewport) {
 	light_dir.x = sin(fmod(f*0.33f, ML_TWO_PI));
 	light_dir.y = cos(fmod(f*0.66f, ML_TWO_PI));
 
-	mlPushMatrix(&modelview);
-
 	// transform light into eye space
+	mlPushMatrix(&modelview);
 	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
 	tlight = mlMulMat33Vec(&normalmat, &light_dir);
-
 	mlRotate(mlGetMatrix(&modelview), f, 0.f, 1.f, 0.f);
 	mlTranslate(mlGetMatrix(&modelview), 0.f, 0.5f, 0.f);
-	mlDrawBegin(renderables + 0);
+	mlDrawBegin(&renderables[0]);
 	mlUniformMatrix(renderables[0].material->projmat, mlGetMatrix(&projection));
 	mlUniformMatrix(renderables[0].material->modelview, mlGetMatrix(&modelview));
 	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
@@ -268,25 +278,37 @@ gameRender(SDL_Point* viewport) {
 	mlUniformVec4(renderables[0].material->amb_color, &amb_color);
 	mlUniformVec4(renderables[0].material->fog_color, &fog_color);
 	mlUniformVec3(renderables[0].material->light_dir, &tlight);
-	mlDrawEnd(renderables + 0);
+	mlDrawEnd(&renderables[0]);
 	mlPopMatrix(&modelview);
 
 	mlPushMatrix(&modelview);
-
 	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
 	tlight = mlMulMat33Vec(&normalmat, &light_dir);
-
 	mlRotate(mlGetMatrix(&modelview), -f, 0.f, 1.f, 0.f);
 	mlTranslate(mlGetMatrix(&modelview), 0.f, -0.4f, 0.f);
-	mlDrawBegin(renderables + 1);
-	mlUniformMatrix(renderables[0].material->projmat, mlGetMatrix(&projection));
-	mlUniformMatrix(renderables[0].material->modelview, mlGetMatrix(&modelview));
+	mlDrawBegin(&renderables[1]);
+	mlUniformMatrix(renderables[1].material->projmat, mlGetMatrix(&projection));
+	mlUniformMatrix(renderables[1].material->modelview, mlGetMatrix(&modelview));
 	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
 	mlUniformMatrix33(renderables[1].material->normalmat, &normalmat);
 	mlUniformVec4(renderables[1].material->amb_color, &amb_color);
 	mlUniformVec4(renderables[1].material->fog_color, &fog_color);
 	mlUniformVec3(renderables[1].material->light_dir, &tlight);
-	mlDrawEnd(renderables + 1);
+	mlDrawEnd(&renderables[1]);
+	mlPopMatrix(&modelview);
+
+	mlPushMatrix(&modelview);
+	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
+	tlight = mlMulMat33Vec(&normalmat, &light_dir);
+	mlDrawBegin(&renderables[2]);
+	mlUniformMatrix(renderables[2].material->projmat, mlGetMatrix(&projection));
+	mlUniformMatrix(renderables[2].material->modelview, mlGetMatrix(&modelview));
+	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
+	mlUniformMatrix33(renderables[2].material->normalmat, &normalmat);
+	mlUniformVec4(renderables[2].material->amb_color, &amb_color);
+	mlUniformVec4(renderables[2].material->fog_color, &fog_color);
+	mlUniformVec3(renderables[2].material->light_dir, &tlight);
+	mlDrawEnd(&renderables[2]);
 	mlPopMatrix(&modelview);
 
 	ml_vec3 mc = mlVec3Scalef(mlVec3Normalize(light_dir), 4.f);

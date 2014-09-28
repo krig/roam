@@ -389,8 +389,12 @@ void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, 
 
 	if (material->position > -1) {
 		if (mesh->position > -1) {
-			size_t ecount = (mesh->flags & ML_POS_2F) ? 2 : 3;
-			glVertexAttribPointer(material->position, ecount, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->position));
+			if (mesh->flags & ML_POS_2F)
+				glVertexAttribPointer(material->position, 2, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->position));
+			else if (mesh->flags & ML_POS_3F)
+				glVertexAttribPointer(material->position, 3, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->position));
+			else // 4ub
+				glVertexAttribPointer(material->position, 4, GL_UNSIGNED_BYTE, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->position));
 			glEnableVertexAttribArray(material->position);
 		} else {
 			glDisableVertexAttribArray(material->position);
@@ -398,7 +402,10 @@ void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, 
 	}
 	if (material->normal > -1) {
 		if (mesh->normal > -1) {
-			glVertexAttribPointer(material->normal, 3, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->normal));
+			if (mesh->flags & ML_N_3F)
+				glVertexAttribPointer(material->normal, 3, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->normal));
+			else // 4ub
+				glVertexAttribPointer(material->normal, 4, GL_UNSIGNED_BYTE, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->normal));
 			glEnableVertexAttribArray(material->normal);
 		} else {
 			glDisableVertexAttribArray(material->normal);
