@@ -264,6 +264,7 @@ gameRender(SDL_Point* viewport) {
 	light_dir.x = sin(fmod(f*0.33f, ML_TWO_PI));
 	light_dir.y = cos(fmod(f*0.66f, ML_TWO_PI));
 
+	/*
 	// transform light into eye space
 	mlPushMatrix(&modelview);
 	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
@@ -296,6 +297,7 @@ gameRender(SDL_Point* viewport) {
 	mlUniformVec3(renderables[1].material->light_dir, &tlight);
 	mlDrawEnd(&renderables[1]);
 	mlPopMatrix(&modelview);
+	*/
 
 	mlPushMatrix(&modelview);
 	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));

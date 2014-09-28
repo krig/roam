@@ -24,14 +24,13 @@ void gameGenerateChunk(game_chunk* chunk, int x, int y, int z) {
 	dx = (double)x;
 	dy = (double)y;
 	dz = (double)z;
-	uint8_t data[16 * 16 * 16];
 	for (iz = 0; iz < 16; ++iz) {
 		double ddz = dz + CHUNK_SCALE * (double)iz;
 		for (iy = 0; iy < 16; ++iy) {
 			double ddy = dz + CHUNK_SCALE * (double)iy;
 			for (ix = 0; ix < 16; ++ix) {
 				double ddx = dx + CHUNK_SCALE*(double)ix;
-				CHUNK_AT(chunk, ix, iy, iz) = gameGenerateBlock(ddx, ddy, ddz);
+				CHUNK_AT(chunk, ix, iy, iz) = gameGenerateBlock(ddx, ddy, ddz);;//(ix == 0 && iy == 0 && iz == 0) ? BLOCK_STONE : BLOCK_AIR;//
 			}
 		}
 	}
@@ -39,7 +38,6 @@ void gameGenerateChunk(game_chunk* chunk, int x, int y, int z) {
 	chunk->x = x;
 	chunk->y = y;
 	chunk->z = z;
-	memcpy(chunk->data, data, 16 * 16 * 16);
 }
 
 /* tesselation buffer: size is maximum number of triangles generated
@@ -71,27 +69,27 @@ size_t gameTesselateChunk(ml_mesh* mesh, game_chunk* chunk) {
 				if (CHUNK_AT(chunk, ix, iy, iz) != BLOCK_AIR) {
 					printf("(%d, %d, %d) != AIR\n", ix, iy, iz);
 					if (ix == 0 || CHUNK_AT(chunk, ix-1, iy, iz) == BLOCK_AIR) {
-						FACE_AT(ix, iy, iz) += FACE_LEFT;
+						FACE_AT(ix, iy, iz) |= FACE_LEFT;
 						nverts += 6;
 					}
 					if (ix == 15 || CHUNK_AT(chunk, ix+1, iy, iz) == BLOCK_AIR) {
-						FACE_AT(ix, iy, iz) += FACE_RIGHT;
+						FACE_AT(ix, iy, iz) |= FACE_RIGHT;
 						nverts += 6;
 					}
 					if (iy == 0 || CHUNK_AT(chunk, ix, iy-1, iz) == BLOCK_AIR) {
-						FACE_AT(ix, iy, iz) += FACE_BOTTOM;
+						FACE_AT(ix, iy, iz) |= FACE_BOTTOM;
 						nverts += 6;
 					}
 					if (iy == 15 || CHUNK_AT(chunk, ix, iy+1, iz) == BLOCK_AIR) {
-						FACE_AT(ix, iy, iz) += FACE_TOP;
+						FACE_AT(ix, iy, iz) |= FACE_TOP;
 						nverts += 6;
 					}
 					if (iz == 0 || CHUNK_AT(chunk, ix, iy, iz-1) == BLOCK_AIR) {
-						FACE_AT(ix, iy, iz) += FACE_BACK;
+						FACE_AT(ix, iy, iz) |= FACE_BACK;
 						nverts += 6;
 					}
 					if (iz == 15 || CHUNK_AT(chunk, ix, iy, iz+1) == BLOCK_AIR) {
-						FACE_AT(ix, iy, iz) += FACE_FRONT;
+						FACE_AT(ix, iy, iz) |= FACE_FRONT;
 						nverts += 6;
 					}
 				}
@@ -204,7 +202,7 @@ size_t gameTesselateChunk(ml_mesh* mesh, game_chunk* chunk) {
 		}
 	}
 
-	mlCreateMesh(mesh, nverts, verts, ML_POS_4UB | ML_N_4UB | ML_CLR_4UB);
+	mlCreateMesh(mesh, nverts, verts, ML_POS_4UB | ML_N_4UB);
 	free(verts);
 	return nverts;
 }
