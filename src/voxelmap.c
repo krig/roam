@@ -204,3 +204,12 @@ size_t gameTesselateChunk(ml_mesh* mesh, game_chunk* chunk) {
 	free(verts);
 	return nverts;
 }
+
+void gameInitMap() {
+}
+
+void gameUpdateMap() {
+}
+
+void gameDrawMap() {
+}

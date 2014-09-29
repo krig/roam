@@ -28,3 +28,7 @@ typedef struct game_block_vtx {
 void gameGenerateChunk(game_chunk* chunk, int x, int y, int z);
 size_t gameTesselateChunk(ml_mesh* mesh, game_chunk* chunk);
 
+
+void gameInitMap();
+void gameUpdateMap();
+void gameDrawMap();

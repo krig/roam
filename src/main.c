@@ -138,8 +138,9 @@ gameInit() {
 	SDL_SetRelativeMouseMode(SDL_TRUE);
 
 	unsigned long lcg = time(NULL);
-	osnInitRand((unsigned long (*)(void*))&lcg_rand, &lcg);
+	osnInit((unsigned long (*)(void*))&lcg_rand, &lcg);
 
+	gameInitMap();
 	printf("chunk...\n");
 	game_chunk chunk;
 	gameGenerateChunk(&chunk, 0, 0, 0);
@@ -276,6 +277,23 @@ gameRender(SDL_Point* viewport) {
 	light_dir.x = sin(fmod(f*0.33f, ML_TWO_PI));
 	light_dir.y = cos(fmod(f*0.66f, ML_TWO_PI));
 
+	gameDrawMap();
+	mlPushMatrix(&modelview);
+	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
+	tlight = mlMulMat33Vec(&normalmat, &light_dir);
+	mlDrawBegin(&renderables[2]);
+	mlUniformMatrix(renderables[2].material->projmat, mlGetMatrix(&projection));
+	mlUniformMatrix(renderables[2].material->modelview, mlGetMatrix(&modelview));
+	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
+	mlUniformMatrix33(renderables[2].material->normalmat, &normalmat);
+	ml_vec3 chunk_offset = { .v={-1, -1, -1} };
+	mlUniformVec3(renderables[2].material->chunk_offset, &chunk_offset);
+	mlUniformVec4(renderables[2].material->amb_color, &amb_color);
+	mlUniformVec4(renderables[2].material->fog_color, &fog_color);
+	mlUniformVec3(renderables[2].material->light_dir, &tlight);
+	mlDrawEnd(&renderables[2]);
+	mlPopMatrix(&modelview);
+
 	// transform light into eye space
 	mlPushMatrix(&modelview);
 	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
@@ -307,22 +325,6 @@ gameRender(SDL_Point* viewport) {
 	mlUniformVec4(renderables[1].material->fog_color, &fog_color);
 	mlUniformVec3(renderables[1].material->light_dir, &tlight);
 	mlDrawEnd(&renderables[1]);
-	mlPopMatrix(&modelview);
-
-	mlPushMatrix(&modelview);
-	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
-	tlight = mlMulMat33Vec(&normalmat, &light_dir);
-	mlDrawBegin(&renderables[2]);
-	mlUniformMatrix(renderables[2].material->projmat, mlGetMatrix(&projection));
-	mlUniformMatrix(renderables[2].material->modelview, mlGetMatrix(&modelview));
-	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
-	mlUniformMatrix33(renderables[2].material->normalmat, &normalmat);
-	ml_vec3 chunk_offset = { .v={-1, -1, -1} };
-	mlUniformVec3(renderables[2].material->chunk_offset, &chunk_offset);
-	mlUniformVec4(renderables[2].material->amb_color, &amb_color);
-	mlUniformVec4(renderables[2].material->fog_color, &fog_color);
-	mlUniformVec3(renderables[2].material->light_dir, &tlight);
-	mlDrawEnd(&renderables[2]);
 	mlPopMatrix(&modelview);
 
 	if (wireframe_mode)

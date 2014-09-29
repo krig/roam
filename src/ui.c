@@ -10,7 +10,7 @@ static GLint ui_tex0_index = -1;
 static GLuint ui_vao = -1;
 static GLuint ui_vbo = -1;
 static size_t ui_count = 0;
-static float ui_scale = 2;
+static float ui_scale = 1;
 #define MAX_UI_VERTICES 2048
 static ml_vtx_ui ui_vertices[MAX_UI_VERTICES];
 
