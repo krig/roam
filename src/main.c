@@ -6,33 +6,30 @@
 #include "objfile.h"
 #include "noise.h"
 #include "voxelmap.h"
+#include "game.h"
 
-#define MAX_MATERIALS 64
 #define MAX_MESHES 100
 #define MAX_RENDERABLES 100
 
 static SDL_Window* window;
 static SDL_GLContext context;
-static ml_matrixstack projection;
-static ml_matrixstack modelview;
-static ml_material materials[MAX_MATERIALS];
 static ml_mesh meshes[MAX_MESHES];
 static ml_renderable renderables[MAX_RENDERABLES];
-static ml_vec3 camera_pos = { .v = { 2.537648, 1.336000, 0.514751 } };
-static float camera_pitch = -0.544628;
-static float camera_yaw = 1.056371;
 static bool mouse_captured = false;
 static bool wireframe_mode = false;
 
-enum E_Materials {
-	MAT_BASIC,
-	MAT_UI,
-	MAT_DEBUG,
-	MAT_CHUNK
-};
+struct game_t game;
 
 static void
 gameInit() {
+	game.camera.chunk[0] =
+		game.camera.chunk[1] =
+		game.camera.chunk[2] = 0;
+	ml_vec3 offs = { .v = { 2.537648, 1.336000, 0.514751 } };
+	game.camera.offset = offs;
+	game.camera.pitch = -0.544628;
+	game.camera.yaw = 1.056371;
+
 	uint32_t top, bottom;
 	top = 0xff24C6DC;
 	bottom = 0xff514A9D;
@@ -110,13 +107,13 @@ gameInit() {
 	}
 
 	printf("materials...\n");
-	mlCreateMaterial(&materials[MAT_BASIC], basic_vshader, basic_fshader);
-	mlCreateMaterial(&materials[MAT_UI], ui_vshader, ui_fshader);
-	mlCreateMaterial(&materials[MAT_DEBUG], debug_vshader, debug_fshader);
-	mlCreateMaterial(&materials[MAT_CHUNK], chunk_vshader, chunk_fshader);
+	mlCreateMaterial(&game.materials[MAT_BASIC], basic_vshader, basic_fshader);
+	mlCreateMaterial(&game.materials[MAT_UI], ui_vshader, ui_fshader);
+	mlCreateMaterial(&game.materials[MAT_DEBUG], debug_vshader, debug_fshader);
+	mlCreateMaterial(&game.materials[MAT_CHUNK], chunk_vshader, chunk_fshader);
 
 	mlCreateMesh(&meshes[0], 36, tris, ML_POS_3F | ML_N_3F | ML_CLR_4UB);
-	mlCreateRenderable(&renderables[0], materials + MAT_BASIC, meshes + 0);
+	mlCreateRenderable(&renderables[0], game.materials + MAT_BASIC, meshes + 0);
 
 	{
 		printf("teapot...\n");
@@ -124,13 +121,13 @@ gameInit() {
 		obj_mesh m;
 		objLoad(&m, teapot, 0.1f);
 		objCreateMesh(&meshes[1], &m, objGenNormalsFn);
-		mlCreateRenderable(&renderables[1], materials + MAT_BASIC, meshes + 1);
+		mlCreateRenderable(&renderables[1], game.materials + MAT_BASIC, meshes + 1);
 		objFree(&m);
 		free(teapot);
 	}
 
 	printf("ui...\n");
-	uiInit(materials + MAT_UI, materials + MAT_DEBUG);
+	uiInit(game.materials + MAT_UI, game.materials + MAT_DEBUG);
 
 	glCheck(__LINE__);
 
@@ -139,13 +136,14 @@ gameInit() {
 
 	unsigned long lcg = time(NULL);
 	osnInit((unsigned long (*)(void*))&lcg_rand, &lcg);
+	simplexInit((unsigned long (*)(void*))&lcg_rand, &lcg);
 
 	gameInitMap();
 	printf("chunk...\n");
 	game_chunk chunk;
 	gameGenerateChunk(&chunk, 0, 0, 0);
 	gameTesselateChunk(&meshes[2], &chunk);
-	mlCreateRenderable(&renderables[2], materials + MAT_CHUNK, meshes + 2);
+	mlCreateRenderable(&renderables[2], game.materials + MAT_CHUNK, meshes + 2);
 }
 
 static void
@@ -153,8 +151,8 @@ gameExit() {
 	int i;
 	uiExit();
 	for (i = 0; i < MAX_MATERIALS; ++i)
-		if (materials[i].program != 0)
-			glDeleteProgram(materials[i].program);
+		if (game.materials[i].program != 0)
+			glDeleteProgram(game.materials[i].program);
 	for (i = 0; i < MAX_MESHES; ++i)
 		if (meshes[i].vbo != 0)
 			glDeleteBuffers(1, &meshes[i].vbo);
@@ -173,8 +171,8 @@ gameHandleEvent(SDL_Event* event) {
 			return false;
 		else if (event->key.keysym.sym == SDLK_p)
 			printf("%f, %f, %f p:%f, y:%f\n",
-			       camera_pos.x, camera_pos.y, camera_pos.z,
-			       camera_pitch, camera_yaw);
+			       game.camera.offset.x, game.camera.offset.y, game.camera.offset.z,
+			       game.camera.pitch, game.camera.yaw);
 		else if (event->key.keysym.sym == SDLK_o)
 			wireframe_mode = !wireframe_mode;
 		break;
@@ -186,23 +184,23 @@ gameHandleEvent(SDL_Event* event) {
 
 static void
 playerLook(float dyaw, float dpitch) {
-	camera_yaw = mlWrap(camera_yaw - dyaw, 0.f, ML_TWO_PI);
-	camera_pitch = mlClamp(camera_pitch - dpitch, -ML_PI_2, ML_PI_2);
+	game.camera.yaw = mlWrap(game.camera.yaw - dyaw, 0.f, ML_TWO_PI);
+	game.camera.pitch = mlClamp(game.camera.pitch - dpitch, -ML_PI_2, ML_PI_2);
 }
 
 static void
 playerMove(float right, float forward) {
 	ml_vec3 xaxis, yaxis, zaxis;
-	mlFPSRotation(0, camera_yaw, &xaxis, &yaxis, &zaxis);
-	camera_pos.x += xaxis.x * right;
-	camera_pos.z += xaxis.z * right;
-	camera_pos.x += zaxis.x * -forward;
-	camera_pos.z += zaxis.z * -forward;
+	mlFPSRotation(0, game.camera.yaw, &xaxis, &yaxis, &zaxis);
+	game.camera.offset.x += xaxis.x * right;
+	game.camera.offset.z += xaxis.z * right;
+	game.camera.offset.x += zaxis.x * -forward;
+	game.camera.offset.z += zaxis.z * -forward;
 }
 
 static void
 playerJump(float speed) {
-	camera_pos.y += speed;
+	game.camera.offset.y += speed;
 }
 
 static void
@@ -263,7 +261,7 @@ gameRender(SDL_Point* viewport) {
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 
-	mlFPSMatrix(mlGetMatrix(&modelview), camera_pos, camera_pitch, camera_yaw);
+	mlFPSMatrix(mlGetMatrix(&game.modelview), game.camera.offset, game.camera.pitch, game.camera.yaw);
 
 	static float f = 0.f;
 	f += 0.01f;
@@ -278,13 +276,13 @@ gameRender(SDL_Point* viewport) {
 	light_dir.y = cos(fmod(f*0.66f, ML_TWO_PI));
 
 	gameDrawMap();
-	mlPushMatrix(&modelview);
-	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
+	mlPushMatrix(&game.modelview);
+	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
 	tlight = mlMulMat33Vec(&normalmat, &light_dir);
 	mlDrawBegin(&renderables[2]);
-	mlUniformMatrix(renderables[2].material->projmat, mlGetMatrix(&projection));
-	mlUniformMatrix(renderables[2].material->modelview, mlGetMatrix(&modelview));
-	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
+	mlUniformMatrix(renderables[2].material->projmat, mlGetMatrix(&game.projection));
+	mlUniformMatrix(renderables[2].material->modelview, mlGetMatrix(&game.modelview));
+	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
 	mlUniformMatrix33(renderables[2].material->normalmat, &normalmat);
 	ml_vec3 chunk_offset = { .v={-1, -1, -1} };
 	mlUniformVec3(renderables[2].material->chunk_offset, &chunk_offset);
@@ -292,40 +290,40 @@ gameRender(SDL_Point* viewport) {
 	mlUniformVec4(renderables[2].material->fog_color, &fog_color);
 	mlUniformVec3(renderables[2].material->light_dir, &tlight);
 	mlDrawEnd(&renderables[2]);
-	mlPopMatrix(&modelview);
+	mlPopMatrix(&game.modelview);
 
 	// transform light into eye space
-	mlPushMatrix(&modelview);
-	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
+	mlPushMatrix(&game.modelview);
+	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
 	tlight = mlMulMat33Vec(&normalmat, &light_dir);
-	mlRotate(mlGetMatrix(&modelview), f, 0.f, 1.f, 0.f);
-	mlTranslate(mlGetMatrix(&modelview), 0.f, 0.5f, 0.f);
+	mlRotate(mlGetMatrix(&game.modelview), f, 0.f, 1.f, 0.f);
+	mlTranslate(mlGetMatrix(&game.modelview), 0.f, 0.5f, 0.f);
 	mlDrawBegin(&renderables[0]);
-	mlUniformMatrix(renderables[0].material->projmat, mlGetMatrix(&projection));
-	mlUniformMatrix(renderables[0].material->modelview, mlGetMatrix(&modelview));
-	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
+	mlUniformMatrix(renderables[0].material->projmat, mlGetMatrix(&game.projection));
+	mlUniformMatrix(renderables[0].material->modelview, mlGetMatrix(&game.modelview));
+	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
 	mlUniformMatrix33(renderables[0].material->normalmat, &normalmat);
 	mlUniformVec4(renderables[0].material->amb_color, &amb_color);
 	mlUniformVec4(renderables[0].material->fog_color, &fog_color);
 	mlUniformVec3(renderables[0].material->light_dir, &tlight);
 	mlDrawEnd(&renderables[0]);
-	mlPopMatrix(&modelview);
+	mlPopMatrix(&game.modelview);
 
-	mlPushMatrix(&modelview);
-	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
+	mlPushMatrix(&game.modelview);
+	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
 	tlight = mlMulMat33Vec(&normalmat, &light_dir);
-	mlTranslate(mlGetMatrix(&modelview), 1.5f, 0.4f, 0.f);
-	mlRotate(mlGetMatrix(&modelview), -f, 0.f, 1.f, 0.f);
+	mlTranslate(mlGetMatrix(&game.modelview), 1.5f, 0.4f, 0.f);
+	mlRotate(mlGetMatrix(&game.modelview), -f, 0.f, 1.f, 0.f);
 	mlDrawBegin(&renderables[1]);
-	mlUniformMatrix(renderables[1].material->projmat, mlGetMatrix(&projection));
-	mlUniformMatrix(renderables[1].material->modelview, mlGetMatrix(&modelview));
-	mlGetRotationMatrix(&normalmat, mlGetMatrix(&modelview));
+	mlUniformMatrix(renderables[1].material->projmat, mlGetMatrix(&game.projection));
+	mlUniformMatrix(renderables[1].material->modelview, mlGetMatrix(&game.modelview));
+	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
 	mlUniformMatrix33(renderables[1].material->normalmat, &normalmat);
 	mlUniformVec4(renderables[1].material->amb_color, &amb_color);
 	mlUniformVec4(renderables[1].material->fog_color, &fog_color);
 	mlUniformVec3(renderables[1].material->light_dir, &tlight);
 	mlDrawEnd(&renderables[1]);
-	mlPopMatrix(&modelview);
+	mlPopMatrix(&game.modelview);
 
 	if (wireframe_mode)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -343,10 +341,10 @@ gameRender(SDL_Point* viewport) {
 	uiDebugLine(origo, yaxis, 0xffff0000);
 	uiDebugLine(origo, zaxis, 0xff0000ff);
 
-	uiDrawDebug(&projection, &modelview);
+	uiDrawDebug(&game.projection, &game.modelview);
 
 
-	uiText(5, 5, 0xafaaaaaa, "%g", osnNoise(camera_pos.x, camera_pos.y, camera_pos.z));
+	uiText(5, 5, 0xafaaaaaa, "%g", osnNoise(game.camera.offset.x, game.camera.offset.y, game.camera.offset.z));
 	uiDraw(viewport);
 
 	if (mouse_captured)
@@ -414,10 +412,10 @@ main(int argc, char* argv[]) {
 	SDL_GetWindowSize(window, &sz.x, &sz.y);
 	glViewport(0, 0, sz.x, sz.y);
 
-	mlInitMatrixStack(&projection, 3);
-	mlInitMatrixStack(&modelview, 16);
+	mlInitMatrixStack(&game.projection, 3);
+	mlInitMatrixStack(&game.modelview, 16);
 
-	mlPerspective(mlGetMatrix(&projection), mlDeg2Rad(70.f),
+	mlPerspective(mlGetMatrix(&game.projection), mlDeg2Rad(70.f),
 	              (float)sz.x / (float)sz.y,
 	              0.1f, 100.f);
 
@@ -438,7 +436,7 @@ main(int argc, char* argv[]) {
 				} else if (event.window.event == SDL_WINDOWEVENT_MAXIMIZED) {
 					SDL_GetWindowSize(window, &sz.x, &sz.y);
 					glViewport(0, 0, sz.x, sz.y);
-					mlPerspective(mlGetMatrix(&projection), mlDeg2Rad(70.f),
+					mlPerspective(mlGetMatrix(&game.projection), mlDeg2Rad(70.f),
 					              (float)sz.x / (float)sz.y,
 					              0.1f, 100.f);
 				} else if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {

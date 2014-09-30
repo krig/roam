@@ -7,8 +7,9 @@
 #define CHUNK_AT(c,x,y,z) ((c)->data[(z)*256 + (y)*16 + (x)])
 
 static uint8_t gameGenerateBlock(double x, double y, double z) {
+	double height = simplexNoise(x, z);
 	double density = osnNoise(x, y, z);
-	return density < 0 ? BLOCK_AIR : BLOCK_STONE;
+	return (height - density) < 0 ? BLOCK_AIR : BLOCK_STONE;
 }
 
 // just a test...
