@@ -21,7 +21,7 @@ void gameGenerateChunk(game_chunk* chunk, int x, int y, int z) {
 	for (iz = 0; iz < 16; ++iz) {
 		double ddz = dz + CHUNK_SCALE * (double)iz;
 		for (iy = 0; iy < 16; ++iy) {
-			double ddy = dz + CHUNK_SCALE * (double)iy;
+			double ddy = dy + CHUNK_SCALE * (double)iy;
 			for (ix = 0; ix < 16; ++ix) {
 				double ddx = dx + CHUNK_SCALE*(double)ix;
 				CHUNK_AT(chunk, ix, iy, iz) = gameGenerateBlock(ddx, ddy, ddz);
