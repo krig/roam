@@ -116,7 +116,6 @@ gameInit() {
 	mlCreateRenderable(&renderables[0], game.materials + MAT_BASIC, meshes + 0);
 
 	{
-		printf("teapot...\n");
 		char* teapot = osReadWholeFile("data/teapot.obj");
 		obj_mesh m;
 		objLoad(&m, teapot, 0.1f);
