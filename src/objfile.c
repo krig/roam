@@ -114,18 +114,6 @@ void objLoad(obj_mesh* mesh, const char* data, float vscale) {
 	}
 }
 
-char* osReadWholeFile(const char* filename) {
-	FILE* f = fopen(filename, "r");
-	fseek(f, 0, SEEK_END);
-	long flen = ftell(f);
-	fseek(f, 0, SEEK_SET);
-	char* data = (char*)malloc(flen + 1);
-	fread(data, flen, 1, f);
-	data[flen] = '\0';
-	fclose(f);
-	return data;
-}
-
 void objGenNormalsFn(obj_mesh* obj, void** vertexdata, size_t* vertexsize, GLenum* meshflags) {
 	size_t i;
 	size_t nvertices = obj->nverts / 3;

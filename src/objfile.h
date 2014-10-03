@@ -9,8 +9,6 @@ typedef struct obj_mesh {
 	size_t fcap;
 } obj_mesh;
 
-char* osReadWholeFile(const char* filename);
-
 void objLoad(obj_mesh* mesh, const char* data, float vscale);
 
 typedef void (*objCreateMeshGenFn)(obj_mesh* obj, void** vertexdata, size_t* vertexsize, GLenum* meshflags);

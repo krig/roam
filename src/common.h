@@ -42,3 +42,16 @@ strmcat(char *target, const char *source, unsigned length) {
 	return (target - origin) + strmcpy(target, source, length);
 }
 
+static inline char*
+osReadWholeFile(const char* filename) {
+	FILE* f = fopen(filename, "r");
+	fseek(f, 0, SEEK_END);
+	long flen = ftell(f);
+	fseek(f, 0, SEEK_SET);
+	char* data = (char*)malloc(flen + 1);
+	fread(data, flen, 1, f);
+	data[flen] = '\0';
+	fclose(f);
+	return data;
+}
+
