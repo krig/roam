@@ -131,7 +131,7 @@ void objGenNormalsFn(obj_mesh* obj, void** vertexdata, size_t* vertexsize, GLenu
 	size_t nvertices = obj->nverts / 3;
 	ml_vtx_pos_n* verts = malloc(sizeof(ml_vtx_pos_n) * nvertices);
 	for (i = 0; i < nvertices; ++i) {
-		memcpy(&verts[i].pos.v, obj->verts + (i * 3), sizeof(float) * 3);
+		memcpy(&verts[i].pos.x, obj->verts + (i * 3), sizeof(float) * 3);
 	}
 
 	for (i = 0; i < obj->nindices; i += 3) {

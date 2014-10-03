@@ -13,32 +13,20 @@
 #define ML_PI_2 1.57079632679489661923
 #define ML_PI_4 0.785398163397448309616
 
-typedef union ml_vec2 {
-	float v[2];
-	struct {
-		float x, y;
-	};
+typedef struct ml_vec2 {
+	float x, y;
 } ml_vec2;
 
-typedef union ml_vec3 {
-	float v[3];
-	struct {
-		float x, y, z;
-	};
+typedef struct ml_vec3 {
+	float x, y, z;
 } ml_vec3;
 
-typedef union ml_vec4 {
-	float v[4];
-	struct {
-		float x, y, z, w;
-	};
+typedef struct ml_vec4 {
+	float x, y, z, w;
 } ml_vec4;
 
-typedef union ml_clr {
-	uint32_t argb;
-	struct {
-		uint8_t a, r, g, b;
-	};
+typedef struct ml_clr {
+	uint8_t a, r, g, b;
 } ml_clr;
 
 
@@ -216,19 +204,19 @@ mlVec3Cross(const ml_vec3 a, const ml_vec3 b) {
 
 static inline ml_vec3
 mlVec3Add(const ml_vec3 a, const ml_vec3 b) {
-	ml_vec3 to = { .v = { a.x + b.x, a.y + b.y, a.z + b.z} };
+	ml_vec3 to = { a.x + b.x, a.y + b.y, a.z + b.z };
 	return to;
 }
 
 static inline ml_vec3
 mlVec3Sub(const ml_vec3 a, const ml_vec3 b) {
-	ml_vec3 to = { .v = { a.x - b.x, a.y - b.y, a.z - b.z} };
+	ml_vec3 to = { a.x - b.x, a.y - b.y, a.z - b.z };
 	return to;
 }
 
 static inline ml_vec3
 mlVec3Scalef(const ml_vec3 a, float f) {
-	ml_vec3 to = { .v = { a.x * f, a.y * f, a.z * f} };
+	ml_vec3 to = { a.x * f, a.y * f, a.z * f };
 	return to;
 }
 
@@ -250,7 +238,7 @@ mlVec3Normalize(ml_vec3 v) {
 
 static inline ml_vec3
 mlVec3Invert(const ml_vec3 v) {
-	ml_vec3 to = { .v = { -v.x, -v.y, -v.z } };
+	ml_vec3 to = { -v.x, -v.y, -v.z };
 	return to;
 }
 
@@ -291,19 +279,19 @@ mlUniformMatrix33(GLint index, ml_matrix33* mat) {
 static inline void
 mlUniformVec2(GLint index, ml_vec2* v) {
 	if (index != -1)
-		glUniform2fv(index, 1, v->v);
+		glUniform2fv(index, 1, (GLfloat*)v);
 }
 
 static inline void
 mlUniformVec3(GLint index, ml_vec3* v) {
 	if (index != -1)
-		glUniform3fv(index, 1, v->v);
+		glUniform3fv(index, 1, (GLfloat*)v);
 }
 
 static inline void
 mlUniformVec4(GLint index, ml_vec4* v) {
 	if (index != -1)
-		glUniform4fv(index, 1, v->v);
+		glUniform4fv(index, 1, (GLfloat*)v);
 }
 
 static inline void

@@ -25,7 +25,7 @@ gameInit() {
 	game.camera.chunk[0] =
 		game.camera.chunk[1] =
 		game.camera.chunk[2] = 0;
-	ml_vec3 offs = { .v = { 2.537648, 1.336000, 0.514751 } };
+	ml_vec3 offs = { 2.537648, 1.336000, 0.514751 };
 	game.camera.offset = offs;
 	game.camera.pitch = -0.544628;
 	game.camera.yaw = 1.056371;
@@ -34,14 +34,14 @@ gameInit() {
 	top = 0xff24C6DC;
 	bottom = 0xff514A9D;
 	ml_vtx_pos_n_clr corners[8] = {
-		{{ .v = {-0.5f,-0.5f,-0.5f } }, { .v = { 0, 0, 0 } }, bottom },
-		{{ .v = { 0.5f,-0.5f,-0.5f } }, { .v = { 0, 0, 0 } }, bottom },
-		{{ .v = {-0.5f,-0.5f, 0.5f } }, { .v = { 0, 0, 0 } }, bottom },
-		{{ .v = { 0.5f,-0.5f, 0.5f } }, { .v = { 0, 0, 0 } }, bottom },
-		{{ .v = {-0.5f, 0.5f,-0.5f } }, { .v = { 0, 0, 0 } }, top },
-		{{ .v = {-0.5f, 0.5f, 0.5f } }, { .v = { 0, 0, 0 } }, top },
-		{{ .v = { 0.5f, 0.5f,-0.5f } }, { .v = { 0, 0, 0 } }, top },
-		{{ .v = { 0.5f, 0.5f, 0.5f } }, { .v = { 0, 0, 0 } }, top }
+		{{-0.5f,-0.5f,-0.5f }, { 0, 0, 0 }, bottom },
+		{{ 0.5f,-0.5f,-0.5f }, { 0, 0, 0 }, bottom },
+		{{-0.5f,-0.5f, 0.5f }, { 0, 0, 0 }, bottom },
+		{{ 0.5f,-0.5f, 0.5f }, { 0, 0, 0 }, bottom },
+		{{-0.5f, 0.5f,-0.5f }, { 0, 0, 0 }, top },
+		{{-0.5f, 0.5f, 0.5f }, { 0, 0, 0 }, top },
+		{{ 0.5f, 0.5f,-0.5f }, { 0, 0, 0 }, top },
+		{{ 0.5f, 0.5f, 0.5f }, { 0, 0, 0 }, top }
 	};
 
 	ml_vtx_pos_n_clr tris[] = {
@@ -89,12 +89,12 @@ gameInit() {
 	};
 
 	ml_vec3 normals[6] = {
-		{ .v = { 0, -1, 0 } },
-		{ .v = { 0, 1, 0 } },
-		{ .v = { 0, 0, 1 } },
-		{ .v = { 0, 0, -1 } },
-		{ .v = {-1, 0, 0 } },
-		{ .v = { 1, 0, 0 } }
+		{ 0,-1, 0 },
+		{ 0, 1, 0 },
+		{ 0, 0, 1 },
+		{ 0, 0,-1 },
+		{-1, 0, 0 },
+		{ 1, 0, 0 }
 	};
 
 	for (int i = 0; i < 6; ++i) {
@@ -231,6 +231,11 @@ gameUpdate(float dt) {
 			mouse_captured = true;
 			SDL_SetRelativeMouseMode(SDL_TRUE);
 	}
+
+	// update player/input
+	// update blocks
+	// update creatures
+	// update effects
 }
 
 static void
@@ -259,15 +264,23 @@ gameRender(SDL_Point* viewport) {
 	if (wireframe_mode)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
+	// draw blocks (tesselate in parallel?)
+	// draw objects
+	// draw creatures
+	// draw players
+	// draw effects
+	// draw alphablended (sort in parallel?)
+	// fbo effects?
+	// draw ui
 
 	mlFPSMatrix(mlGetMatrix(&game.modelview), game.camera.offset, game.camera.pitch, game.camera.yaw);
 
 	static float f = 0.f;
 	f += 0.01f;
 
-	ml_vec4 amb_color = {  .v = { RGB2F(61, 04, 5F), 0.4f } };
-	ml_vec4 fog_color = {  .v = { RGB2F(28, 30, 48), 0.025f } };
-	ml_vec3 light_dir = {  .v = { 0.5f, 1.f, 0.5f } };
+	ml_vec4 amb_color = { RGB2F(61, 04, 5F), 0.4f };
+	ml_vec4 fog_color = { RGB2F(28, 30, 48), 0.025f };
+	ml_vec3 light_dir = { 0.5f, 1.f, 0.5f };
 	ml_vec3 tlight;
 	ml_matrix33 normalmat;
 
@@ -283,7 +296,7 @@ gameRender(SDL_Point* viewport) {
 	mlUniformMatrix(renderables[2].material->modelview, mlGetMatrix(&game.modelview));
 	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
 	mlUniformMatrix33(renderables[2].material->normalmat, &normalmat);
-	ml_vec3 chunk_offset = { .v={-1, -1, -1} };
+	ml_vec3 chunk_offset = { -1, -1, -1 };
 	mlUniformVec3(renderables[2].material->chunk_offset, &chunk_offset);
 	mlUniformVec4(renderables[2].material->amb_color, &amb_color);
 	mlUniformVec4(renderables[2].material->fog_color, &fog_color);
@@ -332,10 +345,10 @@ gameRender(SDL_Point* viewport) {
 	uiDebugLine(mc, mc2, 0xffff7f00);
 	uiDebugSphere(mc2, 0.15f, 0xffcf9f3f);
 
-	ml_vec3 origo = { .v={0, 0, 0} };
-	ml_vec3 xaxis = { .v={1, 0, 0} };
-	ml_vec3 yaxis = { .v={0, 1, 0} };
-	ml_vec3 zaxis = { .v={0, 0, 1} };
+	ml_vec3 origo = { 0, 0, 0 };
+	ml_vec3 xaxis = { 1, 0, 0 };
+	ml_vec3 yaxis = { 0, 1, 0 };
+	ml_vec3 zaxis = { 0, 0, 1 };
 	uiDebugLine(origo, xaxis, 0xff00ff00);
 	uiDebugLine(origo, yaxis, 0xffff0000);
 	uiDebugLine(origo, zaxis, 0xff0000ff);

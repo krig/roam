@@ -72,7 +72,7 @@ void uiExit() {
 
 void uiDraw(SDL_Point* viewport) {
 	if (ui_count > 0) {
-		ml_vec2 screensize = { .v = { (float)viewport->x, (float)viewport->y} };
+		ml_vec2 screensize = { (float)viewport->x, (float)viewport->y };
 		glEnable(GL_TEXTURE_2D);
 		glEnable(GL_BLEND);
 //		glDisable(GL_CULL_FACE);
@@ -117,7 +117,7 @@ void uiText(float x, float y, uint32_t clr, const char* str, ...) {
 	scale = ui_scale * 8.f;
 	d = 8.f / 1024.f;
 
-	ml_vec2 rpos = { .v = { x, y } };
+	ml_vec2 rpos = { x, y };
 	for (size_t i = 0; i < len; ++i) {
 		if (buf[i] < 0 || buf[i] > 127)
 			continue;
@@ -126,18 +126,18 @@ void uiText(float x, float y, uint32_t clr, const char* str, ...) {
 			rpos.y += scale;
 			continue;
 		}
-		ml_vec2 tc = { .v = { buf[i] * d, 0.f } };
-		ml_vec2 p1 = { .v = { rpos.x, rpos.y } };
-		ml_vec2 p2 = { .v = { rpos.x + scale, rpos.y + scale } };
-		ml_vec2 t1 = { .v = { tc.x, 0.f } };
-		ml_vec2 t2 = { .v = { tc.x + d, 1.f } };
+		ml_vec2 tc = { buf[i] * d, 0.f };
+		ml_vec2 p1 = { rpos.x, rpos.y };
+		ml_vec2 p2 = { rpos.x + scale, rpos.y + scale };
+		ml_vec2 t1 = { tc.x, 0.f };
+		ml_vec2 t2 = { tc.x + d, 1.f };
 		ml_vtx_ui quad[6] = {
-			{ p1, { .v = { t1.x, t2.y } }, clr },
-			{ p2, { .v = { t2.x, t1.y } }, clr },
-			{ { .v = { p1.x, p2.y } }, t1, clr },
-			{ p2, { .v = { t2.x, t1.y } }, clr },
-			{ p1, { .v = { t1.x, t2.y } }, clr },
-			{ { .v = { p2.x, p1.y } }, t2, clr },
+			{ p1, { t1.x, t2.y }, clr },
+			{ p2, { t2.x, t1.y }, clr },
+			{ { p1.x, p2.y }, t1, clr },
+			{ p2, { t2.x, t1.y }, clr },
+			{ p1, { t1.x, t2.y }, clr },
+			{ { p2.x, p1.y }, t2, clr },
 		};
 
 		memcpy(ptr, quad, sizeof(quad));
@@ -162,15 +162,15 @@ void uiDebugLine(ml_vec3 p1, ml_vec3 p2, uint32_t clr) {
 
 void uiDebugAABB(ml_vec3 minp, ml_vec3 maxp, uint32_t clr) {
 	ml_vec3 corners[8] = {
-		{ .v = { minp.x, minp.y, minp.z} },
-		{ .v = { maxp.x, minp.y, minp.z} },
-		{ .v = { minp.x, minp.y, maxp.z} },
-		{ .v = { maxp.x, minp.y, maxp.z} },
+		{ minp.x, minp.y, minp.z },
+		{ maxp.x, minp.y, minp.z },
+		{ minp.x, minp.y, maxp.z },
+		{ maxp.x, minp.y, maxp.z },
 
-		{ .v = { minp.x, maxp.y, minp.z} },
-		{ .v = { maxp.x, maxp.y, minp.z} },
-		{ .v = { minp.x, maxp.y, maxp.z} },
-		{ .v = { maxp.x, maxp.y, maxp.z} },
+		{ minp.x, maxp.y, minp.z },
+		{ maxp.x, maxp.y, minp.z },
+		{ minp.x, maxp.y, maxp.z },
+		{ maxp.x, maxp.y, maxp.z },
 	};
 	uiDebugLine(corners[0], corners[1], clr);
 	uiDebugLine(corners[1], corners[2], clr);
@@ -213,10 +213,10 @@ void uiDebugSphere(ml_vec3 p, float r, uint32_t clr) {
 			i2 = 0;
 		float st1 = sin(((float)i2 / SPHERE_NDIV) * ML_TWO_PI);
 		float ct1 = cos(((float)i2 / SPHERE_NDIV) * ML_TWO_PI);
-		ml_vec3 p1 = { .v = { p.x + r * st, p.y, p.z + r * ct } };
-		ml_vec3 p2 = { .v = { p.x + r * st1, p.y, p.z + r * ct1 } };
-		ml_vec3 p3 = { .v = { p.x + r * st, p.y + r * ct, p.z } };
-		ml_vec3 p4 = { .v = { p.x + r * st1, p.y + r * ct1, p.z } };
+		ml_vec3 p1 = { p.x + r * st, p.y, p.z + r * ct };
+		ml_vec3 p2 = { p.x + r * st1, p.y, p.z + r * ct1 };
+		ml_vec3 p3 = { p.x + r * st, p.y + r * ct, p.z };
+		ml_vec3 p4 = { p.x + r * st1, p.y + r * ct1, p.z };
 		uiDebugLine(p1, p2, clr);
 		uiDebugLine(p3, p4, clr);
 	}
