@@ -375,4 +375,22 @@ void mlFreeTexture2D(ml_tex2d* tex);
 void mlBindTexture2D(ml_tex2d* tex, int index);
 
 
+static inline ml_clr
+mlRGB(uint8_t r, uint8_t g, uint8_t b) {
+	ml_clr c = { 0xff, r, g, b };
+	return c;
+}
+
+static inline ml_clr
+mlARGB(uint8_t a, uint8_t r, uint8_t g, uint8_t b) {
+	ml_clr c = { a, r, g, b };
+	return c;
+}
+
+static inline ml_clr
+mlRGBA(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+	ml_clr c = { a, r, g, b };
+	return c;
+}
+
 // TODO: GL state stack - track state as a stack of uint64_ts...
