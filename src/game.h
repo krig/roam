@@ -36,6 +36,23 @@ struct controls_t {
 	int exitgame;
 };
 
+struct blockinfo_t {
+	const char* name; // short description
+	// texture tile indices
+	int top;
+	int bottom;
+	int left;
+	int right;
+	int front;
+	int back;
+	int hitpoints; // 0 = indestructable
+	int physics; // physics mode: 0 = no collision, 1 = solid (future: repel/bounce, slippery, water)
+	int blend; // if true, block is transparent
+	int light; // amount of light emitted by block
+	int anim; // texture animation mode
+	void (*mesher)(/* ... */); // if custom mesh, this callback generates verts for the block
+};
+
 struct game_t {
 	struct camera_t camera;
 	struct controls_t controls;

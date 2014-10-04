@@ -20,6 +20,13 @@ static bool wireframe_mode = false;
 
 struct game_t game;
 
+struct blockinfo_t blockinfo[] = {
+	{ .name = "air", .top = 0, .bottom = 0, .left = 0, .right = 0, .front = 0, .back = 0,
+	  .hitpoints = 0, .physics = 0, .blend = 0, .light = 0, .anim = 0, .mesher = NULL },
+	{ .name = "stone", .top = 1, .bottom = 1, .left = 1, .right = 1, .front = 1, .back = 1,
+	  .hitpoints = 20, .physics = 1, .blend = 0, .light = 0, .anim = 0, .mesher = NULL },
+};
+
 static void
 gameInit() {
 	game.camera.chunk[0] =
