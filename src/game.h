@@ -21,8 +21,24 @@ struct camera_t {
 	float yaw;
 };
 
+struct controls_t {
+	int left;
+	int right;
+	int forward;
+	int backward;
+	int jump;
+	int crouch;
+	int interact;
+	int primary_action;
+	int secondary_action;
+	int wireframe;
+	int debuginfo;
+	int exitgame;
+};
+
 struct game_t {
 	struct camera_t camera;
+	struct controls_t controls;
 	ml_material materials[MAX_MATERIALS];
 	ml_matrixstack projection;
 	ml_matrixstack modelview;

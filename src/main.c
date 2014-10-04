@@ -30,6 +30,22 @@ gameInit() {
 	game.camera.pitch = -0.544628;
 	game.camera.yaw = 1.056371;
 
+	struct controls_t default_controls = {
+		.left = SDL_SCANCODE_A,
+		.right = SDL_SCANCODE_D,
+		.forward = SDL_SCANCODE_W,
+		.backward = SDL_SCANCODE_S,
+		.jump = SDL_SCANCODE_SPACE,
+		.crouch = SDL_SCANCODE_LSHIFT,
+		.interact = SDL_SCANCODE_E,
+		.primary_action = SDL_BUTTON_LEFT,
+		.secondary_action = SDL_BUTTON_RIGHT,
+		.wireframe = SDLK_o,
+		.debuginfo = SDLK_p,
+		.exitgame = SDLK_ESCAPE
+	};
+	game.controls = default_controls;
+
 	uint32_t top, bottom;
 	top = 0xff24C6DC;
 	bottom = 0xff514A9D;
@@ -166,13 +182,13 @@ gameHandleEvent(SDL_Event* event) {
 	case SDL_QUIT:
 		return false;
 	case SDL_KEYDOWN:
-		if (event->key.keysym.sym == SDLK_ESCAPE)
+		if (event->key.keysym.sym == game.controls.exitgame)
 			return false;
-		else if (event->key.keysym.sym == SDLK_p)
+		else if (event->key.keysym.sym == game.controls.debuginfo)
 			printf("%f, %f, %f p:%f, y:%f\n",
 			       game.camera.offset.x, game.camera.offset.y, game.camera.offset.z,
 			       game.camera.pitch, game.camera.yaw);
-		else if (event->key.keysym.sym == SDLK_o)
+		else if (event->key.keysym.sym == game.controls.wireframe)
 			wireframe_mode = !wireframe_mode;
 		break;
 	default:
@@ -211,17 +227,17 @@ gameUpdate(float dt) {
 	float speed = 2.f * dt;
 
 	state = SDL_GetKeyboardState(NULL);
-	if (state[SDL_SCANCODE_A])
+	if (state[game.controls.left])
 		playerMove(-speed, 0.f);
-	if (state[SDL_SCANCODE_D])
+	if (state[game.controls.right])
 		playerMove(speed, 0.f);
-	if (state[SDL_SCANCODE_W])
+	if (state[game.controls.forward])
 		playerMove(0.f, speed);
-	if (state[SDL_SCANCODE_S])
+	if (state[game.controls.backward])
 		playerMove(0.f, -speed);
-	if (state[SDL_SCANCODE_SPACE])
+	if (state[game.controls.jump])
 		playerJump(speed);
-	if (state[SDL_SCANCODE_LSHIFT])
+	if (state[game.controls.crouch])
 		playerJump(-speed);
 
 	if (mouse_captured) {
