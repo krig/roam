@@ -293,6 +293,12 @@ void mlCreateMaterial(ml_material* material, const char* vsource, const char* fs
 	glUseProgram(0);
 }
 
+void mlDestroyMaterial(ml_material* material) {
+	if (material->program != 0)
+		glDeleteProgram(material->program);
+	material->program = 0;
+}
+
 void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags) {
 	size_t stride =
 		((flags & ML_POS_2F) ? 8 : 0) +
@@ -376,6 +382,14 @@ void mlCreateIndexedMesh(ml_mesh* mesh, size_t n, void* data, size_t ilen, GLenu
 	glCheck(__LINE__);
 }
 
+void mlDestroyMesh(ml_mesh* mesh) {
+	if (mesh->vbo != 0)
+		glDeleteBuffers(1, &(mesh->vbo));
+	mesh->vbo = 0;
+	if (mesh->ibo != 0)
+		glDeleteBuffers(1, &(mesh->ibo));
+	mesh->ibo = 0;
+}
 
 void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, const ml_mesh* mesh) {
 	glGenVertexArrays(1, &renderable->vao);
@@ -434,6 +448,12 @@ void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, 
 	glCheck(__LINE__);
 }
 
+void mlDestroyRenderable(ml_renderable* renderable) {
+	if (renderable->vao != 0)
+		glDeleteVertexArrays(1, &(renderable->vao));
+	renderable->vao = 0;
+}
+
 void mlInitMatrixStack(ml_matrixstack* stack, size_t size) {
 	if (size == 0)
 		roamError("Matrix stack too small");
@@ -443,7 +463,7 @@ void mlInitMatrixStack(ml_matrixstack* stack, size_t size) {
 		mlSetIdentity(stack->stack + i);
 }
 
-void mlFreeMatrixStack(ml_matrixstack* stack) {
+void mlDestroyMatrixStack(ml_matrixstack* stack) {
 	free(stack->stack);
 	stack->top = -1;
 	stack->stack = NULL;
@@ -517,7 +537,7 @@ void mlLoadTexture2D(ml_tex2d* tex, const char* filename) {
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void mlFreeTexture2D(ml_tex2d* tex) {
+void mlDestroyTexture2D(ml_tex2d* tex) {
 	glDeleteTextures(1, &tex->id);
 	memset(tex, 0, sizeof(ml_tex2d));
 

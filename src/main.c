@@ -8,13 +8,8 @@
 #include "voxelmap.h"
 #include "game.h"
 
-#define MAX_MESHES 100
-#define MAX_RENDERABLES 100
-
 static SDL_Window* window;
 static SDL_GLContext context;
-static ml_mesh meshes[MAX_MESHES];
-static ml_renderable renderables[MAX_RENDERABLES];
 static bool mouse_captured = false;
 static bool wireframe_mode = false;
 
@@ -52,135 +47,33 @@ gameInit() {
 		.exitgame = SDLK_ESCAPE
 	};
 	game.controls = default_controls;
+	gameInitMap();
 
-	uint32_t top, bottom;
-	top = 0xff24C6DC;
-	bottom = 0xff514A9D;
-	ml_vtx_pos_n_clr corners[8] = {
-		{{-0.5f,-0.5f,-0.5f }, { 0, 0, 0 }, bottom },
-		{{ 0.5f,-0.5f,-0.5f }, { 0, 0, 0 }, bottom },
-		{{-0.5f,-0.5f, 0.5f }, { 0, 0, 0 }, bottom },
-		{{ 0.5f,-0.5f, 0.5f }, { 0, 0, 0 }, bottom },
-		{{-0.5f, 0.5f,-0.5f }, { 0, 0, 0 }, top },
-		{{-0.5f, 0.5f, 0.5f }, { 0, 0, 0 }, top },
-		{{ 0.5f, 0.5f,-0.5f }, { 0, 0, 0 }, top },
-		{{ 0.5f, 0.5f, 0.5f }, { 0, 0, 0 }, top }
-	};
+	unsigned long lcg = time(NULL);
+	osnInit((unsigned long (*)(void*))&lcg_rand, &lcg);
+	simplexInit((unsigned long (*)(void*))&lcg_rand, &lcg);
 
-	ml_vtx_pos_n_clr tris[] = {
-		corners[0], // bottom
-		corners[1],
-		corners[2],
-		corners[1],
-		corners[3],
-		corners[2],
-
-		corners[4], // top
-		corners[5],
-		corners[6],
-		corners[6],
-		corners[5],
-		corners[7],
-
-		corners[2], // front
-		corners[3],
-		corners[5],
-		corners[3],
-		corners[7],
-		corners[5],
-
-		corners[0], // back
-		corners[4],
-		corners[1],
-		corners[1],
-		corners[4],
-		corners[6],
-
-		corners[2], // left
-		corners[4],
-		corners[0],
-		corners[2],
-		corners[5],
-		corners[4],
-
-		corners[3], // right
-		corners[1],
-		corners[6],
-		corners[3],
-		corners[6],
-		corners[7]
-	};
-
-	ml_vec3 normals[6] = {
-		{ 0,-1, 0 },
-		{ 0, 1, 0 },
-		{ 0, 0, 1 },
-		{ 0, 0,-1 },
-		{-1, 0, 0 },
-		{ 1, 0, 0 }
-	};
-
-	for (int i = 0; i < 6; ++i) {
-		tris[i*6 + 0].n = normals[i];
-		tris[i*6 + 1].n = normals[i];
-		tris[i*6 + 2].n = normals[i];
-		tris[i*6 + 3].n = normals[i];
-		tris[i*6 + 4].n = normals[i];
-		tris[i*6 + 5].n = normals[i];
-	}
-
-	printf("materials...\n");
+	printf("* Load materials + UI\n");
 	mlCreateMaterial(&game.materials[MAT_BASIC], basic_vshader, basic_fshader);
 	mlCreateMaterial(&game.materials[MAT_UI], ui_vshader, ui_fshader);
 	mlCreateMaterial(&game.materials[MAT_DEBUG], debug_vshader, debug_fshader);
 	mlCreateMaterial(&game.materials[MAT_CHUNK], chunk_vshader, chunk_fshader);
-
-	mlCreateMesh(&meshes[0], 36, tris, ML_POS_3F | ML_N_3F | ML_CLR_4UB);
-	mlCreateRenderable(&renderables[0], game.materials + MAT_BASIC, meshes + 0);
-
-	{
-		char* teapot = osReadWholeFile("data/teapot.obj");
-		obj_mesh m;
-		objLoad(&m, teapot, 0.1f);
-		objCreateMesh(&meshes[1], &m, objGenNormalsFn);
-		mlCreateRenderable(&renderables[1], game.materials + MAT_BASIC, meshes + 1);
-		objFree(&m);
-		free(teapot);
-	}
-
-	printf("ui...\n");
 	uiInit(game.materials + MAT_UI, game.materials + MAT_DEBUG);
 
 	glCheck(__LINE__);
 
 	mouse_captured = true;
 	SDL_SetRelativeMouseMode(SDL_TRUE);
-
-	unsigned long lcg = time(NULL);
-	osnInit((unsigned long (*)(void*))&lcg_rand, &lcg);
-	simplexInit((unsigned long (*)(void*))&lcg_rand, &lcg);
-
-	gameInitMap();
-	printf("chunk...\n");
-	game_chunk chunk;
-	gameGenerateChunk(&chunk, 0, 0, 0);
-	gameTesselateChunk(&meshes[2], &chunk);
-	mlCreateRenderable(&renderables[2], game.materials + MAT_CHUNK, meshes + 2);
 }
 
 static void
 gameExit() {
-	int i;
 	uiExit();
-	for (i = 0; i < MAX_MATERIALS; ++i)
-		if (game.materials[i].program != 0)
-			glDeleteProgram(game.materials[i].program);
-	for (i = 0; i < MAX_MESHES; ++i)
-		if (meshes[i].vbo != 0)
-			glDeleteBuffers(1, &meshes[i].vbo);
-	for (i = 0; i < MAX_RENDERABLES; ++i)
-		if (renderables[i].vao != 0)
-			glDeleteVertexArrays(1, &renderables[i].vao);
+	for (int i = 0; i < MAX_MATERIALS; ++i)
+		mlDestroyMaterial(game.materials + i);
+	mlDestroyMatrixStack(&game.projection);
+	mlDestroyMatrixStack(&game.modelview);
+	gameFreeMap();
 }
 
 static bool
@@ -255,6 +148,7 @@ gameUpdate(float dt) {
 			SDL_SetRelativeMouseMode(SDL_TRUE);
 	}
 
+	gameUpdateMap();
 	// update player/input
 	// update blocks
 	// update creatures

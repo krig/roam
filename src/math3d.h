@@ -329,6 +329,7 @@ GLuint mlCompileShader(GLenum type, const char* source);
 GLuint mlLinkProgram(GLuint vsh, GLuint fsh);
 
 void mlCreateMaterial(ml_material* material, const char* vsource, const char* fsource);
+void mlDestroyMaterial(ml_material* material);
 
 enum ML_MeshFlags {
 	ML_POS_2F  = 0x01,
@@ -341,10 +342,11 @@ enum ML_MeshFlags {
 };
 
 void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags);
-
 void mlCreateIndexedMesh(ml_mesh* mesh, size_t n, void* data, size_t ilen, GLenum indextype, void* indices, GLenum flags);
+void mlDestroyMesh(ml_mesh* mesh);
 
 void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, const ml_mesh* mesh);
+void mlDestroyRenderable(ml_renderable* renderable);
 
 // Matrix stack
 
@@ -352,7 +354,7 @@ void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, 
 // matrix to the bottom of the stack.
 void mlInitMatrixStack(ml_matrixstack* stack, size_t size);
 
-void mlFreeMatrixStack(ml_matrixstack* stack);
+void mlDestroyMatrixStack(ml_matrixstack* stack);
 
 // Push a copy of the top matrix to the stack
 void mlPushMatrix(ml_matrixstack* stack);
@@ -371,7 +373,7 @@ void mlPopMatrix(ml_matrixstack* stack);
 ml_matrix* mlGetMatrix(ml_matrixstack* stack);
 
 void mlLoadTexture2D(ml_tex2d* tex, const char* filename);
-void mlFreeTexture2D(ml_tex2d* tex);
+void mlDestroyTexture2D(ml_tex2d* tex);
 void mlBindTexture2D(ml_tex2d* tex, int index);
 
 

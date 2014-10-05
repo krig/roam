@@ -1,10 +1,45 @@
 #include "common.h"
 #include "math3d.h"
+#include "game.h"
 #include "voxelmap.h"
 #include "noise.h"
 
-#define CHUNK_SCALE (1.0/16.0)
-#define CHUNK_AT(c,x,y,z) ((c)->data[(z)*256 + (y)*16 + (x)])
+//#define CHUNK_SCALE (1.0/16.0)
+//#define CHUNK_AT(c,x,y,z) ((c)->data[(z)*256 + (y)*16 + (x)])
+//#define GetBlock(x,y,z) (game.map->blocks[(y)*() + (z)*() + (x)])
+
+void gameLoadChunk(int x, int z);
+
+void gameInitMap() {
+	printf("* Allocate and build initial map...\n");
+	game.map = calloc(1, sizeof(game_map));
+	game.map->seed = time(0);
+	printf("* Seed: %lx\n", game.map->seed);
+
+	// for now, always start at (0, 0)
+	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
+		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x)
+			gameLoadChunk(x, z);
+	gameUpdateMap();
+	printf("* Map load complete.\n");
+}
+
+void gameFreeMap() {
+	free(game.map);
+	game.map = NULL;
+}
+
+void gameUpdateMap() {
+}
+
+void gameDrawMap() {
+}
+
+void gameLoadChunk(int x, int z) {
+	// TODO: chunk saving/loading
+	// TODO: asynchronous 
+}
+
 
 static uint8_t gameGenerateBlock(double x, double y, double z) {
 	double height = simplexNoise(x, z);

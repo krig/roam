@@ -63,7 +63,7 @@ void uiInit(ml_material* uimat, ml_material* debugmat) {
 }
 
 void uiExit() {
-	mlFreeTexture2D(&ui_8x8font);
+	mlDestroyTexture2D(&ui_8x8font);
 	glDeleteBuffers(1, &ui_vbo);
 	glDeleteVertexArrays(1, &ui_vao);
 	glDeleteBuffers(1, &debug_vbo);

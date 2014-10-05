@@ -53,12 +53,15 @@ struct blockinfo_t {
 	void (*mesher)(/* ... */); // if custom mesh, this callback generates verts for the block
 };
 
+struct game_map;
+
 struct game_t {
 	struct camera_t camera;
 	struct controls_t controls;
 	ml_material materials[MAX_MATERIALS];
 	ml_matrixstack projection;
 	ml_matrixstack modelview;
+	struct game_map* map;
 };
 
 extern struct game_t game;
