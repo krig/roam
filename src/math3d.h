@@ -160,7 +160,9 @@ mlWrap(float t, float lo, float hi) {
 }
 
 
+#define mlVec2Assign(v, a, b) { (v).x = (a); (v).y = (b); }
 #define mlVec3Assign(v, a, b, c) { (v).x = (a); (v).y = (b); (v).z = (c); }
+#define mlVec4Assign(v, a, b, c, d) { (v).x = (a); (v).y = (b); (v).z = (c); (v).w = (d); }
 
 void mlPerspective(ml_matrix* m, float fovy, float aspect, float zNear, float zFar);
 

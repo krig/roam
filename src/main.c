@@ -7,6 +7,7 @@
 #include "noise.h"
 #include "voxelmap.h"
 #include "game.h"
+#include "geometry.h"
 
 static SDL_Window* window;
 static SDL_GLContext context;
@@ -47,6 +48,13 @@ gameInit() {
 		.exitgame = SDLK_ESCAPE
 	};
 	game.controls = default_controls;
+
+	game.time_of_day = 0.f; // (0 - 1 looping: 0 is midday, 0.5 is midnight)
+#define H2F(r) (float)(0x##r)/255.f
+
+	mlVec4Assign(game.ambient_color, H2F(61), H2F(04), H2F(5F), 0.4f);
+	mlVec4Assign(game.fog_color, H2F(28), H2F(30), H2F(48), 0.025f);
+
 	gameInitMap();
 
 	unsigned long lcg = time(NULL);
@@ -153,6 +161,8 @@ gameUpdate(float dt) {
 	// update blocks
 	// update creatures
 	// update effects
+
+	game.time_of_day = fmod(game.time_of_day + (dt * (1.0 / DAY_LENGTH)), 1.f);
 }
 
 static void
@@ -163,8 +173,6 @@ printMatrix(ml_matrix* m) {
 	printf("%.1f %.1f %.1f %.1f\n", m->m[12], m->m[13], m->m[14], m->m[15]);
 }
 
-#define RGB2F(r, g, b) (float)(0x##r)/255.f, (float)(0x##g)/255.f, (float)(0x##b)/255.f
-
 static void
 gameRender(SDL_Point* viewport) {
 	glCheck(__LINE__);
@@ -174,12 +182,14 @@ gameRender(SDL_Point* viewport) {
 	glDepthFunc(GL_LESS);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
-	glClearColor(RGB2F(28, 30, 48), 1.f);
+	glClearColor(H2F(28), H2F(30), H2F(48), 1.f);
 	glClearDepth(1.f);
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
 	if (wireframe_mode)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+	mlFPSMatrix(mlGetMatrix(&game.modelview), game.camera.offset, game.camera.pitch, game.camera.yaw);
 
 	// draw blocks (tesselate in parallel?)
 	// draw objects
@@ -190,75 +200,17 @@ gameRender(SDL_Point* viewport) {
 	// fbo effects?
 	// draw ui
 
-	mlFPSMatrix(mlGetMatrix(&game.modelview), game.camera.offset, game.camera.pitch, game.camera.yaw);
 
-	static float f = 0.f;
-	f += 0.01f;
-
-	ml_vec4 amb_color = { RGB2F(61, 04, 5F), 0.4f };
-	ml_vec4 fog_color = { RGB2F(28, 30, 48), 0.025f };
-	ml_vec3 light_dir = { 0.5f, 1.f, 0.5f };
-	ml_vec3 tlight;
-	ml_matrix33 normalmat;
-
-	light_dir.x = sin(fmod(f*0.33f, ML_TWO_PI));
-	light_dir.y = cos(fmod(f*0.66f, ML_TWO_PI));
+	double toffs = fmod((game.time_of_day * ML_TWO_PI) + ML_PI_2, ML_TWO_PI);
+	mlVec3Assign(game.light_dir, -cos(toffs), sin(toffs), 0.f);
 
 	gameDrawMap();
-	mlPushMatrix(&game.modelview);
-	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
-	tlight = mlMulMat33Vec(&normalmat, &light_dir);
-	mlDrawBegin(&renderables[2]);
-	mlUniformMatrix(renderables[2].material->projmat, mlGetMatrix(&game.projection));
-	mlUniformMatrix(renderables[2].material->modelview, mlGetMatrix(&game.modelview));
-	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
-	mlUniformMatrix33(renderables[2].material->normalmat, &normalmat);
-	ml_vec3 chunk_offset = { -1, -1, -1 };
-	mlUniformVec3(renderables[2].material->chunk_offset, &chunk_offset);
-	mlUniformVec4(renderables[2].material->amb_color, &amb_color);
-	mlUniformVec4(renderables[2].material->fog_color, &fog_color);
-	mlUniformVec3(renderables[2].material->light_dir, &tlight);
-	mlDrawEnd(&renderables[2]);
-	mlPopMatrix(&game.modelview);
-
-	// transform light into eye space
-	mlPushMatrix(&game.modelview);
-	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
-	tlight = mlMulMat33Vec(&normalmat, &light_dir);
-	mlRotate(mlGetMatrix(&game.modelview), f, 0.f, 1.f, 0.f);
-	mlTranslate(mlGetMatrix(&game.modelview), 0.f, 0.5f, 0.f);
-	mlDrawBegin(&renderables[0]);
-	mlUniformMatrix(renderables[0].material->projmat, mlGetMatrix(&game.projection));
-	mlUniformMatrix(renderables[0].material->modelview, mlGetMatrix(&game.modelview));
-	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
-	mlUniformMatrix33(renderables[0].material->normalmat, &normalmat);
-	mlUniformVec4(renderables[0].material->amb_color, &amb_color);
-	mlUniformVec4(renderables[0].material->fog_color, &fog_color);
-	mlUniformVec3(renderables[0].material->light_dir, &tlight);
-	mlDrawEnd(&renderables[0]);
-	mlPopMatrix(&game.modelview);
-
-	mlPushMatrix(&game.modelview);
-	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
-	tlight = mlMulMat33Vec(&normalmat, &light_dir);
-	mlTranslate(mlGetMatrix(&game.modelview), 1.5f, 0.4f, 0.f);
-	mlRotate(mlGetMatrix(&game.modelview), -f, 0.f, 1.f, 0.f);
-	mlDrawBegin(&renderables[1]);
-	mlUniformMatrix(renderables[1].material->projmat, mlGetMatrix(&game.projection));
-	mlUniformMatrix(renderables[1].material->modelview, mlGetMatrix(&game.modelview));
-	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
-	mlUniformMatrix33(renderables[1].material->normalmat, &normalmat);
-	mlUniformVec4(renderables[1].material->amb_color, &amb_color);
-	mlUniformVec4(renderables[1].material->fog_color, &fog_color);
-	mlUniformVec3(renderables[1].material->light_dir, &tlight);
-	mlDrawEnd(&renderables[1]);
-	mlPopMatrix(&game.modelview);
 
 	if (wireframe_mode)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-	ml_vec3 mc = mlVec3Scalef(mlVec3Normalize(light_dir), 4.f);
-	ml_vec3 mc2 = mlVec3Scalef(mlVec3Normalize(light_dir), 5.f);
+	ml_vec3 mc = mlVec3Scalef(mlVec3Normalize(game.light_dir), 4.f);
+	ml_vec3 mc2 = mlVec3Scalef(mlVec3Normalize(game.light_dir), 5.f);
 	uiDebugLine(mc, mc2, 0xffff7f00);
 	uiDebugSphere(mc2, 0.15f, 0xffcf9f3f);
 
@@ -273,7 +225,8 @@ gameRender(SDL_Point* viewport) {
 	uiDrawDebug(&game.projection, &game.modelview);
 
 
-	uiText(5, 5, 0xafaaaaaa, "%g", osnNoise(game.camera.offset.x, game.camera.offset.y, game.camera.offset.z));
+	uiText(5, 15, 0xffaaaaaa, "%g", osnNoise(game.camera.offset.x, game.camera.offset.y, game.camera.offset.z));
+	uiText(5, 5, 0xffaaaaaa, "%f", game.time_of_day);
 	uiDraw(viewport);
 
 	if (mouse_captured)

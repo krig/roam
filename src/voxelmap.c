@@ -3,6 +3,7 @@
 #include "game.h"
 #include "voxelmap.h"
 #include "noise.h"
+#include <time.h>
 
 //#define CHUNK_SCALE (1.0/16.0)
 //#define CHUNK_AT(c,x,y,z) ((c)->data[(z)*256 + (y)*16 + (x)])
@@ -33,6 +34,29 @@ void gameUpdateMap() {
 }
 
 void gameDrawMap() {
+
+	// for each visible chunk...
+	// set up material etc. once.
+
+	/*
+	ml_vec3 tlight;
+	ml_matrix33 normalmat;
+	mlPushMatrix(&game.modelview);
+	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
+	tlight = mlMulMat33Vec(&normalmat, &light_dir);
+	mlDrawBegin(&renderables[2]);
+	mlUniformMatrix(renderables[2].material->projmat, mlGetMatrix(&game.projection));
+	mlUniformMatrix(renderables[2].material->modelview, mlGetMatrix(&game.modelview));
+	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
+	mlUniformMatrix33(renderables[2].material->normalmat, &normalmat);
+	ml_vec3 chunk_offset = { -1, -1, -1 };
+	mlUniformVec3(renderables[2].material->chunk_offset, &chunk_offset);
+	mlUniformVec4(renderables[2].material->amb_color, &amb_color);
+	mlUniformVec4(renderables[2].material->fog_color, &fog_color);
+	mlUniformVec3(renderables[2].material->light_dir, &tlight);
+	mlDrawEnd(&renderables[2]);
+	mlPopMatrix(&game.modelview);
+	*/
 }
 
 void gameLoadChunk(int x, int z) {
@@ -41,6 +65,7 @@ void gameLoadChunk(int x, int z) {
 }
 
 
+/*
 static uint8_t gameGenerateBlock(double x, double y, double z) {
 	double height = simplexNoise(x, z);
 	double density = osnNoise(x, y, z);
@@ -70,13 +95,11 @@ void gameGenerateChunk(game_chunk* chunk, int x, int y, int z) {
 	chunk->z = z;
 }
 
-/* tesselation buffer: size is maximum number of triangles generated
-   1: fill tesselation buffer
-   2: allocate mesh
-   3: fill vertices
-
-   returns num verts in chunk
-*/
+// tesselation buffer: size is maximum number of triangles generated
+//   1: fill tesselation buffer
+//  2: allocate mesh
+//   3: fill vertices
+//   returns num verts in chunk
 
 enum {
 	FACE_LEFT = 1, FACE_RIGHT = 2,
@@ -241,11 +264,5 @@ size_t gameTesselateChunk(ml_mesh* mesh, game_chunk* chunk) {
 	return nverts;
 }
 
-void gameInitMap() {
-}
+*/
 
-void gameUpdateMap() {
-}
-
-void gameDrawMap() {
-}

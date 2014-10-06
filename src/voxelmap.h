@@ -12,7 +12,7 @@
 #define MAP_CHUNK_HEIGHT 8
 #define MAP_BLOCK_WIDTH (MAP_CHUNK_WIDTH*CHUNK_SIZE)
 #define MAP_BLOCK_HEIGHT (MAP_CHUNK_HEIGHT*CHUNK_SIZE)
-#define MAP_BUFFER_SIZE (MAP_BLOCK_WIDTH*MAP_BLOCK_WITH*BUILD_HEIGHT)
+#define MAP_BUFFER_SIZE (MAP_BLOCK_WIDTH*MAP_BLOCK_WIDTH*MAP_BLOCK_HEIGHT)
 
 enum game_blocktype {
 	BLOCK_AIR = 0,
@@ -26,11 +26,6 @@ enum game_blocktype {
 //	BLOCK_LAVA
 };
 
-typedef struct game_chunk {
-	int x;
-	int z;
-} game_chunk;
-
 #pragma pack(push, 4)
 typedef struct game_block_vtx {
 	uint32_t pos; // 10_10_10_2
@@ -40,6 +35,8 @@ typedef struct game_block_vtx {
 #pragma pack(pop)
 
 typedef struct game_chunk {
+	int x; // actual coordinates of chunk
+	int z;
 	ml_mesh* data[MAP_CHUNK_HEIGHT];
 } game_chunk;
 
@@ -55,10 +52,6 @@ typedef struct game_map {
 	game_chunk chunks[MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH];
 	unsigned long seed;
 } game_map;
-
-//void gameGenerateChunk(game_chunk* chunk, int x, int y, int z);
-//size_t gameTesselateChunk(ml_mesh* mesh, game_chunk* chunk);
-
 
 void gameFreeMap();
 void gameInitMap();
