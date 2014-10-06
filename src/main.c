@@ -16,15 +16,29 @@ static bool wireframe_mode = false;
 
 struct game_t game;
 
+ml_tex2d blocks_texture;
+
 struct blockinfo_t blockinfo[] = {
-	{ .name = "air", .top = 0, .bottom = 0, .left = 0, .right = 0, .front = 0, .back = 0,
-	  .hitpoints = 0, .physics = 0, .blend = 0, .light = 0, .anim = 0, .mesher = NULL },
-	{ .name = "stone", .top = 1, .bottom = 1, .left = 1, .right = 1, .front = 1, .back = 1,
-	  .hitpoints = 20, .physics = 1, .blend = 0, .light = 0, .anim = 0, .mesher = NULL },
+	{ .name = "air", .tex = { 0, 0, 0, 0, 0, 0 } },
+	{ .name = "grass", .tex = { 1, 3, 2, 2, 2, 2 } },
+	{ .name = "dirt", .tex = { 3, 3, 3, 3, 3, 3 } },
+	{ .name = "sand", .tex = { 4, 4, 4, 4, 4, 4 } },
+	{ .name = "stone", .tex = { 5, 5, 5, 5, 5, 5 } },
+	{ .name = "darkstone", .tex = { 6, 6, 6, 6, 6, 6 } },
+	{ .name = "diamond ore", .tex = { 7, 7, 7, 7, 7, 7 } },
+	{ .name = "clay", .tex = { 8, 8, 8, 8, 8, 8 } },
+	{ .name = "cobblestone", .tex = { 9, 9, 9, 9, 9, 9 } },
+	{ .name = "lava", .tex = { 10, 10, 10, 10, 10, 10 } },
+	{ .name = "water", .tex = { 11, 11, 11, 11, 11, 11 } },
+	{ .name = "treetrunk", .tex = { 12, 12, 12, 12, 12, 12 } },
+	{ .name = "grass billboard", .tex = { 13, 13, 13, 13, 13, 13 } },
+	{ .name = "leaves", .tex = { 14, 14, 14, 14, 14, 14 } },
 };
 
 static void
 gameInit() {
+	mlLoadTexture2D(&blocks_texture, "data/blocks.png");
+
 	game.camera.chunk[0] =
 		game.camera.chunk[1] =
 		game.camera.chunk[2] = 0;
@@ -82,6 +96,7 @@ gameExit() {
 	mlDestroyMatrixStack(&game.projection);
 	mlDestroyMatrixStack(&game.modelview);
 	gameFreeMap();
+	mlDestroyTexture2D(&blocks_texture);
 }
 
 static bool

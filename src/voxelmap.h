@@ -16,21 +16,36 @@
 
 enum game_blocktype {
 	BLOCK_AIR = 0,
+	BLOCK_GRASS,
+	BLOCK_DIRT,
+	BLOCK_SAND,
 	BLOCK_STONE,
-//	BLOCK_DIRT,
-//	BLOCK_GRASS,
-//	BLOCK_SAND,
-//	BLOCK_WOOD,
-//	BLOCK_LEAF,
-//	BLOCK_WATER,
-//	BLOCK_LAVA
+	BLOCK_DARKSTONE,
+	BLOCK_DIAMOND_ORE,
+	BLOCK_CLAY,
+	BLOCK_COBBLESTONE,
+	BLOCK_LAVA,
+	BLOCK_WATER,
+	BLOCK_TREETRUNK,
+	BLOCK_GRASS_BILLBOARD,
+	BLOCK_LEAVES,
 };
 
-#pragma pack(push, 4)
+#define BLOCK_TC_W (16.0 / 128.0)
+
+static inline ml_vec2 idx2tc(int idx) {
+	ml_vec2 tc;
+	tc.x = (float)((idx - 1) % 6) * BLOCK_TC_W;
+	tc.y = (float)((idx - 1) / 6) * BLOCK_TC_W;
+	return tc;
+}
+
+#pragma pack(push, 1)
 typedef struct game_block_vtx {
 	uint32_t pos; // 10_10_10_2
-	uint32_t n; // 4_4_4_4
-	uint32_t clr; // 4_4_4_4
+	uint8_t n[4];
+	uint16_t tc[2];
+	uint8_t clr[4];
 } game_block_vtx;
 #pragma pack(pop)
 
