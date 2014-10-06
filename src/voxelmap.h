@@ -41,8 +41,8 @@ enum game_blocktype {
 
 static inline ml_vec2 idx2tc(int idx) {
 	ml_vec2 tc;
-	tc.x = (float)((idx - 1) % 6) * BLOCK_TC_W;
-	tc.y = (float)((idx - 1) / 6) * BLOCK_TC_W;
+	tc.x = (float)((idx - 1) % 8) * BLOCK_TC_W;
+	tc.y = (float)((idx - 1) / 8) * BLOCK_TC_W;
 	return tc;
 }
 
