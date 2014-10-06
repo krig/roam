@@ -299,15 +299,20 @@ void mlDestroyMaterial(ml_material* material) {
 	material->program = 0;
 }
 
-void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags) {
-	size_t stride =
-		((flags & ML_POS_2F) ? 8 : 0) +
+static inline size_t mesh_stride(GLenum flags) {
+	return ((flags & ML_POS_2F) ? 8 : 0) +
 		((flags & ML_POS_3F) ? 12 : 0) +
 		((flags & ML_POS_4UB) ? 4 : 0) +
+		((flags & ML_POS_10_2) ? 4 : 0) +
 		((flags & ML_CLR_4UB) ? 4 : 0) +
 		((flags & ML_N_3F) ? 12 : 0) +
 		((flags & ML_N_4UB) ? 4 : 0) +
-		((flags & ML_TC_2F) ? 8 : 0);
+		((flags & ML_TC_2F) ? 8 : 0) +
+		((flags & ML_TC_2US) ? 4 : 0);
+}
+
+void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags) {
+	size_t stride = mesh_stride(flags);
 	glGenBuffers(1, &mesh->vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
 	glBufferData(GL_ARRAY_BUFFER, n * stride, data, GL_STATIC_DRAW);
@@ -318,12 +323,12 @@ void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags) {
 	mesh->ibotype = 0;
 
 	GLint offset = 0;
-	mesh->position = (flags & (ML_POS_2F + ML_POS_3F + ML_POS_4UB)) ? offset : -1;
-	offset += (flags & ML_POS_2F) ? 8 : ((flags & ML_POS_3F) ? 12 : (flags & ML_POS_4UB ? 4 : 0));
+	mesh->position = (flags & (ML_POS_2F + ML_POS_3F + ML_POS_4UB + ML_POS_10_2)) ? offset : -1;
+	offset += (flags & ML_POS_2F) ? 8 : ((flags & ML_POS_3F) ? 12 : (flags & (ML_POS_4UB + ML_POS_10_2) ? 4 : 0));
 	mesh->normal = (flags & (ML_N_3F + ML_N_4UB)) ? offset : -1;
 	offset += (flags & ML_N_3F) ? 12 : ((flags & ML_N_4UB) ? 4 : 0);
-	mesh->texcoord = (flags & ML_TC_2F) ? offset : -1;
-	offset += (flags & ML_TC_2F) ? 8 : 0;
+	mesh->texcoord = (flags & (ML_TC_2F + ML_TC_2US)) ? offset : -1;
+	offset += (flags & ML_TC_2F) ? 8 : ((flags & ML_TC_2US) ? 4 : 0);
 	mesh->color = (flags & ML_CLR_4UB) ? offset : -1;
 	offset += (flags & ML_CLR_4UB) ? 4 : 0;
 	mesh->stride = stride;
@@ -334,15 +339,7 @@ void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags) {
 }
 
 void mlCreateIndexedMesh(ml_mesh* mesh, size_t n, void* data, size_t ilen, GLenum indextype, void* indices, GLenum flags) {
-	size_t stride =
-		((flags & ML_POS_2F) ? 8 : 0) +
-		((flags & ML_POS_3F) ? 12 : 0) +
-		((flags & ML_POS_4UB) ? 4 : 0) +
-		((flags & ML_CLR_4UB) ? 4 : 0) +
-		((flags & ML_N_3F) ? 12 : 0) +
-		((flags & ML_N_4UB) ? 4 : 0) +
-		((flags & ML_TC_2F) ? 8 : 0);
-	glGenBuffers(1, &mesh->vbo);
+	mlCreateMesh(mesh, n, data, flags);
 	glGenBuffers(1, &mesh->ibo);
 
 	size_t isize = 0;
@@ -357,27 +354,11 @@ void mlCreateIndexedMesh(ml_mesh* mesh, size_t n, void* data, size_t ilen, GLenu
 		roamError("indextype must be one of GL_UNSIGNED_[BYTE|SHORT|INT]");
 	}
 
-	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
-	glBufferData(GL_ARRAY_BUFFER, n * stride, data, GL_STATIC_DRAW);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ibo);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, ilen * isize, indices, GL_STATIC_DRAW);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-	GLint offset = 0;
-	mesh->position = (flags & (ML_POS_2F + ML_POS_3F + ML_POS_4UB)) ? offset : -1;
-	offset += (flags & ML_POS_2F) ? 8 : ((flags & ML_POS_3F) ? 12 : (flags & ML_POS_4UB ? 4 : 0));
-	mesh->normal = (flags & (ML_N_3F + ML_N_4UB)) ? offset : -1;
-	offset += (flags & ML_N_3F) ? 12 : ((flags & ML_N_4UB) ? 4 : 0);
-	mesh->texcoord = (flags & ML_TC_2F) ? offset : -1;
-	offset += (flags & ML_TC_2F) ? 8 : 0;
-	mesh->color = (flags & ML_CLR_4UB) ? offset : -1;
-	offset += (flags & ML_CLR_4UB) ? 4 : 0;
-	mesh->stride = stride;
-	mesh->mode = GL_TRIANGLES;
 	mesh->count = ilen;
-	mesh->flags = flags;
 	mesh->ibotype = indextype;
 	glCheck(__LINE__);
 }
@@ -408,8 +389,10 @@ void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, 
 				glVertexAttribPointer(material->position, 2, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->position));
 			else if (mesh->flags & ML_POS_3F)
 				glVertexAttribPointer(material->position, 3, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->position));
-			else // 4ub
+			else if (mesh->flags & ML_POS_4UB)
 				glVertexAttribPointer(material->position, 4, GL_UNSIGNED_BYTE, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->position));
+			else // 10_10_10_2
+				glVertexAttribPointer(material->position, 4, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->position));
 			glEnableVertexAttribArray(material->position);
 		} else {
 			glDisableVertexAttribArray(material->position);
@@ -428,7 +411,10 @@ void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, 
 	}
 	if (material->texcoord > -1) {
 		if (mesh->texcoord > -1) {
-			glVertexAttribPointer(material->texcoord, 2, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->texcoord));
+			if (mesh->flags & ML_TC_2F)
+				glVertexAttribPointer(material->texcoord, 2, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->texcoord));
+			else // 2US
+				glVertexAttribPointer(material->texcoord, 2, GL_UNSIGNED_SHORT, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->texcoord));
 			glEnableVertexAttribArray(material->texcoord);
 		} else {
 			glDisableVertexAttribArray(material->texcoord);

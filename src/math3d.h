@@ -337,10 +337,12 @@ enum ML_MeshFlags {
 	ML_POS_2F  = 0x01,
 	ML_POS_3F  = 0x02,
 	ML_POS_4UB = 0x04,
-	ML_N_3F    = 0x08,
-	ML_N_4UB   = 0x10,
-	ML_TC_2F   = 0x20,
-	ML_CLR_4UB = 0x40
+	ML_POS_10_2 = 0x08,
+	ML_N_3F    = 0x10,
+	ML_N_4UB   = 0x20,
+	ML_TC_2F   = 0x40,
+	ML_TC_2US  = 0x80,
+	ML_CLR_4UB = 0x100
 };
 
 void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags);
