@@ -49,7 +49,7 @@ static inline ml_vec2 idx2tc(int idx) {
 #pragma pack(push, 1)
 typedef struct game_block_vtx {
 	uint32_t pos; // 10_10_10_2
-	uint8_t n[4];
+	int8_t n[4];
 	uint16_t tc[2];
 	uint8_t clr[4];
 } game_block_vtx;
@@ -58,7 +58,7 @@ typedef struct game_block_vtx {
 typedef struct game_chunk {
 	int x; // actual coordinates of chunk
 	int z;
-	ml_mesh* data[MAP_CHUNK_HEIGHT];
+	ml_mesh data[MAP_CHUNK_HEIGHT];
 } game_chunk;
 
 typedef struct game_map {

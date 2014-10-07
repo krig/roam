@@ -9,6 +9,8 @@
 //#define CHUNK_AT(c,x,y,z) ((c)->data[(z)*256 + (y)*16 + (x)])
 //#define GetBlock(x,y,z) (game.map->blocks[(y)*() + (z)*() + (x)])
 
+extern ml_tex2d blocks_texture;
+
 void gameLoadChunk(int x, int z);
 
 void gameInitMap() {
@@ -34,9 +36,61 @@ void gameUpdateMap() {
 }
 
 void gameDrawMap() {
-
 	// for each visible chunk...
 	// set up material etc. once.
+	ml_material* material = game.materials + MAT_CHUNK;
+
+	glEnable(GL_TEXTURE_2D);
+	glDisable(GL_BLEND);
+	glEnable(GL_DEPTH_TEST);
+	glUseProgram(material->program);
+	mlBindTexture2D(&blocks_texture, 0);
+
+	ml_vec3 tlight;
+	ml_matrix33 normalmat;
+	mlPushMatrix(&game.modelview);
+	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
+	tlight = mlMulMat33Vec(&normalmat, &game.light_dir);
+
+	glUniform1i(material->tex0, 0);
+	mlUniformMatrix(material->projmat, mlGetMatrix(&game.projection));
+	mlUniformMatrix(material->modelview, mlGetMatrix(&game.modelview));
+	mlUniformVec4(material->amb_color, &game.ambient_color);
+	mlUniformVec4(material->fog_color, &game.fog_color);
+	mlUniformVec3(material->light_dir, &tlight);
+	mlUniformMatrix33(material->normalmat, &normalmat);
+
+	// figure out which chunks are visible
+	// draw visible chunks
+	game_chunk* chunks = game.map->chunks;
+	for (int i = 0; i < MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH; ++i) {
+		// calc chunk offset for this chunk
+		int x = chunks[i].x - game.camera.chunk[0];
+		int z = chunks[i].z - game.camera.chunk[2];
+		ml_vec3 offset = { (float)x - game.camera.offset.x,
+		                   -game.camera.offset.y,
+		                   (float)z - game.camera.offset.z };
+		// skip chunk if outside view distance (not loaded/generated then)
+		if (abs(x) >= VIEW_DISTANCE || abs(z) >= VIEW_DISTANCE)
+			continue;
+		// todo: figure out which meshes need to be drawn
+		for (int j = 0; j < MAP_CHUNK_HEIGHT; ++j) {
+			ml_mesh* mesh = chunks[i].data + j;
+			if (mesh->vbo != 0) {
+				// update the chunk offset uniform
+				// bind the VBO
+				// can this be done once? probably...
+				mlUniformVec3(material->chunk_offset, &offset);
+				mlMapMeshToMaterial(mesh, material);
+				glDrawArrays(mesh->mode, 0, mesh->count);
+				glBindBuffer(GL_ARRAY_BUFFER, 0);
+			}
+		}
+	}
+
+	mlPopMatrix(&game.modelview);
+	glUseProgram(0);
+	glDisable(GL_TEXTURE_2D);
 
 	/*
 	ml_vec3 tlight;
@@ -59,9 +113,27 @@ void gameDrawMap() {
 	*/
 }
 
+// TODO: chunk saving/loading
+// TODO: asynchronous
+// as a test, just fill in the designated chunk
+// and tesselate the whole thing
+
+size_t gameTesselateSubChunk(ml_mesh* mesh, int x, int z);
+
+
 void gameLoadChunk(int x, int z) {
-	// TODO: chunk saving/loading
-	// TODO: asynchronous 
+	game_chunk* chunk = &(game.map->chunks[z*MAP_CHUNK_WIDTH + x]);
+
+	// fill blocks in column...
+
+	// tesselate column
+	for (int y = 0; y < MAP_CHUNK_HEIGHT; ++y)
+		gameTesselateSubChunk(chunk->data + y, x, z);
+}
+
+size_t gameTesselateSubChunk(ml_mesh* mesh, int x, int z) {
+	// if all one material.. if air, skip; if solid, make a big cube
+	return 0;
 }
 
 
@@ -165,10 +237,10 @@ size_t gameTesselateChunk(ml_mesh* mesh, game_chunk* chunk) {
 			for (ix = 0; ix < 16; ++ix) {
 				if (FACE_AT(ix, iy, iz) & FACE_LEFT) {
 					game_block_vtx corners[4] = {
-						{{ix*15, iy*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, 127, 127, 0} },
-						{{ix*15, iy*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, 127, 127, 0} },
-						{{ix*15, (iy+1)*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, 127, 127, 0} },
-						{{ix*15, (iy+1)*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, 127, 127, 0} },
+						{{ix*15, iy*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {-127, 0, 0, 0} },
+						{{ix*15, iy*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {-127, 0, 0, 0} },
+						{{ix*15, (iy+1)*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {-127, 0, 0, 0} },
+						{{ix*15, (iy+1)*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {-127, 0, 0, 0} },
 					};
 					verts[vi + 0] = corners[0];
 					verts[vi + 1] = corners[1];
@@ -181,10 +253,10 @@ size_t gameTesselateChunk(ml_mesh* mesh, game_chunk* chunk) {
 
 				if (FACE_AT(ix, iy, iz) & FACE_RIGHT) {
 					game_block_vtx corners[4] = {
-						{{(ix+1)*15, iy*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {255, 127, 127, 0} },
-						{{(ix+1)*15, iy*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {255, 127, 127, 0} },
-						{{(ix+1)*15, (iy+1)*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {255, 127, 127, 0} },
-						{{(ix+1)*15, (iy+1)*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {255, 127, 127, 0} },
+						{{(ix+1)*15, iy*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 0, 0, 0} },
+						{{(ix+1)*15, iy*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 0, 0, 0} },
+						{{(ix+1)*15, (iy+1)*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 0, 0, 0} },
+						{{(ix+1)*15, (iy+1)*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 0, 0, 0} },
 					};
 					verts[vi + 0] = corners[0];
 					verts[vi + 1] = corners[2];
@@ -196,10 +268,10 @@ size_t gameTesselateChunk(ml_mesh* mesh, game_chunk* chunk) {
 				}
 				if (FACE_AT(ix, iy, iz) & FACE_TOP) {
 					game_block_vtx corners[4] = {
-						{{ix*15, (iy+1)*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 255, 127, 0} },
-						{{ix*15, (iy+1)*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 255, 127, 0} },
-						{{(ix+1)*15, (iy+1)*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 255, 127, 0} },
-						{{(ix+1)*15, (iy+1)*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 255, 127, 0} },
+						{{ix*15, (iy+1)*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, 127, 0, 0} },
+						{{ix*15, (iy+1)*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, 127, 0, 0} },
+						{{(ix+1)*15, (iy+1)*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, 127, 0, 0} },
+						{{(ix+1)*15, (iy+1)*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, 127, 0, 0} },
 					};
 					verts[vi + 0] = corners[0];
 					verts[vi + 1] = corners[1];
@@ -212,10 +284,10 @@ size_t gameTesselateChunk(ml_mesh* mesh, game_chunk* chunk) {
 
 				if (FACE_AT(ix, iy, iz) & FACE_BOTTOM) {
 					game_block_vtx corners[4] = {
-						{{ix*15, iy*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 0, 127, 0} },
-						{{ix*15, iy*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 0, 127, 0} },
-						{{(ix+1)*15, iy*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 0, 127, 0} },
-						{{(ix+1)*15, iy*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 0, 127, 0} },
+						{{ix*15, iy*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, -127, 0, 0} },
+						{{ix*15, iy*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, -127, 0, 0} },
+						{{(ix+1)*15, iy*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, -127, 0, 0} },
+						{{(ix+1)*15, iy*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, -127, 0, 0} },
 					};
 					verts[vi + 0] = corners[0];
 					verts[vi + 1] = corners[2];
@@ -242,10 +314,10 @@ size_t gameTesselateChunk(ml_mesh* mesh, game_chunk* chunk) {
 				}
 				if (FACE_AT(ix, iy, iz) & FACE_BACK) {
 					game_block_vtx corners[4] = {
-						{{ix*15, iy*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 127, 0, 0} },
-						{{(ix+1)*15, iy*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 127, 0, 0} },
-						{{(ix+1)*15, (iy+1)*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 127, 0, 0} },
-						{{ix*15, (iy+1)*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 127, 0, 0} },
+						{{ix*15, iy*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, 0, -127, 0} },
+						{{(ix+1)*15, iy*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, 0, -127, 0} },
+						{{(ix+1)*15, (iy+1)*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, 0, -127, 0} },
+						{{ix*15, (iy+1)*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, 0, -127, 0} },
 					};
 					verts[vi + 0] = corners[0];
 					verts[vi + 1] = corners[2];
@@ -259,7 +331,7 @@ size_t gameTesselateChunk(ml_mesh* mesh, game_chunk* chunk) {
 		}
 	}
 
-	mlCreateMesh(mesh, vi, verts, ML_POS_4UB | ML_N_4UB);
+	mlCreateMesh(mesh, vi, verts, ML_POS_4UB | ML_N_4B);
 	free(verts);
 	return nverts;
 }

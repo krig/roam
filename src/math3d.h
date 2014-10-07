@@ -78,6 +78,7 @@ typedef struct ml_material {
 	GLint amb_color;
 	GLint fog_color;
 	GLint light_dir;
+	GLint tex0;
 	GLint position;
 	GLint texcoord;
 	GLint color;
@@ -339,7 +340,7 @@ enum ML_MeshFlags {
 	ML_POS_4UB = 0x04,
 	ML_POS_10_2 = 0x08,
 	ML_N_3F    = 0x10,
-	ML_N_4UB   = 0x20,
+	ML_N_4B   = 0x20,
 	ML_TC_2F   = 0x40,
 	ML_TC_2US  = 0x80,
 	ML_CLR_4UB = 0x100
@@ -351,6 +352,7 @@ void mlDestroyMesh(ml_mesh* mesh);
 
 void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, const ml_mesh* mesh);
 void mlDestroyRenderable(ml_renderable* renderable);
+void mlMapMeshToMaterial(const ml_mesh* mesh, const ml_material* material);
 
 // Matrix stack
 

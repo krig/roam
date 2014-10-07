@@ -286,6 +286,7 @@ void mlCreateMaterial(ml_material* material, const char* vsource, const char* fs
 	material->amb_color = glGetUniformLocation(program, "amb_color");
 	material->fog_color = glGetUniformLocation(program, "fog_color");
 	material->light_dir = glGetUniformLocation(program, "light_dir");
+	material->tex0 = glGetUniformLocation(program, "tex0");
 	material->position = glGetAttribLocation(program, "position");
 	material->texcoord = glGetAttribLocation(program, "texcoord");
 	material->color = glGetAttribLocation(program, "color");
@@ -306,7 +307,7 @@ static inline size_t mesh_stride(GLenum flags) {
 		((flags & ML_POS_10_2) ? 4 : 0) +
 		((flags & ML_CLR_4UB) ? 4 : 0) +
 		((flags & ML_N_3F) ? 12 : 0) +
-		((flags & ML_N_4UB) ? 4 : 0) +
+		((flags & ML_N_4B) ? 4 : 0) +
 		((flags & ML_TC_2F) ? 8 : 0) +
 		((flags & ML_TC_2US) ? 4 : 0);
 }
@@ -325,8 +326,8 @@ void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags) {
 	GLint offset = 0;
 	mesh->position = (flags & (ML_POS_2F + ML_POS_3F + ML_POS_4UB + ML_POS_10_2)) ? offset : -1;
 	offset += (flags & ML_POS_2F) ? 8 : ((flags & ML_POS_3F) ? 12 : (flags & (ML_POS_4UB + ML_POS_10_2) ? 4 : 0));
-	mesh->normal = (flags & (ML_N_3F + ML_N_4UB)) ? offset : -1;
-	offset += (flags & ML_N_3F) ? 12 : ((flags & ML_N_4UB) ? 4 : 0);
+	mesh->normal = (flags & (ML_N_3F + ML_N_4B)) ? offset : -1;
+	offset += (flags & ML_N_3F) ? 12 : ((flags & ML_N_4B) ? 4 : 0);
 	mesh->texcoord = (flags & (ML_TC_2F + ML_TC_2US)) ? offset : -1;
 	offset += (flags & ML_TC_2F) ? 8 : ((flags & ML_TC_2US) ? 4 : 0);
 	mesh->color = (flags & ML_CLR_4UB) ? offset : -1;
@@ -372,17 +373,8 @@ void mlDestroyMesh(ml_mesh* mesh) {
 	mesh->ibo = 0;
 }
 
-void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, const ml_mesh* mesh) {
-	glGenVertexArrays(1, &renderable->vao);
-	glBindVertexArray(renderable->vao);
-	renderable->material = material;
-	renderable->mesh = mesh;
-
+void mlMapMeshToMaterial(const ml_mesh* mesh, const ml_material* material) {
 	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
-
-	if (mesh->ibo > 0)
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ibo);
-
 	if (material->position > -1) {
 		if (mesh->position > -1) {
 			if (mesh->flags & ML_POS_2F)
@@ -403,7 +395,7 @@ void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, 
 			if (mesh->flags & ML_N_3F)
 				glVertexAttribPointer(material->normal, 3, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->normal));
 			else // 4ub
-				glVertexAttribPointer(material->normal, 4, GL_UNSIGNED_BYTE, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->normal));
+				glVertexAttribPointer(material->normal, 4, GL_BYTE, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->normal));
 			glEnableVertexAttribArray(material->normal);
 		} else {
 			glDisableVertexAttribArray(material->normal);
@@ -429,7 +421,16 @@ void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, 
 			glVertexAttrib4Nub(material->color, 0xff, 0xff, 0xff, 0xff);
 		}
 	}
+}
 
+void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, const ml_mesh* mesh) {
+	glGenVertexArrays(1, &renderable->vao);
+	glBindVertexArray(renderable->vao);
+	renderable->material = material;
+	renderable->mesh = mesh;
+	if (mesh->ibo > 0)
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ibo);
+	mlMapMeshToMaterial(mesh, material);
 	glBindVertexArray(0);
 	glCheck(__LINE__);
 }
