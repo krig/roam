@@ -8,12 +8,14 @@
 static inline size_t blockIndex(int x, int y, int z) {
 	int bx = mod(x, MAP_BLOCK_WIDTH);
 	int bz = mod(z, MAP_BLOCK_WIDTH);
-	if (y < 0 || y >= MAP_BLOCK_HEIGHT)
-		return BLOCK_AIR;
 	return bz * MAP_BLOCK_WIDTH * MAP_BLOCK_WIDTH + bx * MAP_BLOCK_WIDTH + y;
 }
 
 static inline uint8_t blockType(int x, int y, int z) {
+	if (y < 0)
+		return BLOCK_DARKSTONE;
+	if (y >= MAP_BLOCK_HEIGHT)
+		return BLOCK_AIR;
 	return game.map.blocks[blockIndex(x, y, z)].type;
 }
 

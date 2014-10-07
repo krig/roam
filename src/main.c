@@ -321,7 +321,7 @@ main(int argc, char* argv[]) {
 
 	mlPerspective(mlGetMatrix(&game.projection), mlDeg2Rad(70.f),
 	              (float)sz.x / (float)sz.y,
-	              0.1f, 100.f);
+	              0.1f, VIEW_DISTANCE*CHUNK_SIZE);
 
 	gameInit();
 	glCheck(__LINE__);
