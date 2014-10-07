@@ -151,6 +151,11 @@ mlClamp(float t, float lo, float hi) {
 	return (t < lo) ? lo : ((t > hi) ? hi : t);
 }
 
+static inline double
+mlClampd(double t, double lo, double hi) {
+	return (t < lo) ? lo : ((t > hi) ? hi : t);
+}
+
 static inline float
 mlWrap(float t, float lo, float hi) {
     while (t < lo)
@@ -399,6 +404,16 @@ static inline ml_clr
 mlRGBA(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 	ml_clr c = { a, r, g, b };
 	return c;
+}
+
+static inline uint32_t
+mlPackVector_U_10_10_10_2(ml_vec4 v) {
+	// The vector components must be [0 - 1]
+	uint32_t ret = (uint32_t)(mlClampd(v.x * 1024.0, 0.0, 1023.0) & 0x13);
+	ret |= ((uint32_t)(mlClampd(v.y * 1024.0, 0.0, 1023.0)) & 0x13) << 10;
+	ret |= ((uint32_t)(mlClampd(v.z * 1024.0, 0.0, 1023.0)) & 0x13) << 20;
+	ret |= ((uint32_t)(mlClampd(v.w * 4.0, 0.0, 3.0)) & 0x3) << 2;
+	return ret;
 }
 
 // TODO: GL state stack - track state as a stack of uint64_ts...
