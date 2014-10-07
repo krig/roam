@@ -59,6 +59,7 @@ typedef struct game_chunk {
 	int x; // actual coordinates of chunk
 	int z;
 	ml_mesh data[MAP_CHUNK_HEIGHT];
+	// add per-chunk state information here (things like command blocks...)
 } game_chunk;
 
 typedef struct game_map {
@@ -69,7 +70,7 @@ typedef struct game_map {
 	// (load or generate asynchronously, then copy over in update?)
 	uint8_t blocks[MAP_BUFFER_SIZE]; // 64MB
 	uint8_t meta[MAP_BUFFER_SIZE]; // 64MB
-	uint8_t light[MAP_BUFFER_SIZE]; // 64MB
+	uint16_t light[MAP_BUFFER_SIZE]; // 128MB 4 bits/channel, [r, g, b, a]
 	game_chunk chunks[MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH];
 	unsigned long seed;
 } game_map;

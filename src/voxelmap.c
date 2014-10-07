@@ -46,15 +46,18 @@ void gameDrawMap() {
 	glUseProgram(material->program);
 	mlBindTexture2D(&blocks_texture, 0);
 
+	ml_vec3 tlight;
 	ml_matrix33 normalmat;
 	mlPushMatrix(&game.modelview);
 	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
+	tlight = mlMulMat33Vec(&normalmat, &game.light_dir);
 
 	glUniform1i(material->tex0, 0);
 	mlUniformMatrix(material->projmat, mlGetMatrix(&game.projection));
 	mlUniformMatrix(material->modelview, mlGetMatrix(&game.modelview));
 	mlUniformVec4(material->amb_color, &game.ambient_color);
 	mlUniformVec4(material->fog_color, &game.fog_color);
+	mlUniformVec3(material->light_dir, &tlight);
 	mlUniformMatrix33(material->normalmat, &normalmat);
 
 	// figure out which chunks are visible
@@ -88,6 +91,26 @@ void gameDrawMap() {
 	mlPopMatrix(&game.modelview);
 	glUseProgram(0);
 	glDisable(GL_TEXTURE_2D);
+
+	/*
+	ml_vec3 tlight;
+	ml_matrix33 normalmat;
+	mlPushMatrix(&game.modelview);
+	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
+	tlight = mlMulMat33Vec(&normalmat, &light_dir);
+	mlDrawBegin(&renderables[2]);
+	mlUniformMatrix(renderables[2].material->projmat, mlGetMatrix(&game.projection));
+	mlUniformMatrix(renderables[2].material->modelview, mlGetMatrix(&game.modelview));
+	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
+	mlUniformMatrix33(renderables[2].material->normalmat, &normalmat);
+	ml_vec3 chunk_offset = { -1, -1, -1 };
+	mlUniformVec3(renderables[2].material->chunk_offset, &chunk_offset);
+	mlUniformVec4(renderables[2].material->amb_color, &amb_color);
+	mlUniformVec4(renderables[2].material->fog_color, &fog_color);
+	mlUniformVec3(renderables[2].material->light_dir, &tlight);
+	mlDrawEnd(&renderables[2]);
+	mlPopMatrix(&game.modelview);
+	*/
 }
 
 // TODO: chunk saving/loading
