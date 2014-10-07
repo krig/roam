@@ -45,10 +45,8 @@ static void
 gameInit() {
 	mlLoadTexture2D(&blocks_texture, "data/blocks.png");
 
-	game.camera.chunk[0] =
-		game.camera.chunk[1] =
-		game.camera.chunk[2] = 0;
-	ml_vec3 offs = { 2.537648, 1.336000, 0.514751 };
+	game.camera.cx = game.camera.cz = 0;
+	ml_vec3 offs = { 2.537648, GROUND_LEVEL + 1.336000, 0.514751 };
 	game.camera.offset = offs;
 	game.camera.pitch = -0.544628;
 	game.camera.yaw = 1.056371;
@@ -114,7 +112,8 @@ gameHandleEvent(SDL_Event* event) {
 		if (event->key.keysym.sym == game.controls.exitgame)
 			return false;
 		else if (event->key.keysym.sym == game.controls.debuginfo)
-			printf("%f, %f, %f p:%f, y:%f\n",
+			printf("(%d, %d) + (%f, %f, %f) p:%f, y:%f\n",
+			       game.camera.cx, game.camera.cz,
 			       game.camera.offset.x, game.camera.offset.y, game.camera.offset.z,
 			       game.camera.pitch, game.camera.yaw);
 		else if (event->key.keysym.sym == game.controls.wireframe)
@@ -232,13 +231,15 @@ gameRender(SDL_Point* viewport) {
 
 	ml_vec3 mc = mlVec3Scalef(mlVec3Normalize(game.light_dir), 4.f);
 	ml_vec3 mc2 = mlVec3Scalef(mlVec3Normalize(game.light_dir), 5.f);
+	mc.y += GROUND_LEVEL;
+	mc2.y += GROUND_LEVEL;
 	uiDebugLine(mc, mc2, 0xffff7f00);
 	uiDebugSphere(mc2, 0.15f, 0xffcf9f3f);
 
-	ml_vec3 origo = { 0, 0, 0 };
-	ml_vec3 xaxis = { 1, 0, 0 };
-	ml_vec3 yaxis = { 0, 1, 0 };
-	ml_vec3 zaxis = { 0, 0, 1 };
+	ml_vec3 origo = { 0, GROUND_LEVEL, 0 };
+	ml_vec3 xaxis = { 1, GROUND_LEVEL, 0 };
+	ml_vec3 yaxis = { 0, GROUND_LEVEL + 1, 0 };
+	ml_vec3 zaxis = { 0, GROUND_LEVEL, 1 };
 	uiDebugLine(origo, xaxis, 0xff00ff00);
 	uiDebugLine(origo, yaxis, 0xffff0000);
 	uiDebugLine(origo, zaxis, 0xff0000ff);

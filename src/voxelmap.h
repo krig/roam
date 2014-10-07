@@ -8,6 +8,7 @@
 
 #define CHUNK_SIZE 32
 #define VIEW_DISTANCE 8
+#define GROUND_LEVEL 100
 #define MAP_CHUNK_WIDTH (VIEW_DISTANCE*2)
 #define MAP_CHUNK_HEIGHT 8
 #define MAP_BLOCK_WIDTH (MAP_CHUNK_WIDTH*CHUNK_SIZE)
@@ -47,12 +48,24 @@ static inline ml_vec2 idx2tc(int idx) {
 }
 
 #pragma pack(push, 1)
+
+typedef struct tc2us_t {
+	uint16_t u;
+	uint16_t v;
+} tc2us_t;
+
 typedef struct game_block_vtx {
 	uint32_t pos; // 10_10_10_2
 	int8_t n[4];
-	uint16_t tc[2];
-	uint8_t clr[4];
+	tc2us_t tc;
+	uint32_t clr;
 } game_block_vtx;
+
+typedef struct game_block {
+	uint8_t type;
+	uint8_t meta;
+} game_block;
+
 #pragma pack(pop)
 
 typedef struct game_chunk {
@@ -68,9 +81,8 @@ typedef struct game_map {
 	// meta = light levels + flags?
 	// as the player moves, blocks should be swapped in/out
 	// (load or generate asynchronously, then copy over in update?)
-	uint8_t blocks[MAP_BUFFER_SIZE]; // 64MB
-	uint8_t meta[MAP_BUFFER_SIZE]; // 64MB
-	uint16_t light[MAP_BUFFER_SIZE]; // 128MB 4 bits/channel, [r, g, b, a]
+	game_block blocks[MAP_BUFFER_SIZE]; // 128MB
+	uint16_t light[MAP_BUFFER_SIZE]; // 128MB
 	game_chunk chunks[MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH];
 	unsigned long seed;
 } game_map;
@@ -79,3 +91,13 @@ void gameFreeMap();
 void gameInitMap();
 void gameUpdateMap();
 void gameDrawMap();
+
+// mod which handles negative numbers
+static inline int mod(int a, int b) {
+   if(b < 0) //you can check for b == 0 separately and do what you want
+     return mod(-a, -b);
+   int ret = a % b;
+   if(ret < 0)
+     ret+=b;
+   return ret;
+}

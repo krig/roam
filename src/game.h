@@ -1,5 +1,7 @@
 #pragma once
 
+#include "voxelmap.h"
+
 /*
 
   shared data for the game
@@ -17,7 +19,8 @@ enum E_Materials {
 };
 
 struct camera_t {
-	int chunk[3];
+	int cx;
+	int cz;
 	ml_vec3 offset;
 	float pitch;
 	float yaw;
@@ -45,15 +48,13 @@ struct blockinfo_t {
 	int tex[6];
 };
 
-struct game_map;
-
 struct game_t {
 	struct camera_t camera;
 	struct controls_t controls;
 	ml_material materials[MAX_MATERIALS];
 	ml_matrixstack projection;
 	ml_matrixstack modelview;
-	struct game_map* map;
+	game_map map;
 
 	double time_of_day; // (0 - 1 looping: 0 is midday, 0.5 is midnight)
 	ml_vec4 ambient_color;

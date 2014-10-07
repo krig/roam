@@ -5,9 +5,17 @@
 #include "noise.h"
 #include <time.h>
 
-//#define CHUNK_SCALE (1.0/16.0)
-//#define CHUNK_AT(c,x,y,z) ((c)->data[(z)*256 + (y)*16 + (x)])
-//#define GetBlock(x,y,z) (game.map->blocks[(y)*() + (z)*() + (x)])
+static inline size_t blockIndex(int x, int y, int z) {
+	int bx = mod(x, MAP_BLOCK_WIDTH);
+	int bz = mod(z, MAP_BLOCK_WIDTH);
+	if (y < 0 || y >= MAP_BLOCK_HEIGHT)
+		return BLOCK_AIR;
+	return bz * MAP_BLOCK_WIDTH * MAP_BLOCK_WIDTH + bx * MAP_BLOCK_WIDTH + y;
+}
+
+static inline uint8_t blockType(int x, int y, int z) {
+	return game.map.blocks[blockIndex(x, y, z)].type;
+}
 
 extern ml_tex2d blocks_texture;
 
@@ -15,21 +23,19 @@ void gameLoadChunk(int x, int z);
 
 void gameInitMap() {
 	printf("* Allocate and build initial map...\n");
-	game.map = calloc(1, sizeof(game_map));
-	game.map->seed = time(0);
-	printf("* Seed: %lx\n", game.map->seed);
+	memset(&game.map, 0, sizeof(game_map));
+	game.map.seed = time(0);
+	printf("* Seed: %lx\n", game.map.seed);
 
-	// for now, always start at (0, 0)
+	ml_ivec3 player = { 0, 0, 0 };
 	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
 		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x)
-			gameLoadChunk(x, z);
+			gameLoadChunk(player.x + x, player.z + z);
 	gameUpdateMap();
 	printf("* Map load complete.\n");
 }
 
 void gameFreeMap() {
-	free(game.map);
-	game.map = NULL;
 }
 
 void gameUpdateMap() {
@@ -62,16 +68,16 @@ void gameDrawMap() {
 
 	// figure out which chunks are visible
 	// draw visible chunks
-	game_chunk* chunks = game.map->chunks;
+	game_chunk* chunks = game.map.chunks;
 	for (int i = 0; i < MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH; ++i) {
 		// calc chunk offset for this chunk
-		int x = chunks[i].x - game.camera.chunk[0];
-		int z = chunks[i].z - game.camera.chunk[2];
+		int x = chunks[i].x - game.camera.cx;
+		int z = chunks[i].z - game.camera.cz;
 		ml_vec3 offset = { (float)x - game.camera.offset.x,
 		                   -game.camera.offset.y,
 		                   (float)z - game.camera.offset.z };
 		// skip chunk if outside view distance (not loaded/generated then)
-		if (abs(x) >= VIEW_DISTANCE || abs(z) >= VIEW_DISTANCE)
+		if (abs(x) > VIEW_DISTANCE || abs(z) > VIEW_DISTANCE)
 			continue;
 		// todo: figure out which meshes need to be drawn
 		for (int j = 0; j < MAP_CHUNK_HEIGHT; ++j) {
@@ -118,53 +124,49 @@ void gameDrawMap() {
 // as a test, just fill in the designated chunk
 // and tesselate the whole thing
 
-size_t gameTesselateSubChunk(ml_mesh* mesh, int x, int z);
-
+size_t gameTesselateSubChunk(ml_mesh* mesh, int cx, int cy, int cz);
 
 void gameLoadChunk(int x, int z) {
-	game_chunk* chunk = &(game.map->chunks[z*MAP_CHUNK_WIDTH + x]);
+	int bufx = mod(x, MAP_CHUNK_WIDTH);
+	int bufz = mod(z, MAP_CHUNK_WIDTH);
+	printf("Loading (%d,%d) into (%d, %d)\n", x, z, bufx, bufz);
+	game_chunk* chunk = &(game.map.chunks[bufz*MAP_CHUNK_WIDTH + bufx]);
+	game_block* blocks = game.map.blocks;
+	chunk->x = x;
+	chunk->z = z;
+
+	int blockx = x * CHUNK_SIZE;
+	int blockz = z * CHUNK_SIZE;
+	if (blocks[blockIndex(blockx, 0, blockz)].type != 0)
+		printf("Cache contention! (%d, %d) with (%d, %d)\n",
+		       bufx,
+		       bufz,
+		       blocks[blockIndex(blockx, 0, blockz)].type,
+		       blocks[blockIndex(blockx, 0, blockz)].meta);
+	blocks[blockIndex(blockx, 0, blockz)].type = x;
+	blocks[blockIndex(blockx, 0, blockz)].meta = z;
 
 	// fill blocks in column...
-
-	// tesselate column
-	for (int y = 0; y < MAP_CHUNK_HEIGHT; ++y)
-		gameTesselateSubChunk(chunk->data + y, x, z);
-}
-
-size_t gameTesselateSubChunk(ml_mesh* mesh, int x, int z) {
-	// if all one material.. if air, skip; if solid, make a big cube
-	return 0;
-}
-
-
-/*
-static uint8_t gameGenerateBlock(double x, double y, double z) {
-	double height = simplexNoise(x, z);
-	double density = osnNoise(x, y, z);
-	return (height - density) < 0 ? BLOCK_AIR : BLOCK_STONE;
-}
-
-// just a test...
-void gameGenerateChunk(game_chunk* chunk, int x, int y, int z) {
-	int ix, iy, iz;
-	double dx, dy, dz;
-	dx = (double)x;
-	dy = (double)y;
-	dz = (double)z;
-	for (iz = 0; iz < 16; ++iz) {
-		double ddz = dz + CHUNK_SCALE * (double)iz;
-		for (iy = 0; iy < 16; ++iy) {
-			double ddy = dy + CHUNK_SCALE * (double)iy;
-			for (ix = 0; ix < 16; ++ix) {
-				double ddx = dx + CHUNK_SCALE*(double)ix;
-				CHUNK_AT(chunk, ix, iy, iz) = gameGenerateBlock(ddx, ddy, ddz);
+	for (int fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
+		for (int fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
+			for (int filly = 0; filly < MAP_BLOCK_HEIGHT; ++filly) {
+				if (filly < 5)
+					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_DARKSTONE;
+				else if (filly < GROUND_LEVEL - 5)
+					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_STONE;
+				else if (filly < GROUND_LEVEL)
+					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_DIRT;
+				else if (filly == GROUND_LEVEL)
+					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_GRASS;
+				else
+					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_AIR;
 			}
 		}
 	}
 
-	chunk->x = x;
-	chunk->y = y;
-	chunk->z = z;
+	// tesselate column
+	for (int y = 0; y < MAP_CHUNK_HEIGHT; ++y)
+		gameTesselateSubChunk(chunk->data + y, bufx, y, bufz);
 }
 
 // tesselation buffer: size is maximum number of triangles generated
@@ -179,40 +181,63 @@ enum {
 	FACE_BACK = 16, FACE_FRONT = 32
 };
 
-#define FACE_AT(x, y, z) faces[(z)*256 + (y)* 16 + (x)]
+#define TYPE_AT(x, y, z) type[(z)*CHUNK_SIZE*CHUNK_SIZE + (x)*CHUNK_SIZE + (y)]
+#define FACE_AT(x, y, z) faces[(z)*CHUNK_SIZE*CHUNK_SIZE + (x)*CHUNK_SIZE + (y)]
 
-size_t gameTesselateChunk(ml_mesh* mesh, game_chunk* chunk) {
+#define TESSELATION_BUFFER_SIZE (4*1024*1024)
+static uint8_t tesselation_buffer[TESSELATION_BUFFER_SIZE];
+
+extern struct blockinfo_t blockinfo[];
+
+static inline tc2us_t tc2us(ml_vec2 tc) {
+	tc2us_t to = {
+		(uint16_t)(tc.x * (double)0xffff),
+		(uint16_t)(tc.y * (double)0xffff)
+	};
+	return to;
+}
+
+size_t gameTesselateSubChunk(ml_mesh* mesh, int cx, int cy, int cz) {
+	printf("tesselate subchunk (%d, %d, %d)\n", cx, cy, cz);
+
 	int ix, iy, iz, vi;
 	size_t nverts;
 	game_block_vtx* verts;
-	uint8_t faces[16*16*16];
+	uint8_t type[CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE];
+	uint8_t faces[CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE];
+	memset(type, 0, sizeof(type));
 	memset(faces, 0, sizeof(faces));
 	nverts = 0;
-	for (iz = 0; iz < 16; ++iz) {
-		for (iy = 0; iy < 16; ++iy) {
-			for (ix = 0; ix < 16; ++ix) {
-				if (CHUNK_AT(chunk, ix, iy, iz) != BLOCK_AIR) {
-					if (ix == 0 || CHUNK_AT(chunk, ix-1, iy, iz) == BLOCK_AIR) {
+	int bx, by, bz;
+	bx = cx*CHUNK_SIZE;
+	by = cy*CHUNK_SIZE;
+	bz = cz*CHUNK_SIZE;
+	for (iz = 0; iz < CHUNK_SIZE; ++iz) {
+		for (ix = 0; ix < CHUNK_SIZE; ++ix) {
+			for (iy = 0; iy < CHUNK_SIZE; ++iy) {
+				TYPE_AT(ix, iy, iz) = blockType(bx+ix, by+iy, bz+iz);
+				if (TYPE_AT(ix, iy, iz) != BLOCK_AIR) {
+					if (blockType(bx+ix-1, by+iy, bx+iz) == BLOCK_AIR) {
 						FACE_AT(ix, iy, iz) |= FACE_LEFT;
 						nverts += 6;
 					}
-					if (ix == 15 || CHUNK_AT(chunk, ix+1, iy, iz) == BLOCK_AIR) {
+					if (blockType(bx+ix-1, by+iy, bz+iz) == BLOCK_AIR) {
 						FACE_AT(ix, iy, iz) |= FACE_RIGHT;
 						nverts += 6;
 					}
-					if (iy == 0 || CHUNK_AT(chunk, ix, iy-1, iz) == BLOCK_AIR) {
+					if (blockType(bx+ix, by+iy-1, bz+iz) == BLOCK_AIR) {
 						FACE_AT(ix, iy, iz) |= FACE_BOTTOM;
 						nverts += 6;
 					}
-					if (iy == 15 || CHUNK_AT(chunk, ix, iy+1, iz) == BLOCK_AIR) {
+					if (blockType(bx+ix, by+iy+1, bz+iz) == BLOCK_AIR) {
 						FACE_AT(ix, iy, iz) |= FACE_TOP;
 						nverts += 6;
 					}
-					if (iz == 0 || CHUNK_AT(chunk, ix, iy, iz-1) == BLOCK_AIR) {
+					if (blockType(bx+ix, by+iy, bz+iz-1) == BLOCK_AIR) {
 						FACE_AT(ix, iy, iz) |= FACE_BACK;
 						nverts += 6;
 					}
-					if (iz == 15 || CHUNK_AT(chunk, ix, iy, iz+1) == BLOCK_AIR) {
+					if (blockType(bx+ix, by+iy, bz+iz+1) == BLOCK_AIR) {
 						FACE_AT(ix, iy, iz) |= FACE_FRONT;
 						nverts += 6;
 					}
@@ -221,26 +246,43 @@ size_t gameTesselateChunk(ml_mesh* mesh, game_chunk* chunk) {
 		}
 	}
 
-	//memset(faces, 0xff, sizeof(faces));
-	//nverts = 16*16*16*12;
-
 	if (nverts == 0)
 		return nverts;
 
 	vi = 0;
 
-	verts = malloc(nverts * sizeof(game_block_vtx));
+	if (nverts * sizeof(game_block_vtx) > TESSELATION_BUFFER_SIZE)
+		roamError("Tesselation buffer too small: %zu", nverts * sizeof(game_block_vtx));
+
+	verts = (game_block_vtx*)tesselation_buffer;//malloc(nverts * sizeof(game_block_vtx));
+
+#define POS(x, y, z) mlPackVector_U_10_10_10_2((float)(x)/(float)CHUNK_SIZE, (float)(y)/(float)CHUNK_SIZE, (float)(z)/(float)CHUNK_SIZE, 0.f)
 
 	// fill in verts
-	for (iz = 0; iz < 16; ++iz) {
-		for (iy = 0; iy < 16; ++iy) {
-			for (ix = 0; ix < 16; ++ix) {
+	for (iz = 0; iz < CHUNK_SIZE; ++iz) {
+		for (iy = 0; iy < CHUNK_SIZE; ++iy) {
+			for (ix = 0; ix < CHUNK_SIZE; ++ix) {
+				uint8_t t = TYPE_AT(ix, iy, iz);
+				ml_vec2 tc[6] = {
+					idx2tc(blockinfo[t].tex[0]),
+					idx2tc(blockinfo[t].tex[1]),
+					idx2tc(blockinfo[t].tex[2]),
+					idx2tc(blockinfo[t].tex[3]),
+					idx2tc(blockinfo[t].tex[4]),
+					idx2tc(blockinfo[t].tex[5]),
+				};
+				ml_vec2 tcoffs[4] = {
+					{0, 0},
+					{BLOCK_TC_W, 0},
+					{0, BLOCK_TC_W},
+					{BLOCK_TC_W, BLOCK_TC_W}
+				};
 				if (FACE_AT(ix, iy, iz) & FACE_LEFT) {
 					game_block_vtx corners[4] = {
-						{{ix*15, iy*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {-127, 0, 0, 0} },
-						{{ix*15, iy*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {-127, 0, 0, 0} },
-						{{ix*15, (iy+1)*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {-127, 0, 0, 0} },
-						{{ix*15, (iy+1)*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {-127, 0, 0, 0} },
+						{POS(ix, iy, iz), {-127, 0, 0, 0}, tc2us(mlVec2Add(tc[2], tcoffs[0])), 0xffffffff },
+						{POS(ix, iy, (iz+1)), {-127, 0, 0, 0}, tc2us(mlVec2Add(tc[2], tcoffs[1])), 0xffffffff },
+						{POS(ix, (iy+1), iz), {-127, 0, 0, 0}, tc2us(mlVec2Add(tc[2], tcoffs[2])), 0xffffffff },
+						{POS(ix, (iy+1), (iz+1)), {-127, 0, 0, 0}, tc2us(mlVec2Add(tc[2], tcoffs[3])), 0xfffffff },
 					};
 					verts[vi + 0] = corners[0];
 					verts[vi + 1] = corners[1];
@@ -253,10 +295,10 @@ size_t gameTesselateChunk(ml_mesh* mesh, game_chunk* chunk) {
 
 				if (FACE_AT(ix, iy, iz) & FACE_RIGHT) {
 					game_block_vtx corners[4] = {
-						{{(ix+1)*15, iy*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 0, 0, 0} },
-						{{(ix+1)*15, iy*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 0, 0, 0} },
-						{{(ix+1)*15, (iy+1)*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 0, 0, 0} },
-						{{(ix+1)*15, (iy+1)*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 0, 0, 0} },
+						{POS((ix+1), iy, iz), {127, 0, 0, 0}, tc2us(mlVec2Add(tc[3], tcoffs[0])), 0xffffffff },
+						{POS((ix+1), iy, (iz+1)), {127, 0, 0, 0}, tc2us(mlVec2Add(tc[3], tcoffs[1])), 0xffffffff },
+						{POS((ix+1), (iy+1), (iz+1)), {127, 0, 0, 0}, tc2us(mlVec2Add(tc[3], tcoffs[2])), 0xffffffff },
+						{POS((ix+1), (iy+1), iz), {127, 0, 0, 0}, tc2us(mlVec2Add(tc[3], tcoffs[3])), 0xffffffff },
 					};
 					verts[vi + 0] = corners[0];
 					verts[vi + 1] = corners[2];
@@ -268,10 +310,10 @@ size_t gameTesselateChunk(ml_mesh* mesh, game_chunk* chunk) {
 				}
 				if (FACE_AT(ix, iy, iz) & FACE_TOP) {
 					game_block_vtx corners[4] = {
-						{{ix*15, (iy+1)*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, 127, 0, 0} },
-						{{ix*15, (iy+1)*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, 127, 0, 0} },
-						{{(ix+1)*15, (iy+1)*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, 127, 0, 0} },
-						{{(ix+1)*15, (iy+1)*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, 127, 0, 0} },
+						{POS(ix, (iy+1), iz), {0, 127, 0, 0}, tc2us(mlVec2Add(tc[0], tcoffs[0])), 0xffffffff },
+						{POS(ix, (iy+1), (iz+1)), {0, 127, 0, 0}, tc2us(mlVec2Add(tc[0], tcoffs[1])), 0xffffffff },
+						{POS((ix+1), (iy+1), (iz+1)), {0, 127, 0, 0}, tc2us(mlVec2Add(tc[0], tcoffs[2])), 0xffffffff },
+						{POS((ix+1), (iy+1), iz), {0, 127, 0, 0}, tc2us(mlVec2Add(tc[0], tcoffs[3])), 0xffffffff },
 					};
 					verts[vi + 0] = corners[0];
 					verts[vi + 1] = corners[1];
@@ -284,10 +326,10 @@ size_t gameTesselateChunk(ml_mesh* mesh, game_chunk* chunk) {
 
 				if (FACE_AT(ix, iy, iz) & FACE_BOTTOM) {
 					game_block_vtx corners[4] = {
-						{{ix*15, iy*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, -127, 0, 0} },
-						{{ix*15, iy*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, -127, 0, 0} },
-						{{(ix+1)*15, iy*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, -127, 0, 0} },
-						{{(ix+1)*15, iy*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, -127, 0, 0} },
+						{POS(ix, iy, iz), {0, -127, 0, 0}, tc2us(mlVec2Add(tc[1], tcoffs[0])), 0xffffffff },
+						{POS(ix, iy, (iz+1)), {0, -127, 0, 0}, tc2us(mlVec2Add(tc[1], tcoffs[1])), 0xffffffff },
+						{POS((ix+1), iy, (iz+1)), {0, -127, 0, 0}, tc2us(mlVec2Add(tc[1], tcoffs[2])), 0xffffffff },
+						{POS((ix+1), iy, iz), {0, -127, 0, 0}, tc2us(mlVec2Add(tc[1], tcoffs[3])), 0xffffffff },
 					};
 					verts[vi + 0] = corners[0];
 					verts[vi + 1] = corners[2];
@@ -299,10 +341,10 @@ size_t gameTesselateChunk(ml_mesh* mesh, game_chunk* chunk) {
 				}
 				if (FACE_AT(ix, iy, iz) & FACE_FRONT) {
 					game_block_vtx corners[4] = {
-						{{ix*15, iy*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 127, 255, 0} },
-						{{(ix+1)*15, iy*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 127, 255, 0} },
-						{{(ix+1)*15, (iy+1)*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 127, 255, 0} },
-						{{ix*15, (iy+1)*15, (iz+1)*15, CHUNK_AT(chunk, ix, iy, iz)}, {127, 127, 255, 0} },
+						{POS(ix, iy, (iz+1)), {127, 127, 255, 0}, tc2us(mlVec2Add(tc[4], tcoffs[0])), 0xffffffff },
+						{POS((ix+1), iy, (iz+1)), {127, 127, 255, 0}, tc2us(mlVec2Add(tc[4], tcoffs[1])), 0xffffffff },
+						{POS((ix+1), (iy+1), (iz+1)), {127, 127, 255, 0}, tc2us(mlVec2Add(tc[4], tcoffs[2])), 0xffffffff },
+						{POS(ix, (iy+1), (iz+1)), {127, 127, 255, 0}, tc2us(mlVec2Add(tc[4], tcoffs[3])), 0xffffffff },
 					};
 					verts[vi + 0] = corners[0];
 					verts[vi + 1] = corners[1];
@@ -314,10 +356,10 @@ size_t gameTesselateChunk(ml_mesh* mesh, game_chunk* chunk) {
 				}
 				if (FACE_AT(ix, iy, iz) & FACE_BACK) {
 					game_block_vtx corners[4] = {
-						{{ix*15, iy*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, 0, -127, 0} },
-						{{(ix+1)*15, iy*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, 0, -127, 0} },
-						{{(ix+1)*15, (iy+1)*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, 0, -127, 0} },
-						{{ix*15, (iy+1)*15, iz*15, CHUNK_AT(chunk, ix, iy, iz)}, {0, 0, -127, 0} },
+						{POS(ix, iy, iz), {0, 0, -127, 0}, tc2us(mlVec2Add(tc[5], tcoffs[0])), 0xffffffff },
+						{POS((ix+1), iy, iz), {0, 0, -127, 0}, tc2us(mlVec2Add(tc[5], tcoffs[1])), 0xffffffff },
+						{POS((ix+1), (iy+1), iz), {0, 0, -127, 0}, tc2us(mlVec2Add(tc[5], tcoffs[2])), 0xffffffff },
+						{POS(ix, (iy+1), iz), {0, 0, -127, 0}, tc2us(mlVec2Add(tc[5], tcoffs[3])), 0xffffffff },
 					};
 					verts[vi + 0] = corners[0];
 					verts[vi + 1] = corners[2];
@@ -331,10 +373,10 @@ size_t gameTesselateChunk(ml_mesh* mesh, game_chunk* chunk) {
 		}
 	}
 
-	mlCreateMesh(mesh, vi, verts, ML_POS_4UB | ML_N_4B);
-	free(verts);
+	mlCreateMesh(mesh, vi, verts, ML_POS_10_2 | ML_N_4B | ML_TC_2US | ML_CLR_4UB);
+
+	printf("Tesselated, %zu verts\n", nverts);
+	//free(verts);
 	return nverts;
 }
-
-*/
 

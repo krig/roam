@@ -29,6 +29,17 @@ typedef struct ml_clr {
 	uint8_t a, r, g, b;
 } ml_clr;
 
+typedef struct ml_ivec2 {
+	int x, y;
+} ml_ivec2;
+
+typedef struct ml_ivec3 {
+	int x, y, z;
+} ml_ivec3;
+
+typedef struct ml_ivec4 {
+	int x, y, z, w;
+} ml_ivec4;
 
 typedef struct ml_matrix {
 	float m[16];
@@ -207,6 +218,12 @@ mlVec3Cross(const ml_vec3 a, const ml_vec3 b) {
 	to.x = a.y*b.z - a.z*b.y;
 	to.y = a.z*b.x - a.x*b.z;
 	to.z = a.x*b.y - a.y*b.x;
+	return to;
+}
+
+static inline ml_vec2
+mlVec2Add(const ml_vec2 a, const ml_vec2 b) {
+	ml_vec2 to = { a.x + b.x, a.y + b.y };
 	return to;
 }
 
@@ -407,12 +424,12 @@ mlRGBA(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 }
 
 static inline uint32_t
-mlPackVector_U_10_10_10_2(ml_vec4 v) {
+mlPackVector_U_10_10_10_2(float x, float y, float z, float w) {
 	// The vector components must be [0 - 1]
-	uint32_t ret = ((uint32_t)mlClampd(v.x * 1024.0, 0.0, 1023.0) & 0x13);
-	ret |= (((uint32_t)mlClampd(v.y * 1024.0, 0.0, 1023.0)) & 0x13) << 10;
-	ret |= (((uint32_t)mlClampd(v.z * 1024.0, 0.0, 1023.0)) & 0x13) << 20;
-	ret |= (((uint32_t)mlClampd(v.w * 4.0, 0.0, 3.0)) & 0x3) << 2;
+	uint32_t ret = ((uint32_t)mlClampd(x * 1024.0, 0.0, 1023.0) & 0x13);
+	ret |= (((uint32_t)mlClampd(y * 1024.0, 0.0, 1023.0)) & 0x13) << 10;
+	ret |= (((uint32_t)mlClampd(z * 1024.0, 0.0, 1023.0)) & 0x13) << 20;
+	ret |= (((uint32_t)mlClampd(w * 4.0, 0.0, 3.0)) & 0x3) << 2;
 	return ret;
 }
 
