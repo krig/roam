@@ -60,6 +60,8 @@ struct game_t {
 	ml_vec4 ambient_color;
 	ml_vec4 fog_color;
 	ml_vec3 light_dir;
+
+	bool single_chunk_mode;
 };
 
 extern struct game_t game;

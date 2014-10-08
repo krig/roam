@@ -50,6 +50,7 @@ gameInit() {
 	game.camera.offset = offs;
 	game.camera.pitch = -0.544628;
 	game.camera.yaw = 1.056371;
+	game.single_chunk_mode = false;
 
 	struct controls_t default_controls = {
 		.left = SDL_SCANCODE_A,
@@ -71,7 +72,7 @@ gameInit() {
 #define H2F(r) (float)(0x##r)/255.f
 
 	mlVec4Assign(game.ambient_color, H2F(61), H2F(04), H2F(5F), 0.4f);
-	mlVec4Assign(game.fog_color, H2F(28), H2F(30), H2F(48), 0.025f);
+	mlVec4Assign(game.fog_color, H2F(28), H2F(30), H2F(48), 0.0075f);
 
 	gameInitMap();
 
@@ -118,6 +119,8 @@ gameHandleEvent(SDL_Event* event) {
 			       game.camera.pitch, game.camera.yaw);
 		else if (event->key.keysym.sym == game.controls.wireframe)
 			wireframe_mode = !wireframe_mode;
+		else if (event->key.keysym.sym == SDLK_i)
+			game.single_chunk_mode = !game.single_chunk_mode;
 		break;
 	default:
 		break;
