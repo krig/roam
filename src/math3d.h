@@ -423,14 +423,11 @@ mlRGBA(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 	return c;
 }
 
+// elements xyz are 0-32
+// w should be 0-3
 static inline uint32_t
-mlPackVector_U_10_10_10_2(float x, float y, float z, float w) {
-	// The vector components must be [0 - 1]
-	uint32_t ret = (uint32_t)(mlClampd(x, 0.0, 1.0)*1023.5);
-	ret |= (((uint32_t)(mlClampd(y, 0.0, 1.0)*1023.5)) << 10);
-	ret |= (((uint32_t)(mlClampd(z, 0.0, 1.0)*1023.5)) << 20);
-	ret |= (((uint32_t)(mlClampd(w, 0.0, 1.0)*3.5)) << 30);
-	return ret;
+mlPackVectorChunkCoord(int x, int y, int z, int w) {
+	return (x*31) | ((y*31)<<10) | ((z*31)<<20) | (w<<30);
 }
 
 // TODO: GL state stack - track state as a stack of uint64_ts...
