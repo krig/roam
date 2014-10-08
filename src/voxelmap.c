@@ -4,11 +4,12 @@
 #include "voxelmap.h"
 #include "noise.h"
 #include <time.h>
+#include <assert.h>
 
 static inline size_t blockIndex(int x, int y, int z) {
-	int bx = mod(x, MAP_BLOCK_WIDTH);
-	int bz = mod(z, MAP_BLOCK_WIDTH);
-	return bz * MAP_BLOCK_WIDTH * MAP_BLOCK_WIDTH + bx * MAP_BLOCK_WIDTH + y;
+	return mod(z, MAP_BLOCK_WIDTH) * (MAP_BLOCK_WIDTH * MAP_BLOCK_HEIGHT) +
+		mod(x, MAP_BLOCK_WIDTH) * MAP_BLOCK_HEIGHT +
+		y;
 }
 
 static inline uint8_t blockType(int x, int y, int z) {
@@ -135,19 +136,19 @@ void gameDrawMap() {
 		// todo: figure out which meshes need to be drawn
 		for (int j = 0; j < MAP_CHUNK_HEIGHT; ++j) {
 			ml_mesh* mesh = chunks[i].data + j;
-			if (mesh->vbo != 0) {
-				// update the chunk offset uniform
-				// bind the VBO
-				// can this be done once? probably...
-				ml_vec3 offset = { x*CHUNK_SIZE, j*CHUNK_SIZE, z*CHUNK_SIZE };
-				mlUniformVec3(material->chunk_offset, &offset);
-				if (!bound) {
-					mlMapMeshToMaterial(mesh, material);
-					bound = true;
-				}
-				glDrawArrays(mesh->mode, 0, mesh->count);
-				glBindBuffer(GL_ARRAY_BUFFER, 0);
+			if (mesh->vbo == 0)
+				continue;
+			// update the chunk offset uniform
+			// bind the VBO
+			// can this be done once? probably...
+			ml_vec3 offset = { x*CHUNK_SIZE, j*CHUNK_SIZE, z*CHUNK_SIZE };
+			mlUniformVec3(material->chunk_offset, &offset);
+			if (!bound) {
+				mlMapMeshToMaterial(mesh, material);
+				bound = true;
 			}
+			glDrawArrays(mesh->mode, 0, mesh->count);
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
 		}
 	}
 
@@ -172,25 +173,46 @@ void gameLoadChunk(int x, int z) {
 
 	int blockx = x * CHUNK_SIZE;
 	int blockz = z * CHUNK_SIZE;
-	if (blocks[blockIndex(blockx, 0, blockz)].type != 0)
-		printf("Cache contention! (%d, %d) with (%d, %d)\n",
-		       bufx,
-		       bufz,
-		       blocks[blockIndex(blockx, 0, blockz)].type,
-		       blocks[blockIndex(blockx, 0, blockz)].meta);
-	blocks[blockIndex(blockx, 0, blockz)].type = x;
-	blocks[blockIndex(blockx, 0, blockz)].meta = z;
-
-	unsigned long chunkseed = x;
-	chunkseed = lcg_rand(&chunkseed);
-	chunkseed ^= z;
-	chunkseed = lcg_rand(&chunkseed);
 
 	// fill blocks in column...
-	for (int fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
-		for (int fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
-			for (int filly = 0; filly < MAP_BLOCK_HEIGHT; ++filly) {
-				blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_AIR;
+	/**/
+
+	int fillx, filly, fillz;
+
+	/*
+	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
+		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
+			for (filly = 0; filly < MAP_BLOCK_HEIGHT; ++filly) {
+				if (filly < GROUND_LEVEL - 2)
+					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_STONE;
+				else
+					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_AIR;
+			}
+		}
+	}
+
+	*/
+
+	#define NOISE_SCALE 0.001
+
+	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
+		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
+			int base = 20 + (int)(simplexNoise(fillx * NOISE_SCALE + 64.0, fillz * NOISE_SCALE + 64.0) * 20.0);
+			int dirt = GROUND_LEVEL + (int)(simplexNoise(fillx * NOISE_SCALE + 96.0, fillz * NOISE_SCALE + 96.0) * 50.0);
+			int grass = dirt + (int)(mlClampd(fabs(simplexNoise(fillx * NOISE_SCALE + 128.0, fillz * NOISE_SCALE + 128.0) * 10.0), 0.0, 10.0));
+			for (filly = 0; filly < MAP_BLOCK_HEIGHT; ++filly) {
+				if (filly < base)
+					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_DARKSTONE;
+				else if (filly < dirt)
+					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_STONE;
+				else if (filly < grass)
+					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_DIRT;
+				else if (filly == grass)
+					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_GRASS;
+//				else if (filly == grass + 1)
+//					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_GRASS_BILLBOARD;
+				else
+					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_AIR;
 			}
 		}
 	}
@@ -198,29 +220,10 @@ void gameLoadChunk(int x, int z) {
 	for (int i = 0; i < NUM_BLOCKTYPES; ++i) {
 		int x = (i*2) % CHUNK_SIZE;
 		int z = ((i*2) / CHUNK_SIZE) * 2;
-		blocks[blockIndex(blockx + x, GROUND_LEVEL, blockz + z)].type = i;
+		blocks[blockIndex(blockx + x, GROUND_LEVEL + 3, blockz + z)].type = i;
 	}
-	/*
-	for (int fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
-		for (int fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
-			int base = 1 + lcg_rand(&chunkseed) % 5;
-			int dirt = GROUND_LEVEL - (lcg_rand(&chunkseed) % 5);
-			int grass = dirt + 1;
-			for (int filly = 0; filly < MAP_BLOCK_HEIGHT; ++filly) {
-				if (filly < base)
-					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_SHROOM;
-				else if (filly < dirt)
-					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_DARKSTONE;
-				else if (filly < grass)
-					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_MOSS;
-				else if (filly == grass)
-					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_GRASS_BILLBOARD;
-				else
-					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_AIR;
-			}
-		}
-	}
-	*/
+
+
 	printf("\n");
 }
 
@@ -230,20 +233,15 @@ void gameLoadChunk(int x, int z) {
 //   3: fill vertices
 //   returns num verts in chunk
 
-enum {
-	FACE_LEFT = 1, FACE_RIGHT = 2,
-	FACE_BOTTOM = 4, FACE_TOP = 8,
-	FACE_BACK = 16, FACE_FRONT = 32
-};
-
-#define TESSELATION_BUFFER_SIZE (4*1024*1024)
+#define TESSELATION_BUFFER_SIZE (32*1024*1024)
 static uint8_t tesselation_buffer[TESSELATION_BUFFER_SIZE];
 #define POS(x, y, z) mlPackVectorChunkCoord(x, y, z, 0)
 
 size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 	ml_mesh* mesh;
-	int ix, iy, iz, vi;
+	int ix, iy, iz;
 	int bx, by, bz;
+	size_t vi;
 	game_block_vtx* verts;
 
 	verts = (game_block_vtx*)tesselation_buffer;
@@ -360,7 +358,7 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					verts[vi + 5] = corners[3];
 					vi += 6;
 				}
-				if (vi * sizeof(game_block_vtx) > TESSELATION_BUFFER_SIZE)
+				if ((vi * sizeof(game_block_vtx)) > TESSELATION_BUFFER_SIZE)
 					roamError("Tesselation buffer too small: %zu", vi * sizeof(game_block_vtx));
 			}
 		}
@@ -371,7 +369,7 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 
 	mlCreateMesh(mesh, vi, verts, ML_POS_10_2 | ML_N_4B | ML_TC_2US | ML_CLR_4UB);
 
-	printf("[v: %d]", vi);
+	printf("[v: %zu]", vi);
 	//free(verts);
 	return vi;
 }
