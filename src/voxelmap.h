@@ -36,6 +36,7 @@ enum game_blocktype {
 	BLOCK_LEAVES,
 	BLOCK_MOSS,
 	BLOCK_SNOWY_SPRUCE,
+	NUM_BLOCKTYPES
 };
 
 #define BLOCK_TC_W (16.0 / 128.0)
