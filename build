@@ -1,38 +1,50 @@
 #!/bin/bash
 
-configure() {
-	if ! which cmake >/dev/null 2>&1; then
-        echo "CMAKE not found."
-        exit 1
-	fi
-	if which clang >/dev/null 2>&1; then
-		export CC=clang
-		export CXX=clang
-	fi
-	mkdir -p obj
-	cd obj
-	cmake -G Ninja ..
+if ! which cmake >/dev/null 2>&1; then
+    echo "CMAKE not found."
+    exit 1
+fi
+if which clang >/dev/null 2>&1; then
+	export CC=clang
+	export CXX=clang
+fi
+
+configure_debug() {
+	mkdir -p debug
+	cd debug
+	cmake -DCMAKE_BUILD_TYPE=Debug -G Ninja ..
+	cd ..
+}
+
+configure_release() {
+	mkdir -p release
+	cd release
+	cmake -DCMAKE_BUILD_TYPE=Release -G Ninja ..
 	cd ..
 }
 
 if [ "$1x" == "configurex" ]; then
     rm -rf obj
-	configure
+	configure_debug
+	configure_release
 	exit $?
 fi
 
 if [ "$1x" == "cleanx" ]; then
-	[[ ! -d obj ]] && configure
-	cd obj
+	[[ ! -d debug ]] && configure_debug
+	[[ ! -d release ]] && configure_release
+	cd debug
+	ninja clean
+	cd ../release
 	ninja clean
 	cd ..
-	rm -f ./roam
 	exit 0
 fi
 
-[[ ! -d obj ]] && configure
-cd obj
+[[ ! -d debug ]] && configure_debug
+[[ ! -d release ]] && configure_release
+cd debug
 ninja "$@"
-rc=$?
+cd ../release
+ninja "$@"
 cd ..
-[ $rc ] && cp obj/roam ./roam

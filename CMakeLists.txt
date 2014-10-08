@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(roam)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -g -Wall -std=c11")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -Wall -std=c11")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -Wall -std=c11")
 include(FindPkgConfig)
 pkg_search_module(GL REQUIRED gl)
 pkg_search_module(GLEW REQUIRED glew)
