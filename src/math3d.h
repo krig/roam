@@ -426,10 +426,10 @@ mlRGBA(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 static inline uint32_t
 mlPackVector_U_10_10_10_2(float x, float y, float z, float w) {
 	// The vector components must be [0 - 1]
-	uint32_t ret = ((uint32_t)mlClampd(x * 1024.0, 0.0, 1023.0) & 0x13);
-	ret |= (((uint32_t)mlClampd(y * 1024.0, 0.0, 1023.0)) & 0x13) << 10;
-	ret |= (((uint32_t)mlClampd(z * 1024.0, 0.0, 1023.0)) & 0x13) << 20;
-	ret |= (((uint32_t)mlClampd(w * 4.0, 0.0, 3.0)) & 0x3) << 2;
+	uint32_t ret = (uint32_t)(mlClampd(x, 0.0, 1.0)*1023.0);
+	ret |= (((uint32_t)(mlClampd(y, 0.0, 1.0)*1023.0)) << 10);
+	ret |= (((uint32_t)(mlClampd(z, 0.0, 1.0)*1023.0)) << 20);
+	ret |= (((uint32_t)(mlClampd(w, 0.0, 1.0)*3.0)) << 30);
 	return ret;
 }
 
