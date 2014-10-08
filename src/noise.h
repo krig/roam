@@ -30,17 +30,15 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/* init the noise function using the given random generator */
-void osnInit(unsigned long (*randomFunction)(void*), void* randomState);
+/* init the noise function using the given seed */
+void osnInit(uint64_t seed);
 
-/* generate 3D noise data */
-double osnNoise(double x, double y, double z);
+/* generate 2D, 3D, 4D noise data */
+double osnNoise2D(double x, double y);
+double osnNoise3D(double x, double y, double z);
+double osnNoise4D(double x, double y, double z, double w);
 
 /* LCG random generator, based on stb.h */
-
-static inline void lcg_srand(unsigned long* state, unsigned long seed) {
-	*state = seed;
-}
 
 static inline unsigned long lcg_rand(unsigned long* seed) {
 	*seed = *seed * 2147001325 + 715136305; // BCPL generator
@@ -77,5 +75,5 @@ static inline unsigned long djb2_hash(unsigned char *str) {
  *
  */
 
-void simplexInit(unsigned long (*randomFunction)(void*), void* randomState);
+void simplexInit(uint64_t seed);
 double simplexNoise(double x, double y);

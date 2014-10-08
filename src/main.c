@@ -77,9 +77,9 @@ gameInit() {
 
 	gameInitMap();
 
-	unsigned long lcg = time(NULL);
-	osnInit((unsigned long (*)(void*))&lcg_rand, &lcg);
-	simplexInit((unsigned long (*)(void*))&lcg_rand, &lcg);
+	uint64_t seed = time(NULL);
+	osnInit(seed);
+	simplexInit(seed);
 
 	printf("* Load materials + UI\n");
 	mlCreateMaterial(&game.materials[MAT_BASIC], basic_vshader, basic_fshader);
