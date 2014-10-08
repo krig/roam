@@ -22,6 +22,7 @@ static inline uint8_t blockType(int x, int y, int z) {
 extern ml_tex2d blocks_texture;
 
 void gameLoadChunk(int x, int z);
+size_t gameTesselateSubChunk(int cx, int cy, int cz);
 
 void gameInitMap() {
 	printf("* Allocate and build initial map...\n");
@@ -29,10 +30,18 @@ void gameInitMap() {
 	game.map.seed = time(0);
 	printf("* Seed: %lx\n", game.map.seed);
 
-	ml_ivec3 player = { 0, 0, 0 };
+	ml_ivec3 player = { game.camera.cx, (int)game.camera.offset.y / CHUNK_SIZE, game.camera.cz };
 	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
 		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x)
 			gameLoadChunk(player.x + x, player.z + z);
+
+
+		// tesselate column
+	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
+		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x)
+			for (int y = 0; y < MAP_CHUNK_HEIGHT; ++y)
+				gameTesselateSubChunk(player.x + x, y, player.z + z);
+
 	gameUpdateMap();
 	printf("* Map load complete.\n");
 }
@@ -126,12 +135,10 @@ void gameDrawMap() {
 // as a test, just fill in the designated chunk
 // and tesselate the whole thing
 
-size_t gameTesselateSubChunk(ml_mesh* mesh, int cx, int cy, int cz);
-
 void gameLoadChunk(int x, int z) {
 	int bufx = mod(x, MAP_CHUNK_WIDTH);
 	int bufz = mod(z, MAP_CHUNK_WIDTH);
-	printf("Loading (%d,%d) into (%d, %d)\n", x, z, bufx, bufz);
+	printf("(%d,%d) -> (%d, %d): ", x, z, bufx, bufz);
 	game_chunk* chunk = &(game.map.chunks[bufz*MAP_CHUNK_WIDTH + bufx]);
 	game_block* blocks = game.map.blocks;
 	chunk->x = x;
@@ -165,10 +172,7 @@ void gameLoadChunk(int x, int z) {
 			}
 		}
 	}
-
-	// tesselate column
-	for (int y = 0; y < MAP_CHUNK_HEIGHT; ++y)
-		gameTesselateSubChunk(chunk->data + y, bufx, y, bufz);
+	printf("\n");
 }
 
 // tesselation buffer: size is maximum number of triangles generated
@@ -199,9 +203,11 @@ static inline tc2us_t tc2us(ml_vec2 tc) {
 	return to;
 }
 
-size_t gameTesselateSubChunk(ml_mesh* mesh, int cx, int cy, int cz) {
-	printf("tesselate subchunk (%d, %d, %d)\n", cx, cy, cz);
-
+size_t gameTesselateSubChunk(int cx, int cy, int cz) {
+	cx = mod(cx, MAP_CHUNK_WIDTH);
+	cz = mod(cz, MAP_CHUNK_WIDTH);
+	printf("*[%d, %d, %d]", cx, cy, cz);
+	ml_mesh* mesh;
 	int ix, iy, iz, vi;
 	size_t nverts;
 	game_block_vtx* verts;
@@ -209,6 +215,7 @@ size_t gameTesselateSubChunk(ml_mesh* mesh, int cx, int cy, int cz) {
 	uint8_t faces[CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE];
 	memset(type, 0, sizeof(type));
 	memset(faces, 0, sizeof(faces));
+	mesh = game.map.chunks[cz*MAP_CHUNK_WIDTH + cx].data + cy;
 	nverts = 0;
 	int bx, by, bz;
 	bx = cx*CHUNK_SIZE;
@@ -377,7 +384,7 @@ size_t gameTesselateSubChunk(ml_mesh* mesh, int cx, int cy, int cz) {
 
 	mlCreateMesh(mesh, vi, verts, ML_POS_10_2 | ML_N_4B | ML_TC_2US | ML_CLR_4UB);
 
-	printf("Tesselated, %zu verts\n", nverts);
+	printf("[v: %zu]", nverts);
 	//free(verts);
 	return nverts;
 }

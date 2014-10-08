@@ -194,7 +194,7 @@ printMatrix(ml_matrix* m) {
 }
 
 static void
-gameRender(SDL_Point* viewport) {
+gameRender(SDL_Point* viewport, float frametime) {
 	glCheck(__LINE__);
 
 	glEnable(GL_DEPTH_TEST);
@@ -247,8 +247,11 @@ gameRender(SDL_Point* viewport) {
 	uiDrawDebug(&game.projection, &game.modelview);
 
 
-	uiText(5, 15, 0xffaaaaaa, "%g", osnNoise(game.camera.offset.x, game.camera.offset.y, game.camera.offset.z));
-	uiText(5, 5, 0xffaaaaaa, "%f", game.time_of_day);
+	uiText(5, 15, 0xffaaaaaa, "%g, %g, %g",
+	       (double)game.camera.cx + game.camera.offset.x, \
+	       game.camera.offset.y,
+	       (double)game.camera.cz + game.camera.offset.z);
+	uiText(5, 5, 0xffaaaaaa, "fps: %d, t: %f", (int)(1.f / frametime), game.time_of_day);
 	uiDraw(viewport);
 
 	if (mouse_captured)
@@ -360,7 +363,7 @@ main(int argc, char* argv[]) {
 		frametime = (float)((double)nowms / 1000.0);
 		gameUpdate(frametime);
 		startms = (int64_t)SDL_GetTicks();
-		gameRender(&sz);
+		gameRender(&sz, frametime);
 
 		SDL_GL_SwapWindow(window);
 		glCheck(__LINE__);
