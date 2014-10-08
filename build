@@ -41,10 +41,31 @@ if [ "$1x" == "cleanx" ]; then
 	exit 0
 fi
 
-[[ ! -d debug ]] && configure_debug
-[[ ! -d release ]] && configure_release
-cd debug
-ninja "$@"
-cd ../release
-ninja "$@"
-cd ..
+build_debug() {
+	[[ ! -d debug ]] && configure_debug
+	cd debug
+	ninja "$@"
+	cd ..
+}
+
+build_release() {
+	[[ ! -d release ]] && configure_release
+	cd release
+	ninja "$@"
+	cd ..
+}
+
+case $1 in
+	debug)
+		shift
+		build_debug
+		;;
+	release)
+		shift
+		build_release
+		;;
+	*)
+		build_debug
+		build_release
+		;;
+esac
