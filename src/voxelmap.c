@@ -30,7 +30,7 @@ void gameInitMap() {
 	game.map.seed = time(0);
 	printf("* Seed: %lx\n", game.map.seed);
 
-	ml_ivec3 player = { game.camera.cx, (int)game.camera.offset.y / CHUNK_SIZE, game.camera.cz };
+	ml_ivec3 player = { game.camera.cx, 0, game.camera.cz };
 	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
 		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x)
 			gameLoadChunk(player.x + x, player.z + z);
@@ -79,6 +79,9 @@ void gameDrawMap() {
 
 	// figure out which chunks are visible
 	// draw visible chunks
+
+	bool bound = false;
+
 	game_chunk* chunks = game.map.chunks;
 	for (int i = 0; i < MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH; ++i) {
 		// calc chunk offset for this chunk
@@ -94,11 +97,12 @@ void gameDrawMap() {
 				// update the chunk offset uniform
 				// bind the VBO
 				// can this be done once? probably...
-				ml_vec3 offset = { x*CHUNK_SIZE,
-				                   j*CHUNK_SIZE,
-				                   z*CHUNK_SIZE };
+				ml_vec3 offset = { x*CHUNK_SIZE, j*CHUNK_SIZE, z*CHUNK_SIZE };
 				mlUniformVec3(material->chunk_offset, &offset);
-				mlMapMeshToMaterial(mesh, material);
+				if (!bound) {
+					mlMapMeshToMaterial(mesh, material);
+					bound = true;
+				}
 				glDrawArrays(mesh->mode, 0, mesh->count);
 				glBindBuffer(GL_ARRAY_BUFFER, 0);
 			}
@@ -108,26 +112,6 @@ void gameDrawMap() {
 	mlPopMatrix(&game.modelview);
 	glUseProgram(0);
 	glDisable(GL_TEXTURE_2D);
-
-	/*
-	ml_vec3 tlight;
-	ml_matrix33 normalmat;
-	mlPushMatrix(&game.modelview);
-	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
-	tlight = mlMulMat33Vec(&normalmat, &light_dir);
-	mlDrawBegin(&renderables[2]);
-	mlUniformMatrix(renderables[2].material->projmat, mlGetMatrix(&game.projection));
-	mlUniformMatrix(renderables[2].material->modelview, mlGetMatrix(&game.modelview));
-	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
-	mlUniformMatrix33(renderables[2].material->normalmat, &normalmat);
-	ml_vec3 chunk_offset = { -1, -1, -1 };
-	mlUniformVec3(renderables[2].material->chunk_offset, &chunk_offset);
-	mlUniformVec4(renderables[2].material->amb_color, &amb_color);
-	mlUniformVec4(renderables[2].material->fog_color, &fog_color);
-	mlUniformVec3(renderables[2].material->light_dir, &tlight);
-	mlDrawEnd(&renderables[2]);
-	mlPopMatrix(&game.modelview);
-	*/
 }
 
 // TODO: chunk saving/loading
@@ -163,23 +147,38 @@ void gameLoadChunk(int x, int z) {
 	// fill blocks in column...
 	for (int fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
 		for (int fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
+			for (int filly = 0; filly < MAP_BLOCK_HEIGHT; ++filly) {
+				blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_AIR;
+			}
+		}
+	}
+
+	for (int i = 0; i < NUM_BLOCKTYPES; ++i) {
+		int x = (i*2) % CHUNK_SIZE;
+		int z = ((i*2) / CHUNK_SIZE) * 2;
+		blocks[blockIndex(blockx + x, GROUND_LEVEL, blockz + z)].type = i;
+	}
+	/*
+	for (int fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
+		for (int fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
 			int base = 1 + lcg_rand(&chunkseed) % 5;
 			int dirt = GROUND_LEVEL - (lcg_rand(&chunkseed) % 5);
 			int grass = dirt + 1;
 			for (int filly = 0; filly < MAP_BLOCK_HEIGHT; ++filly) {
 				if (filly < base)
-					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_DARKSTONE;
+					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_SHROOM;
 				else if (filly < dirt)
-					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_STONE;
+					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_DARKSTONE;
 				else if (filly < grass)
-					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_DIRT;
+					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_MOSS;
 				else if (filly == grass)
-					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_GRASS;
+					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_GRASS_BILLBOARD;
 				else
 					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_AIR;
 			}
 		}
 	}
+	*/
 	printf("\n");
 }
 
@@ -209,6 +208,12 @@ static inline tc2us_t tc2us(ml_vec2 tc) {
 		(uint16_t)(tc.y * (double)0xffff)
 	};
 	return to;
+}
+
+static inline ml_vec2 biastc(ml_vec2 tc, float by) {
+	tc.x += by;
+	tc.y += by;
+	return tc;
 }
 
 size_t gameTesselateSubChunk(int cx, int cy, int cz) {
@@ -273,28 +278,32 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 
 	verts = (game_block_vtx*)tesselation_buffer;//malloc(nverts * sizeof(game_block_vtx));
 
-#define POS(x, y, z) mlPackVector_U_10_10_10_2((float)(x)/(float)CHUNK_SIZE, (float)(y)/(float)CHUNK_SIZE, (float)(z)/(float)CHUNK_SIZE, 0.f)
+#define POS(x, y, z) mlPackVectorChunkCoord(x, y, z, 0)
 
 	// fill in verts
 	for (iz = 0; iz < CHUNK_SIZE; ++iz) {
 		for (iy = 0; iy < CHUNK_SIZE; ++iy) {
 			for (ix = 0; ix < CHUNK_SIZE; ++ix) {
 				uint8_t t = TYPE_AT(ix, iy, iz);
+				if (t == BLOCK_AIR)
+					continue;
+				// todo: calculate all this type-specific texcoords etc. once
 				ml_vec2 tc[6] = {
-					idx2tc(blockinfo[t].tex[0]),
-					idx2tc(blockinfo[t].tex[1]),
-					idx2tc(blockinfo[t].tex[2]),
-					idx2tc(blockinfo[t].tex[3]),
-					idx2tc(blockinfo[t].tex[4]),
-					idx2tc(blockinfo[t].tex[5]),
+					biastc(idx2tc(blockinfo[t].tex[0]), 0.5/128.0),
+					biastc(idx2tc(blockinfo[t].tex[1]), 0.5/128.0),
+					biastc(idx2tc(blockinfo[t].tex[2]), 0.5/128.0),
+					biastc(idx2tc(blockinfo[t].tex[3]), 0.5/128.0),
+					biastc(idx2tc(blockinfo[t].tex[4]), 0.5/128.0),
+					biastc(idx2tc(blockinfo[t].tex[5]), 0.5/128.0),
 				};
 				ml_vec2 tcoffs[4] = {
 					{0, 0},
-					{0, BLOCK_TC_W},
-					{BLOCK_TC_W, 0},
-					{BLOCK_TC_W, BLOCK_TC_W}
+					{0, BLOCK_TC_W - (0.5/128.0)},
+					{BLOCK_TC_W - (0.5/128.0), 0},
+					{BLOCK_TC_W - (0.5/128.0), BLOCK_TC_W - (0.5/128.0)}
 				};
-				if (FACE_AT(ix, iy, iz) & FACE_LEFT) {
+
+				if ((FACE_AT(ix, iy, iz) & FACE_LEFT) && blockinfo[t].tex[2] != 0) {
 					game_block_vtx corners[4] = {
 						{POS(ix, iy, iz), {-127, 0, 0, 0}, tc2us(mlVec2Add(tc[2], tcoffs[1])), 0xffffffff },
 						{POS(ix, iy, (iz+1)), {-127, 0, 0, 0}, tc2us(mlVec2Add(tc[2], tcoffs[3])), 0xffffffff },
@@ -309,7 +318,7 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					verts[vi + 5] = corners[3];
 					vi += 6;
 				}
-				if (FACE_AT(ix, iy, iz) & FACE_RIGHT) {
+				if ((FACE_AT(ix, iy, iz) & FACE_RIGHT) && blockinfo[t].tex[3] != 0) {
 					game_block_vtx corners[4] = {
 						{POS((ix+1), iy, iz), {127, 0, 0, 0}, tc2us(mlVec2Add(tc[3], tcoffs[1])), 0xffffffff },
 						{POS((ix+1), iy, (iz+1)), {127, 0, 0, 0}, tc2us(mlVec2Add(tc[3], tcoffs[3])), 0xffffffff },
@@ -324,7 +333,7 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					verts[vi + 5] = corners[3];
 					vi += 6;
 				}
-				if (FACE_AT(ix, iy, iz) & FACE_TOP) {
+				if ((FACE_AT(ix, iy, iz) & FACE_TOP) && blockinfo[t].tex[0] != 0) {
 					game_block_vtx corners[4] = {
 						{POS(ix, (iy+1), iz), {0, 127, 0, 0}, tc2us(mlVec2Add(tc[0], tcoffs[0])), 0xffffffff },
 						{POS(ix, (iy+1), (iz+1)), {0, 127, 0, 0}, tc2us(mlVec2Add(tc[0], tcoffs[1])), 0xffffffff },
@@ -340,7 +349,7 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					vi += 6;
 				}
 
-				if (FACE_AT(ix, iy, iz) & FACE_BOTTOM) {
+				if ((FACE_AT(ix, iy, iz) & FACE_BOTTOM) && blockinfo[t].tex[1] != 0) {
 					game_block_vtx corners[4] = {
 						{POS(ix, iy, iz), {0, -127, 0, 0}, tc2us(mlVec2Add(tc[1], tcoffs[0])), 0xffffffff },
 						{POS(ix, iy, (iz+1)), {0, -127, 0, 0}, tc2us(mlVec2Add(tc[1], tcoffs[1])), 0xffffffff },
@@ -355,7 +364,7 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					verts[vi + 5] = corners[3];
 					vi += 6;
 				}
-				if (FACE_AT(ix, iy, iz) & FACE_FRONT) {
+				if ((FACE_AT(ix, iy, iz) & FACE_FRONT) && blockinfo[t].tex[4] != 0) {
 					game_block_vtx corners[4] = {
 						{POS(ix, iy, (iz+1)), {127, 127, 255, 0}, tc2us(mlVec2Add(tc[4], tcoffs[1])), 0xffffffff },
 						{POS((ix+1), iy, (iz+1)), {127, 127, 255, 0}, tc2us(mlVec2Add(tc[4], tcoffs[3])), 0xffffffff },
@@ -370,7 +379,8 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					verts[vi + 5] = corners[3];
 					vi += 6;
 				}
-				if (FACE_AT(ix, iy, iz) & FACE_BACK) {
+
+				if ((FACE_AT(ix, iy, iz) & FACE_BACK) && blockinfo[t].tex[5] != 0) {
 					game_block_vtx corners[4] = {
 						{POS(ix, iy, iz), {0, 0, -127, 0}, tc2us(mlVec2Add(tc[5], tcoffs[1])), 0xffffffff },
 						{POS((ix+1), iy, iz), {0, 0, -127, 0}, tc2us(mlVec2Add(tc[5], tcoffs[3])), 0xffffffff },
@@ -385,6 +395,8 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					verts[vi + 5] = corners[3];
 					vi += 6;
 				}
+				if (vi * sizeof(game_block_vtx) > TESSELATION_BUFFER_SIZE)
+					roamError("Tesselation buffer too small: %zu", vi * sizeof(game_block_vtx));
 			}
 		}
 	}
