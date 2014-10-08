@@ -35,7 +35,7 @@ struct blockinfo_t blockinfo[] = {
 	{ .name = "treetrunk", .tex = { 14, 14, 14, 14, 14, 14 } },
 	{ .name = "deadskin", .tex = { 15, 15, 15, 15, 15, 15 } },
 	{ .name = "shroom", .tex = { 16, 16, 16, 16, 16, 16 } },
-	{ .name = "grass billboard", .tex = { 17, 17, 17, 17, 17 } },
+	{ .name = "grass billboard", .tex = { 0, 0, 17, 17, 17, 17 } },
 	{ .name = "leaves", .tex = { 18, 18, 18, 18, 18, 18 } },
 	{ .name = "moss", .tex = { 20, 21, 19, 19, 19, 19 } },
 	{ .name = "snowy spruce", .tex = { 23, 24, 22, 22, 22, 22 } },
