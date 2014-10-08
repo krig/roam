@@ -70,6 +70,7 @@ struct game_t {
 	ml_vec4 fog_color;
 	ml_vec3 light_dir;
 
+	bool fast_day_mode;
 	bool single_chunk_mode;
 };
 

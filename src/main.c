@@ -50,6 +50,7 @@ gameInit() {
 	game.camera.offset = offs;
 	game.camera.pitch = -0.544628;
 	game.camera.yaw = 1.056371;
+	game.fast_day_mode = false;
 	game.single_chunk_mode = false;
 
 	struct controls_t default_controls = {
@@ -121,7 +122,12 @@ gameHandleEvent(SDL_Event* event) {
 			wireframe_mode = !wireframe_mode;
 		else if (event->key.keysym.sym == SDLK_i)
 			game.single_chunk_mode = !game.single_chunk_mode;
+		else if (event->key.keysym.sym == SDLK_l)
+			game.fast_day_mode = true;
 		break;
+	case SDL_KEYUP:
+		if (event->key.keysym.sym == SDLK_l)
+			game.fast_day_mode = false;
 	default:
 		break;
 	}
@@ -185,7 +191,10 @@ gameUpdate(float dt) {
 	// update creatures
 	// update effects
 
-	game.time_of_day = fmod(game.time_of_day + (dt * (1.0 / DAY_LENGTH)), 1.f);
+	if (game.fast_day_mode)
+		game.time_of_day = fmod(game.time_of_day + (dt * (1.0 / 5.0)), 1.f);
+	else
+		game.time_of_day = fmod(game.time_of_day + (dt * (1.0 / DAY_LENGTH)), 1.f);
 }
 
 static void
@@ -225,7 +234,8 @@ gameRender(SDL_Point* viewport, float frametime) {
 
 
 	double toffs = fmod((game.time_of_day * ML_TWO_PI) + ML_PI_2, ML_TWO_PI);
-	mlVec3Assign(game.light_dir, -cos(toffs), sin(toffs), 0.f);
+	mlVec3Assign(game.light_dir, -cos(toffs), sin(toffs), cos(toffs));
+	game.light_dir = mlVec3Normalize(game.light_dir);
 
 	gameDrawMap();
 
