@@ -84,12 +84,9 @@ void gameDrawMap() {
 		// calc chunk offset for this chunk
 		int x = chunks[i].x - game.camera.cx;
 		int z = chunks[i].z - game.camera.cz;
-		ml_vec3 offset = { (float)x - game.camera.offset.x,
-		                   -game.camera.offset.y,
-		                   (float)z - game.camera.offset.z };
-		// skip chunk if outside view distance (not loaded/generated then)
-		if (abs(x) > VIEW_DISTANCE || abs(z) > VIEW_DISTANCE)
-			continue;
+		// only render the (0, 0) chunk for now
+		//if (x != 0 || z != 0)
+		//	continue;
 		// todo: figure out which meshes need to be drawn
 		for (int j = 0; j < MAP_CHUNK_HEIGHT; ++j) {
 			ml_mesh* mesh = chunks[i].data + j;
@@ -97,6 +94,9 @@ void gameDrawMap() {
 				// update the chunk offset uniform
 				// bind the VBO
 				// can this be done once? probably...
+				ml_vec3 offset = { x*CHUNK_SIZE,
+				                   j*CHUNK_SIZE,
+				                   z*CHUNK_SIZE };
 				mlUniformVec3(material->chunk_offset, &offset);
 				mlMapMeshToMaterial(mesh, material);
 				glDrawArrays(mesh->mode, 0, mesh->count);
