@@ -3,6 +3,7 @@
 #include "game.h"
 #include "voxelmap.h"
 #include "noise.h"
+#include "rnd.h"
 #include <time.h>
 #include <assert.h>
 
@@ -67,23 +68,25 @@ void gameInitMap() {
 	initBlockTexcoords();
 
 	memset(&game.map, 0, sizeof(game_map));
-	game.map.seed = time(0);
+	game.map.seed = good_seed();
 	printf("* Seed: %lx\n", game.map.seed);
 	simplexInit(game.map.seed);
 	osnInit(game.map.seed);
 
+	/*
 	for (size_t i = 0; i < MAP_BUFFER_SIZE; ++i) {
 		if ((i % 5) == 0) {
 			game.map.blocks[i].type = BLOCK_SHROOM;
 		} else {
 			game.map.blocks[i].type = BLOCK_AIR;
 		}
-	}
+		}*/
 
 	ml_ivec3 player = { game.camera.cx, 0, game.camera.cz };
 	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
 		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x)
 			gameLoadChunk(player.x + x, player.z + z);
+	printf("\n");
 
 
 	// tesselate column
@@ -93,7 +96,7 @@ void gameInitMap() {
 				gameTesselateSubChunk(player.x + x, y, player.z + z);
 
 	gameUpdateMap();
-	printf("* Map load complete.\n");
+	printf("\n* Map load complete.\n");
 }
 
 void gameFreeMap() {
@@ -130,15 +133,12 @@ void gameDrawMap() {
 	// figure out which chunks are visible
 	// draw visible chunks
 
-	bool bound = false;
-
 	game_chunk* chunks = game.map.chunks;
 	for (int i = 0; i < MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH; ++i) {
 		// calc chunk offset for this chunk
 		int x = chunks[i].x - game.camera.cx;
 		int z = chunks[i].z - game.camera.cz;
-		// only render the (0, 0) chunk for now
-		if (game.single_chunk_mode && (x != 0 || z != 0))
+		if (game.single_chunk_mode && (x != -1 || z != -1))
 			continue;
 		// todo: figure out which meshes need to be drawn
 		for (int j = 0; j < MAP_CHUNK_HEIGHT; ++j) {
@@ -150,15 +150,12 @@ void gameDrawMap() {
 			// can this be done once? probably...
 			ml_vec3 offset = { x*CHUNK_SIZE, j*CHUNK_SIZE, z*CHUNK_SIZE };
 			mlUniformVec3(material->chunk_offset, &offset);
-			if (!bound) {
-				mlMapMeshToMaterial(mesh, material);
-				bound = true;
-			}
+			mlMapMeshToMaterial(mesh, material);
 			glDrawArrays(mesh->mode, 0, mesh->count);
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
 		}
 	}
 
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	mlPopMatrix(&game.modelview);
 	glUseProgram(0);
 	glDisable(GL_TEXTURE_2D);
@@ -199,30 +196,39 @@ void gameLoadChunk(int x, int z) {
 
 	*/
 
-	#define NOISE_SCALE 0.005
+#define NOISE_SCALE (1.0/64.0)
+
+	printf("+");
 
 	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
 		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
-			int base = 20 + (int)(simplexNoise(fillx * NOISE_SCALE + 64.0, fillz * NOISE_SCALE + 64.0) * 20.0);
-			int dirt = 75 + (int)(simplexNoise(fillx * NOISE_SCALE + 96.0, fillz * NOISE_SCALE + 96.0) * 25.0);
-			int grass = dirt + (int)(fabs(simplexNoise(fillx * NOISE_SCALE + 128.0, fillz * NOISE_SCALE + 128.0) * 10.0));
+
+			int terrain = fBmSimplex(fillx * NOISE_SCALE, fillz * NOISE_SCALE,
+			                         1.2,
+			                         1.0 / 16.0,
+			                         2.0,
+				4) > 0.0 ? BLOCK_MOSS : BLOCK_SAND;
+			int base = 5;
+			int ground = 75 + fBmSimplex(fillx * NOISE_SCALE,
+			                      fillz * NOISE_SCALE,
+			                      1.2,
+			                      1.0 / 64.0,
+			                      2.0,
+			                      8);
 			for (filly = 0; filly < MAP_BLOCK_HEIGHT; ++filly) {
 				if (filly < base)
 					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_DARKSTONE;
-				else if (filly < dirt)
+				else if (filly < ground - 5)
 					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_STONE;
-				else if (filly < grass)
+				else if (filly < ground)
 					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_DIRT;
-				else if (filly == grass)
-					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_GRASS;
-//				else if (filly == grass + 1)
-//					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_GRASS_BILLBOARD;
+				else if (filly == ground)
+					blocks[blockIndex(fillx, filly, fillz)].type = terrain;
 				else
 					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_AIR;
 			}
 		}
 	}
-
 
 	/*
 	for (int i = 0; i < NUM_BLOCKTYPES; ++i) {
@@ -239,9 +245,9 @@ void gameLoadChunk(int x, int z) {
 //   3: fill vertices
 //   returns num verts in chunk
 
-#define TESSELATION_BUFFER_SIZE (CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE*36*sizeof(game_block_vtx))
-static uint8_t tesselation_buffer[TESSELATION_BUFFER_SIZE];
-#define POS(x, y, z) mlPackVectorChunkCoord((x), (y), (z), 0)
+#define TESSELATION_BUFFER_SIZE (CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE*36)
+static game_block_vtx tesselation_buffer[TESSELATION_BUFFER_SIZE];
+#define POS(x, y, z) mlPackVectorChunkCoord((unsigned int)(x), (unsigned int)(y), (unsigned int)(z), 0)
 
 size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 	ml_mesh* mesh;
@@ -250,7 +256,7 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 	size_t vi;
 	game_block_vtx* verts;
 
-	verts = (game_block_vtx*)tesselation_buffer;
+	verts = tesselation_buffer;
 	vi = 0;
 	cx = mod(cx, MAP_CHUNK_WIDTH);
 	cz = mod(cz, MAP_CHUNK_WIDTH);
@@ -258,16 +264,51 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 	bx = cx*CHUNK_SIZE;
 	by = cy*CHUNK_SIZE;
 	bz = cz*CHUNK_SIZE;
-	printf("T [%d, %d, %d] (%d, %d, %d)\n", cx, cy, cz, bx, by, bz);
+	printf(".");
+	fflush(stdout);
+	size_t nprocessed = 0;
 
 	// fill in verts
 	for (iz = 0; iz < CHUNK_SIZE; ++iz) {
 		for (ix = 0; ix < CHUNK_SIZE; ++ix) {
 			for (iy = 0; iy < CHUNK_SIZE; ++iy) {
 				uint8_t t = blockType(bx+ix, by+iy, bz+iz);
-				if (t == BLOCK_AIR)
+				if (t == BLOCK_AIR) {
+					++nprocessed;
 					continue;
+				}
 
+				if (blockType(bx+ix, by+iy+1, bz+iz) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_TOP] != 0) {
+					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_TOP, 0);
+					game_block_vtx corners[4] = {
+						{POS(ix, iy+1, iz), {0, INT8_MAX, 0, 0}, tc[0], 0xffffffff },
+						{POS(ix, iy+1, iz+1), {0, INT8_MAX, 0, 0}, tc[1], 0xffffffff },
+						{POS(ix+1, iy+1, iz+1), {0, INT8_MAX, 0, 0}, tc[3], 0xffffffff },
+						{POS(ix+1, iy+1, iz), {0, INT8_MAX, 0, 0}, tc[2], 0xffffffff },
+					};
+					verts[vi++] = corners[0];
+					verts[vi++] = corners[1];
+					verts[vi++] = corners[2];
+					verts[vi++] = corners[0];
+					verts[vi++] = corners[2];
+					verts[vi++] = corners[3];
+				}
+
+				if (blockType(bx+ix, by+iy-1, bz+iz) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_BOTTOM] != 0) {
+					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BOTTOM, 0);
+					game_block_vtx corners[4] = {
+						{POS(ix, iy, iz), {0, INT8_MIN, 0, 0}, tc[0], 0xffffffff },
+						{POS(ix, iy, iz+1), {0, INT8_MIN, 0, 0}, tc[1], 0xffffffff },
+						{POS(ix+1, iy, iz+1), {0, INT8_MIN, 0, 0}, tc[3], 0xffffffff },
+						{POS(ix+1, iy, iz), {0, INT8_MIN, 0, 0}, tc[2], 0xffffffff },
+					};
+					verts[vi++] = corners[0];
+					verts[vi++] = corners[2];
+					verts[vi++] = corners[1];
+					verts[vi++] = corners[2];
+					verts[vi++] = corners[0];
+					verts[vi++] = corners[3];
+				}
 				if (blockType(bx+ix-1, by+iy, bx+iz) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_LEFT] != 0) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_LEFT, 0);
 					game_block_vtx corners[4] = {
@@ -276,13 +317,12 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 						{POS(ix, iy+1, iz), {INT8_MIN, 0, 0, 0}, tc[0], 0xffffffff },
 						{POS(ix, iy+1, iz+1), {INT8_MIN, 0, 0, 0}, tc[2], 0xfffffff },
 					};
-					verts[vi + 0] = corners[0];
-					verts[vi + 1] = corners[1];
-					verts[vi + 2] = corners[2];
-					verts[vi + 3] = corners[2];
-					verts[vi + 4] = corners[1];
-					verts[vi + 5] = corners[3];
-					vi += 6;
+					verts[vi++] = corners[0];
+					verts[vi++] = corners[1];
+					verts[vi++] = corners[2];
+					verts[vi++] = corners[2];
+					verts[vi++] = corners[1];
+					verts[vi++] = corners[3];
 				}
 				if (blockType(bx+ix+1, by+iy, bz+iz) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_RIGHT] != 0) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_RIGHT, 0);
@@ -292,45 +332,12 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 						{POS(ix+1, iy+1, iz+1), {INT8_MAX, 0, 0, 0}, tc[2], 0xffffffff },
 						{POS(ix+1, iy+1, iz), {INT8_MAX, 0, 0, 0}, tc[0], 0xffffffff },
 					};
-					verts[vi + 0] = corners[0];
-					verts[vi + 1] = corners[2];
-					verts[vi + 2] = corners[1];
-					verts[vi + 3] = corners[2];
-					verts[vi + 4] = corners[0];
-					verts[vi + 5] = corners[3];
-					vi += 6;
-				}
-				if (blockType(bx+ix, by+iy+1, bz+iz) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_TOP] != 0) {
-					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_TOP, 0);
-					game_block_vtx corners[4] = {
-						{POS(ix, iy+1, iz), {0, INT8_MAX, 0, 0}, tc[0], 0xffffffff },
-						{POS(ix, iy+1, iz+1), {0, INT8_MAX, 0, 0}, tc[1], 0xffffffff },
-						{POS(ix+1, iy+1, iz+1), {0, INT8_MAX, 0, 0}, tc[3], 0xffffffff },
-						{POS(ix+1, iy+1, iz), {0, INT8_MAX, 0, 0}, tc[2], 0xffffffff },
-					};
-					verts[vi + 0] = corners[0];
-					verts[vi + 1] = corners[1];
-					verts[vi + 2] = corners[2];
-					verts[vi + 3] = corners[0];
-					verts[vi + 4] = corners[2];
-					verts[vi + 5] = corners[3];
-					vi += 6;
-				}
-				if (blockType(bx+ix, by+iy-1, bz+iz) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_BOTTOM] != 0) {
-					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BOTTOM, 0);
-					game_block_vtx corners[4] = {
-						{POS(ix, iy, iz), {0, INT8_MIN, 0, 0}, tc[0], 0xffffffff },
-						{POS(ix, iy, iz+1), {0, INT8_MIN, 0, 0}, tc[1], 0xffffffff },
-						{POS(ix+1, iy, iz+1), {0, INT8_MIN, 0, 0}, tc[3], 0xffffffff },
-						{POS(ix+1, iy, iz), {0, INT8_MIN, 0, 0}, tc[2], 0xffffffff },
-					};
-					verts[vi + 0] = corners[0];
-					verts[vi + 1] = corners[2];
-					verts[vi + 2] = corners[1];
-					verts[vi + 3] = corners[2];
-					verts[vi + 4] = corners[0];
-					verts[vi + 5] = corners[3];
-					vi += 6;
+					verts[vi++] = corners[0];
+					verts[vi++] = corners[2];
+					verts[vi++] = corners[1];
+					verts[vi++] = corners[2];
+					verts[vi++] = corners[0];
+					verts[vi++] = corners[3];
 				}
 				if (blockType(bx+ix, by+iy, bz+iz+1) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_FRONT] != 0) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_FRONT, 0);
@@ -340,13 +347,12 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 						{POS(ix+1, iy+1, iz+1), {0, 0, INT8_MAX, 0}, tc[2], 0xffffffff },
 						{POS(ix, iy+1, iz+1), {0, 0, INT8_MAX, 0}, tc[0], 0xffffffff },
 					};
-					verts[vi + 0] = corners[0];
-					verts[vi + 1] = corners[1];
-					verts[vi + 2] = corners[2];
-					verts[vi + 3] = corners[0];
-					verts[vi + 4] = corners[2];
-					verts[vi + 5] = corners[3];
-					vi += 6;
+					verts[vi++] = corners[0];
+					verts[vi++] = corners[1];
+					verts[vi++] = corners[2];
+					verts[vi++] = corners[0];
+					verts[vi++] = corners[2];
+					verts[vi++] = corners[3];
 				}
 				if (blockType(bx+ix, by+iy, bz+iz-1) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_BACK] != 0) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BACK, 0);
@@ -356,16 +362,17 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 						{POS((ix+1), (iy+1), iz), {0, 0, INT8_MIN, 0}, tc[2], 0xffffffff },
 						{POS(ix, (iy+1), iz), {0, 0, INT8_MIN, 0}, tc[0], 0xffffffff },
 					};
-					verts[vi + 0] = corners[0];
-					verts[vi + 1] = corners[2];
-					verts[vi + 2] = corners[1];
-					verts[vi + 3] = corners[2];
-					verts[vi + 4] = corners[0];
-					verts[vi + 5] = corners[3];
-					vi += 6;
+					verts[vi++] = corners[0];
+					verts[vi++] = corners[2];
+					verts[vi++] = corners[1];
+					verts[vi++] = corners[2];
+					verts[vi++] = corners[0];
+					verts[vi++] = corners[3];
 				}
-				if ((vi * sizeof(game_block_vtx)) > TESSELATION_BUFFER_SIZE)
-					roamError("Tesselation buffer too small: %zu", vi * sizeof(game_block_vtx));
+				++nprocessed;
+
+				if (vi > TESSELATION_BUFFER_SIZE)
+					roamError("Tesselation buffer too small for chunk (%d, %d, %d): %zu verts, %zu blocks processed", cx, cy, cz, vi, nprocessed);
 			}
 		}
 	}
@@ -374,9 +381,6 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 		return vi;
 
 	mlCreateMesh(mesh, vi, verts, ML_POS_10_2 | ML_N_4B | ML_TC_2US | ML_CLR_4UB);
-
-	printf("    v: %zu\n", vi);
-	//free(verts);
 	return vi;
 }
 

@@ -136,8 +136,8 @@ typedef struct ml_matrixstack {
 } ml_matrixstack;
 
 
-#define mlDeg2Rad(d) (((d) * ML_PI) / 180.f)
-#define mlRad2Deg(r) (((r) * 180.f) / ML_PI)
+#define mlDeg2Rad(d) (((d) * ML_PI) / 180.0)
+#define mlRad2Deg(r) (((r) * 180.0) / ML_PI)
 #define mlSwap(a, b) do { __typeof__ (a) _swap_##__LINE__ = (a); (a) = (b); (b) = _swap_##__LINE__; } while (0)
 #define mlMax(a, b) do { __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; } while(0)
 #define mlMin(a, b) do { __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _b : _a; } while(0)
@@ -203,6 +203,9 @@ void mlTranslate(ml_matrix* m, float x, float y, float z);
 void mlRotate(ml_matrix* m, float angle, float x, float y, float z);
 
 void mlGetRotationMatrix(ml_matrix33* to, const ml_matrix* from);
+ml_vec3 mlGetXAxis(const ml_matrix* from);
+ml_vec3 mlGetYAxis(const ml_matrix* from);
+ml_vec3 mlGetZAxis(const ml_matrix* from);
 ml_vec3 mlMulMat33Vec(const ml_matrix33* m, const ml_vec3* v);
 
 void mlTranspose(ml_matrix* m);
@@ -433,8 +436,8 @@ mlRGBA(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 // elements xyz are 0-32
 // w should be 0-3
 static inline uint32_t
-mlPackVectorChunkCoord(int x, int y, int z, int w) {
-	return (x*31) | ((y*31)<<10) | ((z*31)<<20) | (w<<30);
+mlPackVectorChunkCoord(unsigned int x, unsigned int y, unsigned int z, unsigned int w) {
+	return ((x&0x3f)*31u) | (((y&0x3f)*31u)<<10) | (((z&0x3f)*31u)<<20) | ((w&0x3)<<30);
 }
 
 // TODO: GL state stack - track state as a stack of uint64_ts...

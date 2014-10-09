@@ -38,26 +38,6 @@ double osnNoise2D(double x, double y);
 double osnNoise3D(double x, double y, double z);
 double osnNoise4D(double x, double y, double z, double w);
 
-/* LCG random generator, based on stb.h */
-
-static inline unsigned long lcg_rand(unsigned long* seed) {
-	*seed = *seed * 2147001325 + 715136305; // BCPL generator
-   // shuffle non-random bits to the middle, and xor to decorrelate with seed
-   return 0x31415926 ^ ((*seed >> 16) + (*seed << 16));
-}
-
-static inline double lcg_frand(unsigned long* seed) {
-	return lcg_rand(seed) / ((double) (1 << 16) * (1 << 16));
-}
-
-static inline unsigned long djb2_hash(unsigned char *str) {
-    unsigned long hash = 5381;
-    int c;
-    while ((c = *str++) != 0)
-        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-    return hash;
-}
-
 /*
  * A speed-improved simplex noise algorithm for 2D
  *
@@ -77,3 +57,15 @@ static inline unsigned long djb2_hash(unsigned char *str) {
 
 void simplexInit(uint64_t seed);
 double simplexNoise(double x, double y);
+
+
+static inline double fBmSimplex(double x, double y, double gain, double frequency, double lacunarity, int octaves) {
+	double sum = 0.0;
+	double amplitude = gain;
+	for (int i = 0; i < octaves; ++i) {
+		sum += simplexNoise(x * frequency, y * frequency) * amplitude;
+        frequency *= lacunarity;
+        amplitude *= gain;
+	}
+	return sum;
+}

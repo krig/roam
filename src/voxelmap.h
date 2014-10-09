@@ -7,7 +7,7 @@
  */
 
 #define CHUNK_SIZE 32
-#define VIEW_DISTANCE 4
+#define VIEW_DISTANCE 8
 #define GROUND_LEVEL 100
 #define MAP_CHUNK_WIDTH (VIEW_DISTANCE*2)
 #define MAP_CHUNK_HEIGHT 8
@@ -88,10 +88,10 @@ typedef struct game_map {
 	unsigned long seed;
 } game_map;
 
-void gameFreeMap();
-void gameInitMap();
-void gameUpdateMap();
-void gameDrawMap();
+void gameFreeMap(void);
+void gameInitMap(void);
+void gameUpdateMap(void);
+void gameDrawMap(void);
 
 // mod which handles negative numbers
 static inline int mod(int a, int b) {

@@ -111,6 +111,22 @@ void mlGetRotationMatrix(ml_matrix33* to, const ml_matrix* from) {
 	a[8] = b[10];
 }
 
+ml_vec3 mlGetXAxis(const ml_matrix* from) {
+	ml_vec3 ret = { from->m[0], from->m[1], from->m[2] };
+	return ret;
+}
+
+ml_vec3 mlGetYAxis(const ml_matrix* from) {
+	ml_vec3 ret = { from->m[4], from->m[5], from->m[6] };
+	return ret;
+}
+
+ml_vec3 mlGetZAxis(const ml_matrix* from) {
+	ml_vec3 ret = { from->m[8], from->m[9], from->m[10] };
+	return ret;
+}
+
+
 ml_vec3 mlMulMat33Vec(const ml_matrix33* m, const ml_vec3* v) {
 	ml_vec3 ret;
 	ret.x = (v->x * m->m[0]) +
@@ -300,7 +316,7 @@ void mlDestroyMaterial(ml_material* material) {
 	material->program = 0;
 }
 
-static inline size_t mesh_stride(GLenum flags) {
+static inline GLsizei mesh_stride(GLenum flags) {
 	return ((flags & ML_POS_2F) ? 8 : 0) +
 		((flags & ML_POS_3F) ? 12 : 0) +
 		((flags & ML_POS_4UB) ? 4 : 0) +
@@ -313,10 +329,10 @@ static inline size_t mesh_stride(GLenum flags) {
 }
 
 void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags) {
-	size_t stride = mesh_stride(flags);
+	GLsizei stride = mesh_stride(flags);
 	glGenBuffers(1, &mesh->vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
-	glBufferData(GL_ARRAY_BUFFER, n * stride, data, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, (GLsizei)n * stride, data, GL_STATIC_DRAW);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	// no indices in this mesh
@@ -334,7 +350,7 @@ void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags) {
 	offset += (flags & ML_CLR_4UB) ? 4 : 0;
 	mesh->stride = stride;
 	mesh->mode = GL_TRIANGLES;
-	mesh->count = n;
+	mesh->count = (GLsizei)n;
 	mesh->flags = flags;
 	glCheck(__LINE__);
 }
@@ -343,7 +359,7 @@ void mlCreateIndexedMesh(ml_mesh* mesh, size_t n, void* data, size_t ilen, GLenu
 	mlCreateMesh(mesh, n, data, flags);
 	glGenBuffers(1, &mesh->ibo);
 
-	size_t isize = 0;
+	GLsizei isize = 0;
 	switch (indextype) {
 	case GL_UNSIGNED_BYTE:
 		isize = 1; break;
@@ -356,10 +372,10 @@ void mlCreateIndexedMesh(ml_mesh* mesh, size_t n, void* data, size_t ilen, GLenu
 	}
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ibo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, ilen * isize, indices, GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizei)ilen * isize, indices, GL_STATIC_DRAW);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-	mesh->count = ilen;
+	mesh->count = (GLsizei)ilen;
 	mesh->ibotype = indextype;
 	glCheck(__LINE__);
 }
@@ -503,8 +519,8 @@ void mlLoadTexture2D(ml_tex2d* tex, const char* filename) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    tex->w = x;
-    tex->h = y;
+    tex->w = (uint16_t)x;
+    tex->h = (uint16_t)y;
 
     switch (n) {
     case 4:
@@ -519,6 +535,8 @@ void mlLoadTexture2D(ml_tex2d* tex, const char* filename) {
     default:
 	    roamError("bad pixel depth %d for %s", n, filename);
     }
+
+    glGenerateMipmap(GL_TEXTURE_2D);
 
 	stbi_image_free(data);
 	glBindTexture(GL_TEXTURE_2D, 0);

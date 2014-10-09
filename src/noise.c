@@ -46,6 +46,7 @@
 #include <string.h>
 #include <assert.h>
 #include "noise.h"
+#include "rnd.h"
 
 #define STRETCH_CONSTANT_2D (-0.211324865405187)    //(1/Math.sqrt(2+1)-1)/2;
 #define SQUISH_CONSTANT_2D (0.366025403784439)      //(Math.sqrt(2+1)-1)/2;
@@ -143,12 +144,10 @@ void osnInit(uint64_t seed) {
 	memset(permGradIndex3D, 0, 256);
 	for (int i = 0; i < 256; i++)
 		source[i] = i;
-	seed = seed * UINT64_C(6364136223846793005) + UINT64_C(1442695040888963407);
-	seed = seed * UINT64_C(6364136223846793005) + UINT64_C(1442695040888963407);
-	seed = seed * UINT64_C(6364136223846793005) + UINT64_C(1442695040888963407);
+	seed = osnRand(osnRand(osnRand(seed)));
 
 	for (int i = 255; i >= 0; i--) {
-		seed = seed * UINT64_C(6364136223846793005) + UINT64_C(1442695040888963407);
+		seed = osnRand(seed);
 		uint32_t r = (uint32_t)((seed + 31) % (i + 1));
 		perm[i] = source[r];
 		permGradIndex3D[i] = ((perm[i] % (NUM_GRADIENTS3D / 3)) * 3);
@@ -2177,15 +2176,13 @@ void simplexInit(uint64_t seed) {
 
 	memset(p, 0, 256);
 
-	seed = seed * UINT64_C(6364136223846793005) + UINT64_C(1442695040888963407);
-	seed = seed * UINT64_C(6364136223846793005) + UINT64_C(1442695040888963407);
-	seed = seed * UINT64_C(6364136223846793005) + UINT64_C(1442695040888963407);
+	seed = osnRand(osnRand(osnRand(seed)));
 
 	for (i = 0; i < 256; ++i)
 		source[i] = i;
 
 	for (i = 255; i >= 0; --i) {
-		seed = seed * UINT64_C(6364136223846793005) + UINT64_C(1442695040888963407);
+		seed = osnRand(seed);
 		uint32_t r = (uint32_t)((seed + 31) % (i + 1));
 		p[i] = source[r];
 		source[r] = source[i];

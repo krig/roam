@@ -41,6 +41,19 @@ struct blockinfo_t blockinfo[] = {
 	{ .name = "snowy spruce", .tex = { 23, 24, 22, 22, 22, 22 } },
 };
 
+uint64_t good_seed() {
+	FILE* f = fopen("/dev/urandom", "rb");
+	if (f == NULL)
+		f = fopen("/dev/random", "rb");
+	if (f == NULL)
+		return time(NULL);
+	uint64_t seed;
+	fread(&seed, sizeof(uint64_t), 1, f);
+	fclose(f);
+	return seed;
+}
+
+
 static void
 gameInit() {
 	mlLoadTexture2D(&blocks_texture, "data/blocks.png");
@@ -51,7 +64,7 @@ gameInit() {
 	game.camera.pitch = -0.544628;
 	game.camera.yaw = 1.056371;
 	game.fast_day_mode = false;
-	game.single_chunk_mode = true;
+	game.single_chunk_mode = false;
 
 	struct controls_t default_controls = {
 		.left = SDL_SCANCODE_A,
@@ -74,14 +87,10 @@ gameInit() {
 #define H2F(r) (float)(0x##r)/255.f
 
 	//mlVec4Assign(game.ambient_color, H2F(61), H2F(04), H2F(5F), 0.4f);
-	mlVec4Assign(game.ambient_color, H2F(33), H2F(33), H2F(66), 0.6f);
-	mlVec4Assign(game.fog_color, H2F(28), H2F(30), H2F(48), 0.0075f);
+	mlVec4Assign(game.ambient_color, H2F(e0), H2F(e0), H2F(ff), 0.8f);
+	mlVec4Assign(game.fog_color, H2F(28), H2F(30), H2F(48), 0.0063f);
 
 	gameInitMap();
-
-	uint64_t seed = time(NULL);
-	osnInit(seed);
-	simplexInit(seed);
 
 	printf("* Load materials + UI\n");
 	mlCreateMaterial(&game.materials[MAT_BASIC], basic_vshader, basic_fshader);
@@ -227,7 +236,10 @@ gameRender(SDL_Point* viewport, float frametime) {
 	if (wireframe_mode)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-	mlFPSMatrix(mlGetMatrix(&game.modelview), game.camera.offset, game.camera.pitch, game.camera.yaw);
+	ml_matrix view;
+	mlFPSMatrix(&view, game.camera.offset, game.camera.pitch, game.camera.yaw);
+
+	mlCopyMatrix(mlGetMatrix(&game.modelview), &view);
 
 	// draw blocks (tesselate in parallel?)
 	// draw objects
@@ -255,10 +267,15 @@ gameRender(SDL_Point* viewport, float frametime) {
 	uiDebugLine(mc, mc2, 0xffff7f00);
 	uiDebugSphere(mc2, 0.15f, 0xffcf9f3f);
 
-	ml_vec3 origo = { 0, GROUND_LEVEL, 0 };
-	ml_vec3 xaxis = { 1, GROUND_LEVEL, 0 };
-	ml_vec3 yaxis = { 0, GROUND_LEVEL + 1, 0 };
-	ml_vec3 zaxis = { 0, GROUND_LEVEL, 1 };
+	ml_vec3 origo = game.camera.offset;
+	origo.y -= 1.2f;
+	//origo = mlVec3Add(game.camera.offset, mlVec3Scalef(mlGetZAxis(&view), -1.f));
+	ml_vec3 xaxis = { 1, 0, 0 };
+	ml_vec3 yaxis = { 0, 1, 0 };
+	ml_vec3 zaxis = { 0, 0, 1 };
+	xaxis = mlVec3Add(origo, xaxis);
+	yaxis = mlVec3Add(origo, yaxis);
+	zaxis = mlVec3Add(origo, zaxis);
 	uiDebugLine(origo, xaxis, 0xff00ff00);
 	uiDebugLine(origo, yaxis, 0xffff0000);
 	uiDebugLine(origo, zaxis, 0xff0000ff);
@@ -343,7 +360,7 @@ main(int argc, char* argv[]) {
 
 	mlPerspective(mlGetMatrix(&game.projection), mlDeg2Rad(70.f),
 	              (float)sz.x / (float)sz.y,
-	              0.1f, VIEW_DISTANCE*CHUNK_SIZE);
+	              0.1f, VIEW_DISTANCE*CHUNK_SIZE + CHUNK_SIZE);
 
 	gameInit();
 	glCheck(__LINE__);
