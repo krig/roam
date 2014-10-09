@@ -39,12 +39,6 @@ static inline tc2us_t tc2us(ml_vec2 tc) {
 	return to;
 }
 
-static inline ml_vec2 biastc(ml_vec2 tc, float by) {
-	tc.x += by;
-	tc.y += by;
-	return tc;
-}
-
 #define BLOCKTC(t, f, i) block_texcoords[(t)*(6*4) + (f)*4 + (i)]
 
 static void initBlockTexcoords() {
@@ -56,10 +50,10 @@ static void initBlockTexcoords() {
 	};
 	for (int t = 0; t < NUM_BLOCKTYPES; ++t) {
 		for (int i = 0; i < 6; ++i) {
-			BLOCKTC(t, i, 0) = tc2us(mlVec2Add(biastc(idx2tc(blockinfo[t].tex[i]), TC_BIAS), tcoffs[0]));
-			BLOCKTC(t, i, 1) = tc2us(mlVec2Add(biastc(idx2tc(blockinfo[t].tex[i]), TC_BIAS), tcoffs[1]));
-			BLOCKTC(t, i, 2) = tc2us(mlVec2Add(biastc(idx2tc(blockinfo[t].tex[i]), TC_BIAS), tcoffs[2]));
-			BLOCKTC(t, i, 3) = tc2us(mlVec2Add(biastc(idx2tc(blockinfo[t].tex[i]), TC_BIAS), tcoffs[3]));
+			BLOCKTC(t, i, 0) = tc2us(mlVec2Add(mlVec2AddScalar(idx2tc(blockinfo[t].tex[i]), TC_BIAS), tcoffs[0]));
+			BLOCKTC(t, i, 1) = tc2us(mlVec2Add(mlVec2AddScalar(idx2tc(blockinfo[t].tex[i]), TC_BIAS), tcoffs[1]));
+			BLOCKTC(t, i, 2) = tc2us(mlVec2Add(mlVec2AddScalar(idx2tc(blockinfo[t].tex[i]), TC_BIAS), tcoffs[2]));
+			BLOCKTC(t, i, 3) = tc2us(mlVec2Add(mlVec2AddScalar(idx2tc(blockinfo[t].tex[i]), TC_BIAS), tcoffs[3]));
 		}
 	}
 }

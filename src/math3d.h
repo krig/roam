@@ -227,6 +227,13 @@ mlVec2Add(const ml_vec2 a, const ml_vec2 b) {
 	return to;
 }
 
+static inline ml_vec2
+mlVec2AddScalar(ml_vec2 tc, float by) {
+	tc.x += by;
+	tc.y += by;
+	return tc;
+}
+
 static inline ml_vec3
 mlVec3Add(const ml_vec3 a, const ml_vec3 b) {
 	ml_vec3 to = { a.x + b.x, a.y + b.y, a.z + b.z };
