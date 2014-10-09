@@ -1,7 +1,7 @@
 #pragma once
 
 void uiInit(ml_material* ui, ml_material* debug);
-void uiExit();
+void uiExit(void);
 
 void uiSetScale(float scale);
 void uiText(float x, float y, uint32_t clr, const char* str, ...);

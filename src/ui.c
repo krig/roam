@@ -7,9 +7,9 @@ static ml_material* ui_material = NULL;
 static ml_tex2d ui_8x8font;
 static GLint ui_screensize_index = -1;
 static GLint ui_tex0_index = -1;
-static GLuint ui_vao = -1;
-static GLuint ui_vbo = -1;
-static size_t ui_count = 0;
+static GLuint ui_vao = 0;
+static GLuint ui_vbo = 0;
+static GLsizei ui_count = 0;
 static float ui_scale = 1;
 #define MAX_UI_VERTICES 2048
 static ml_vtx_ui ui_vertices[MAX_UI_VERTICES];
@@ -84,7 +84,7 @@ void uiDraw(SDL_Point* viewport) {
 		glUniform1i(ui_tex0_index, 0);
 		glBindVertexArray(ui_vao);
 		glBindBuffer(GL_ARRAY_BUFFER, ui_vbo);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(ml_vtx_ui)*ui_count, ui_vertices, GL_DYNAMIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, (unsigned long)(ui_count)*sizeof(ml_vtx_ui), ui_vertices, GL_DYNAMIC_DRAW);
 		glDrawArrays(GL_TRIANGLES, 0, ui_count);
 		glBindVertexArray(0);
 		glUseProgram(0);
