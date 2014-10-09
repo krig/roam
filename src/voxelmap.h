@@ -7,7 +7,7 @@
  */
 
 #define CHUNK_SIZE 32
-#define VIEW_DISTANCE 8
+#define VIEW_DISTANCE 4
 #define GROUND_LEVEL 100
 #define MAP_CHUNK_WIDTH (VIEW_DISTANCE*2)
 #define MAP_CHUNK_HEIGHT 8

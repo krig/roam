@@ -203,43 +203,23 @@ void gameLoadChunk(int x, int z) {
 
 	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
 		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
-
-			int terrain = fBmSimplex(fillx * NOISE_SCALE, fillz * NOISE_SCALE,
-			                         1.2,
-			                         1.0 / 16.0,
-			                         2.0,
-				4) > 0.0 ? BLOCK_MOSS : BLOCK_SAND;
-			int base = 5;
-			int ground = GROUND_LEVEL + fBmSimplex(fillx * NOISE_SCALE,
-			                      fillz * NOISE_SCALE,
-			                      4.0,
-			                      2.0,
-			                      2.0,
-			                      3);
 			for (filly = 0; filly < MAP_BLOCK_HEIGHT; ++filly) {
 				double density = osnNoise3D(fillx * NOISE_SCALE,
 				                            filly * NOISE_SCALE,
-				                            fillz * NOISE_SCALE);
-				if (density < 0.1) {
-					if (filly < 80)
+				                            fillz * NOISE_SCALE) * (((double)MAP_BLOCK_HEIGHT - (double)filly) / (double)MAP_BLOCK_HEIGHT);
+				if (density < 0.0) {
+					if (filly < 20)
 						blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_WATER;
 					else
 						blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_AIR;
 					continue;
-				}
-
-				if (filly < base)
+				} else if (density < 0.2) {
+					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_MOSS;
+				} else if (density < 0.5) {
 					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_DARKSTONE;
-				else if (filly < ground - 5)
-					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_STONE;
-				else if (filly < ground)
-					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_DIRT;
-				else if (filly == ground)
-					blocks[blockIndex(fillx, filly, fillz)].type = terrain;
-				else if (filly < 80)
-					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_WATER;
-				else
-					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_AIR;
+				} else {
+					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_LAVA;
+				}
 			}
 		}
 	}
