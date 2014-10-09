@@ -196,9 +196,10 @@ void gameLoadChunk(int x, int z) {
 
 	*/
 
-#define NOISE_SCALE (1.0/64.0)
+#define NOISE_SCALE (1.0/32.0)
 
 	printf("+");
+	fflush(stdout);
 
 	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
 		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
@@ -209,13 +210,24 @@ void gameLoadChunk(int x, int z) {
 			                         2.0,
 				4) > 0.0 ? BLOCK_MOSS : BLOCK_SAND;
 			int base = 5;
-			int ground = 75 + fBmSimplex(fillx * NOISE_SCALE,
+			int ground = GROUND_LEVEL + fBmSimplex(fillx * NOISE_SCALE,
 			                      fillz * NOISE_SCALE,
-			                      1.2,
-			                      1.0 / 64.0,
+			                      4.0,
 			                      2.0,
-			                      8);
+			                      2.0,
+			                      3);
 			for (filly = 0; filly < MAP_BLOCK_HEIGHT; ++filly) {
+				double density = osnNoise3D(fillx * NOISE_SCALE,
+				                            filly * NOISE_SCALE,
+				                            fillz * NOISE_SCALE);
+				if (density < 0.1) {
+					if (filly < 80)
+						blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_WATER;
+					else
+						blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_AIR;
+					continue;
+				}
+
 				if (filly < base)
 					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_DARKSTONE;
 				else if (filly < ground - 5)
@@ -224,6 +236,8 @@ void gameLoadChunk(int x, int z) {
 					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_DIRT;
 				else if (filly == ground)
 					blocks[blockIndex(fillx, filly, fillz)].type = terrain;
+				else if (filly < 80)
+					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_WATER;
 				else
 					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_AIR;
 			}

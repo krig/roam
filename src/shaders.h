@@ -129,8 +129,7 @@ static const char* chunk_fshader = "#version 130\n"
 	// out_color.xyz = torchlight level
 	// out_color.w = sunlight level
 	"void main() {\n"
-	"    vec3 base = texture(tex0, out_texcoord).xyz;\n"
-	"    if (base.xyz == vec3(1, 0, 1)) discard;\n"
+	"    vec3 base = vec3(1.f, 1.f, 1.f);"//texture(tex0, out_texcoord).xyz;\n"
 	"    float intensity = max(0.0, dot(normalize(out_normal), normalize(light_dir)));\n"
 	"    vec3 light = vec3(intensity) + (amb_color.xyz * (1 - intensity) * amb_color.w);\n"
 	"    base = base * light.xyz;\n"

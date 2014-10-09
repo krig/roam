@@ -87,7 +87,7 @@ gameInit() {
 #define H2F(r) (float)(0x##r)/255.f
 
 	//mlVec4Assign(game.ambient_color, H2F(61), H2F(04), H2F(5F), 0.4f);
-	mlVec4Assign(game.ambient_color, H2F(e0), H2F(e0), H2F(ff), 0.8f);
+	mlVec4Assign(game.ambient_color, H2F(e0), H2F(e0), H2F(ff), 0.4f);
 	mlVec4Assign(game.fog_color, H2F(28), H2F(30), H2F(48), 0.0063f);
 
 	gameInitMap();
