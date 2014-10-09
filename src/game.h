@@ -32,6 +32,7 @@ struct controls_t {
 	int forward;
 	int backward;
 	int jump;
+	int sprint;
 	int crouch;
 	int interact;
 	int primary_action;

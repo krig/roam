@@ -59,6 +59,7 @@ gameInit() {
 		.forward = SDL_SCANCODE_W,
 		.backward = SDL_SCANCODE_S,
 		.jump = SDL_SCANCODE_SPACE,
+		.sprint = SDL_SCANCODE_LCTRL,
 		.crouch = SDL_SCANCODE_LSHIFT,
 		.interact = SDL_SCANCODE_E,
 		.primary_action = SDL_BUTTON_LEFT,
@@ -165,6 +166,10 @@ gameUpdate(float dt) {
 	float speed = 2.f * dt;
 
 	state = SDL_GetKeyboardState(NULL);
+
+	if (state[game.controls.sprint] || state[SDL_SCANCODE_CAPSLOCK])
+		speed *= 10.f;
+
 	if (state[game.controls.left])
 		playerMove(-speed, 0.f);
 	if (state[game.controls.right])
