@@ -51,7 +51,7 @@ gameInit() {
 	game.camera.pitch = -0.544628;
 	game.camera.yaw = 1.056371;
 	game.fast_day_mode = false;
-	game.single_chunk_mode = false;
+	game.single_chunk_mode = true;
 
 	struct controls_t default_controls = {
 		.left = SDL_SCANCODE_A,
@@ -72,7 +72,8 @@ gameInit() {
 	game.time_of_day = 0.f; // (0 - 1 looping: 0 is midday, 0.5 is midnight)
 #define H2F(r) (float)(0x##r)/255.f
 
-	mlVec4Assign(game.ambient_color, H2F(61), H2F(04), H2F(5F), 0.4f);
+	//mlVec4Assign(game.ambient_color, H2F(61), H2F(04), H2F(5F), 0.4f);
+	mlVec4Assign(game.ambient_color, H2F(33), H2F(33), H2F(66), 0.6f);
 	mlVec4Assign(game.fog_color, H2F(28), H2F(30), H2F(48), 0.0075f);
 
 	gameInitMap();

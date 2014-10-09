@@ -44,6 +44,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <assert.h>
 #include "noise.h"
 
 #define STRETCH_CONSTANT_2D (-0.211324865405187)    //(1/Math.sqrt(2+1)-1)/2;
@@ -2247,5 +2248,7 @@ double simplexNoise(double xin, double yin) {
 	}
 	// Add contributions from each corner to get the final noise value.
 	// The result is scaled to return values in the interval [-1,1].
-	return 70.0 * (n0 + n1 + n2);
+	double ret = 70.0 * (n0 + n1 + n2);
+	assert(ret <= 1.0 && ret >= -1.0);
+	return ret;
 }

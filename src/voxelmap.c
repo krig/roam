@@ -17,7 +17,10 @@ static inline uint8_t blockType(int x, int y, int z) {
 		return BLOCK_DARKSTONE;
 	if (y >= MAP_BLOCK_HEIGHT)
 		return BLOCK_AIR;
-	return game.map.blocks[blockIndex(x, y, z)].type;
+	size_t idx = blockIndex(x, y, z);
+	if (idx >= MAP_BUFFER_SIZE)
+		return BLOCK_AIR;
+	return game.map.blocks[idx].type;
 }
 
 extern ml_tex2d blocks_texture;
@@ -66,6 +69,16 @@ void gameInitMap() {
 	memset(&game.map, 0, sizeof(game_map));
 	game.map.seed = time(0);
 	printf("* Seed: %lx\n", game.map.seed);
+	simplexInit(game.map.seed);
+	osnInit(game.map.seed);
+
+	for (size_t i = 0; i < MAP_BUFFER_SIZE; ++i) {
+		if ((i % 5) == 0) {
+			game.map.blocks[i].type = BLOCK_SHROOM;
+		} else {
+			game.map.blocks[i].type = BLOCK_AIR;
+		}
+	}
 
 	ml_ivec3 player = { game.camera.cx, 0, game.camera.cz };
 	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
@@ -159,7 +172,6 @@ void gameDrawMap() {
 void gameLoadChunk(int x, int z) {
 	int bufx = mod(x, MAP_CHUNK_WIDTH);
 	int bufz = mod(z, MAP_CHUNK_WIDTH);
-	printf("(%d,%d) -> (%d, %d): ", x, z, bufx, bufz);
 	game_chunk* chunk = &(game.map.chunks[bufz*MAP_CHUNK_WIDTH + bufx]);
 	game_block* blocks = game.map.blocks;
 	chunk->x = x;
@@ -187,13 +199,13 @@ void gameLoadChunk(int x, int z) {
 
 	*/
 
-	#define NOISE_SCALE 0.001
+	#define NOISE_SCALE 0.005
 
 	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
 		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
 			int base = 20 + (int)(simplexNoise(fillx * NOISE_SCALE + 64.0, fillz * NOISE_SCALE + 64.0) * 20.0);
-			int dirt = GROUND_LEVEL + (int)(simplexNoise(fillx * NOISE_SCALE + 96.0, fillz * NOISE_SCALE + 96.0) * 50.0);
-			int grass = dirt + (int)(mlClampd(fabs(simplexNoise(fillx * NOISE_SCALE + 128.0, fillz * NOISE_SCALE + 128.0) * 10.0), 0.0, 10.0));
+			int dirt = 75 + (int)(simplexNoise(fillx * NOISE_SCALE + 96.0, fillz * NOISE_SCALE + 96.0) * 25.0);
+			int grass = dirt + (int)(fabs(simplexNoise(fillx * NOISE_SCALE + 128.0, fillz * NOISE_SCALE + 128.0) * 10.0));
 			for (filly = 0; filly < MAP_BLOCK_HEIGHT; ++filly) {
 				if (filly < base)
 					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_DARKSTONE;
@@ -211,14 +223,14 @@ void gameLoadChunk(int x, int z) {
 		}
 	}
 
+
+	/*
 	for (int i = 0; i < NUM_BLOCKTYPES; ++i) {
 		int x = (i*2) % CHUNK_SIZE;
 		int z = ((i*2) / CHUNK_SIZE) * 2;
 		blocks[blockIndex(blockx + x, GROUND_LEVEL + 3, blockz + z)].type = i;
 	}
-
-
-	printf("\n");
+	*/
 }
 
 // tesselation buffer: size is maximum number of triangles generated
@@ -336,7 +348,6 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					verts[vi + 5] = corners[3];
 					vi += 6;
 				}
-
 				if (blockType(bx+ix, by+iy, bz+iz-1) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_BACK] != 0) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BACK, 0);
 					game_block_vtx corners[4] = {
@@ -353,7 +364,6 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					verts[vi + 5] = corners[3];
 					vi += 6;
 				}
-
 				if ((vi * sizeof(game_block_vtx)) > TESSELATION_BUFFER_SIZE)
 					roamError("Tesselation buffer too small: %zu", vi * sizeof(game_block_vtx));
 			}
