@@ -229,7 +229,7 @@ void gameLoadChunk(int x, int z) {
 
 #define TESSELATION_BUFFER_SIZE (CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE*36*sizeof(game_block_vtx))
 static uint8_t tesselation_buffer[TESSELATION_BUFFER_SIZE];
-#define POS(x, y, z) mlPackVectorChunkCoord(x, y, z, 0)
+#define POS(x, y, z) mlPackVectorChunkCoord((x), (y), (z), 0)
 
 size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 	ml_mesh* mesh;
@@ -260,9 +260,9 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_LEFT, 0);
 					game_block_vtx corners[4] = {
 						{POS(ix, iy, iz), {INT8_MIN, 0, 0, 0}, tc[1], 0xffffffff },
-						{POS(ix, iy, (iz+1)), {INT8_MIN, 0, 0, 0}, tc[3], 0xffffffff },
-						{POS(ix, (iy+1), iz), {INT8_MIN, 0, 0, 0}, tc[0], 0xffffffff },
-						{POS(ix, (iy+1), (iz+1)), {INT8_MIN, 0, 0, 0}, tc[2], 0xfffffff },
+						{POS(ix, iy, iz+1), {INT8_MIN, 0, 0, 0}, tc[3], 0xffffffff },
+						{POS(ix, iy+1, iz), {INT8_MIN, 0, 0, 0}, tc[0], 0xffffffff },
+						{POS(ix, iy+1, iz+1), {INT8_MIN, 0, 0, 0}, tc[2], 0xfffffff },
 					};
 					verts[vi + 0] = corners[0];
 					verts[vi + 1] = corners[1];
@@ -275,10 +275,10 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 				if (blockType(bx+ix+1, by+iy, bz+iz) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_RIGHT] != 0) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_RIGHT, 0);
 					game_block_vtx corners[4] = {
-						{POS((ix+1), iy, iz), {INT8_MAX, 0, 0, 0}, tc[1], 0xffffffff },
-						{POS((ix+1), iy, (iz+1)), {INT8_MAX, 0, 0, 0}, tc[3], 0xffffffff },
-						{POS((ix+1), (iy+1), (iz+1)), {INT8_MAX, 0, 0, 0}, tc[2], 0xffffffff },
-						{POS((ix+1), (iy+1), iz), {INT8_MAX, 0, 0, 0}, tc[0], 0xffffffff },
+						{POS(ix+1, iy, iz), {INT8_MAX, 0, 0, 0}, tc[1], 0xffffffff },
+						{POS(ix+1, iy, iz+1), {INT8_MAX, 0, 0, 0}, tc[3], 0xffffffff },
+						{POS(ix+1, iy+1, iz+1), {INT8_MAX, 0, 0, 0}, tc[2], 0xffffffff },
+						{POS(ix+1, iy+1, iz), {INT8_MAX, 0, 0, 0}, tc[0], 0xffffffff },
 					};
 					verts[vi + 0] = corners[0];
 					verts[vi + 1] = corners[2];
@@ -291,10 +291,10 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 				if (blockType(bx+ix, by+iy+1, bz+iz) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_TOP] != 0) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_TOP, 0);
 					game_block_vtx corners[4] = {
-						{POS(ix, (iy+1), iz), {0, INT8_MAX, 0, 0}, tc[0], 0xffffffff },
-						{POS(ix, (iy+1), (iz+1)), {0, INT8_MAX, 0, 0}, tc[1], 0xffffffff },
-						{POS((ix+1), (iy+1), (iz+1)), {0, INT8_MAX, 0, 0}, tc[3], 0xffffffff },
-						{POS((ix+1), (iy+1), iz), {0, INT8_MAX, 0, 0}, tc[2], 0xffffffff },
+						{POS(ix, iy+1, iz), {0, INT8_MAX, 0, 0}, tc[0], 0xffffffff },
+						{POS(ix, iy+1, iz+1), {0, INT8_MAX, 0, 0}, tc[1], 0xffffffff },
+						{POS(ix+1, iy+1, iz+1), {0, INT8_MAX, 0, 0}, tc[3], 0xffffffff },
+						{POS(ix+1, iy+1, iz), {0, INT8_MAX, 0, 0}, tc[2], 0xffffffff },
 					};
 					verts[vi + 0] = corners[0];
 					verts[vi + 1] = corners[1];
@@ -308,9 +308,9 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BOTTOM, 0);
 					game_block_vtx corners[4] = {
 						{POS(ix, iy, iz), {0, INT8_MIN, 0, 0}, tc[0], 0xffffffff },
-						{POS(ix, iy, (iz+1)), {0, INT8_MIN, 0, 0}, tc[1], 0xffffffff },
-						{POS((ix+1), iy, (iz+1)), {0, INT8_MIN, 0, 0}, tc[3], 0xffffffff },
-						{POS((ix+1), iy, iz), {0, INT8_MIN, 0, 0}, tc[2], 0xffffffff },
+						{POS(ix, iy, iz+1), {0, INT8_MIN, 0, 0}, tc[1], 0xffffffff },
+						{POS(ix+1, iy, iz+1), {0, INT8_MIN, 0, 0}, tc[3], 0xffffffff },
+						{POS(ix+1, iy, iz), {0, INT8_MIN, 0, 0}, tc[2], 0xffffffff },
 					};
 					verts[vi + 0] = corners[0];
 					verts[vi + 1] = corners[2];
@@ -323,10 +323,10 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 				if (blockType(bx+ix, by+iy, bz+iz+1) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_FRONT] != 0) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_FRONT, 0);
 					game_block_vtx corners[4] = {
-						{POS(ix, iy, (iz+1)), {0, 0, INT8_MAX, 0}, tc[1], 0xffffffff },
-						{POS((ix+1), iy, (iz+1)), {0, 0, INT8_MAX, 0}, tc[3], 0xffffffff },
-						{POS((ix+1), (iy+1), (iz+1)), {0, 0, INT8_MAX, 0}, tc[2], 0xffffffff },
-						{POS(ix, (iy+1), (iz+1)), {0, 0, INT8_MAX, 0}, tc[0], 0xffffffff },
+						{POS(ix, iy, iz+1), {0, 0, INT8_MAX, 0}, tc[1], 0xffffffff },
+						{POS(ix+1, iy, iz+1), {0, 0, INT8_MAX, 0}, tc[3], 0xffffffff },
+						{POS(ix+1, iy+1, iz+1), {0, 0, INT8_MAX, 0}, tc[2], 0xffffffff },
+						{POS(ix, iy+1, iz+1), {0, 0, INT8_MAX, 0}, tc[0], 0xffffffff },
 					};
 					verts[vi + 0] = corners[0];
 					verts[vi + 1] = corners[1];
