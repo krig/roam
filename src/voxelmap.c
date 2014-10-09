@@ -272,7 +272,7 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					verts[vi + 5] = corners[3];
 					vi += 6;
 				}
-				if (blockType(bx+ix+1, by+iy, bx+iz) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_RIGHT] != 0) {
+				if (blockType(bx+ix+1, by+iy, bz+iz) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_RIGHT] != 0) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_RIGHT, 0);
 					game_block_vtx corners[4] = {
 						{POS((ix+1), iy, iz), {INT8_MAX, 0, 0, 0}, tc[1], 0xffffffff },
@@ -288,7 +288,7 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					verts[vi + 5] = corners[3];
 					vi += 6;
 				}
-				if (blockType(bx+ix, by+iy+1, bx+iz) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_TOP] != 0) {
+				if (blockType(bx+ix, by+iy+1, bz+iz) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_TOP] != 0) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_TOP, 0);
 					game_block_vtx corners[4] = {
 						{POS(ix, (iy+1), iz), {0, INT8_MAX, 0, 0}, tc[0], 0xffffffff },
@@ -304,7 +304,7 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					verts[vi + 5] = corners[3];
 					vi += 6;
 				}
-				if (blockType(bx+ix, by+iy-1, bx+iz) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_BOTTOM] != 0) {
+				if (blockType(bx+ix, by+iy-1, bz+iz) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_BOTTOM] != 0) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BOTTOM, 0);
 					game_block_vtx corners[4] = {
 						{POS(ix, iy, iz), {0, INT8_MIN, 0, 0}, tc[0], 0xffffffff },
@@ -320,7 +320,7 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					verts[vi + 5] = corners[3];
 					vi += 6;
 				}
-				if (blockType(bx+ix, by+iy, bx+iz+1) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_FRONT] != 0) {
+				if (blockType(bx+ix, by+iy, bz+iz+1) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_FRONT] != 0) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_FRONT, 0);
 					game_block_vtx corners[4] = {
 						{POS(ix, iy, (iz+1)), {0, 0, INT8_MAX, 0}, tc[1], 0xffffffff },
@@ -337,7 +337,7 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					vi += 6;
 				}
 
-				if (blockType(bx+ix, by+iy, bx+iz-1) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_BACK] != 0) {
+				if (blockType(bx+ix, by+iy, bz+iz-1) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_BACK] != 0) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BACK, 0);
 					game_block_vtx corners[4] = {
 						{POS(ix, iy, iz), {0, 0, INT8_MIN, 0}, tc[1], 0xffffffff },
@@ -353,7 +353,7 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					verts[vi + 5] = corners[3];
 					vi += 6;
 				}
-				printf("nv: %zu\n", vi);
+
 				if ((vi * sizeof(game_block_vtx)) > TESSELATION_BUFFER_SIZE)
 					roamError("Tesselation buffer too small: %zu", vi * sizeof(game_block_vtx));
 			}
