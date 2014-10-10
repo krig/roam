@@ -18,29 +18,6 @@ struct game_t game;
 
 ml_tex2d blocks_texture;
 
-struct blockinfo_t blockinfo[] = {
-	{ .name = "air", .tex = { 0, 0, 0, 0, 0, 0 } },
-	{ .name = "grass", .tex = { 1, 3, 2, 2, 2, 2 } },
-	{ .name = "dirt", .tex = { 3, 3, 3, 3, 3, 3 } },
-	{ .name = "sand", .tex = { 4, 4, 4, 4, 4, 4 } },
-	{ .name = "stone", .tex = { 5, 5, 5, 5, 5, 5 } },
-	{ .name = "darkstone", .tex = { 6, 6, 6, 6, 6, 6 } },
-	{ .name = "bone", .tex = { 7, 7, 7, 7, 7, 7 } },
-	{ .name = "skin", .tex = { 8, 8, 8, 8, 8, 8 } },
-	{ .name = "diamond ore", .tex = { 9, 9, 9, 9, 9, 9 } },
-	{ .name = "clay", .tex = { 10, 10, 10, 10, 10, 10 } },
-	{ .name = "cobblestone", .tex = { 11, 11, 11, 11, 11, 11 } },
-	{ .name = "lava", .tex = { 12, 12, 12, 12, 12, 12 } },
-	{ .name = "water", .tex = { 13, 13, 13, 13, 13, 13 } },
-	{ .name = "treetrunk", .tex = { 14, 14, 14, 14, 14, 14 } },
-	{ .name = "deadskin", .tex = { 15, 15, 15, 15, 15, 15 } },
-	{ .name = "shroom", .tex = { 16, 16, 16, 16, 16, 16 } },
-	{ .name = "grass billboard", .tex = { 0, 0, 17, 17, 17, 17 } },
-	{ .name = "leaves", .tex = { 18, 18, 18, 18, 18, 18 } },
-	{ .name = "moss", .tex = { 20, 21, 19, 19, 19, 19 } },
-	{ .name = "snowy spruce", .tex = { 23, 24, 22, 22, 22, 22 } },
-};
-
 uint64_t good_seed() {
 	FILE* f = fopen("/dev/urandom", "rb");
 	if (f == NULL)

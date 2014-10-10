@@ -7,46 +7,13 @@
  */
 
 #define CHUNK_SIZE 16
-#define VIEW_DISTANCE 32
+#define VIEW_DISTANCE 12
 #define GROUND_LEVEL 80
 #define MAP_CHUNK_WIDTH (VIEW_DISTANCE*2)
 #define MAP_CHUNK_HEIGHT 8
 #define MAP_BLOCK_WIDTH (MAP_CHUNK_WIDTH*CHUNK_SIZE)
 #define MAP_BLOCK_HEIGHT (MAP_CHUNK_HEIGHT*CHUNK_SIZE)
 #define MAP_BUFFER_SIZE (MAP_BLOCK_WIDTH*MAP_BLOCK_WIDTH*MAP_BLOCK_HEIGHT)
-
-enum game_blocktype {
-	BLOCK_AIR = 0,
-	BLOCK_GRASS,
-	BLOCK_DIRT,
-	BLOCK_SAND,
-	BLOCK_STONE,
-	BLOCK_DARKSTONE,
-	BLOCK_BONE,
-	BLOCK_SKIN,
-	BLOCK_DIAMOND_ORE,
-	BLOCK_CLAY,
-	BLOCK_COBBLESTONE,
-	BLOCK_LAVA,
-	BLOCK_WATER,
-	BLOCK_TREETRUNK,
-	BLOCK_DEADSKIN,
-	BLOCK_SHROOM,
-	BLOCK_GRASS_BILLBOARD,
-	BLOCK_LEAVES,
-	BLOCK_MOSS,
-	BLOCK_SNOWY_SPRUCE,
-	NUM_BLOCKTYPES
-};
-
-#define BLOCK_TC_W (8.0 / 128.0)
-
-static inline ml_vec2 idx2tc(int idx) {
-	ml_vec2 tc;
-	tc.x = (float)((idx - 1) % 8) * BLOCK_TC_W;
-	tc.y = (float)((idx - 1) / 8) * BLOCK_TC_W;
-	return tc;
-}
 
 #pragma pack(push, 1)
 
@@ -61,11 +28,6 @@ typedef struct game_block_vtx {
 	tc2us_t tc;
 	uint32_t clr;
 } game_block_vtx;
-
-typedef struct game_block {
-	uint8_t type;
-	uint8_t meta;
-} game_block;
 
 #pragma pack(pop)
 
@@ -82,7 +44,7 @@ typedef struct game_map {
 	// meta = light levels + flags?
 	// as the player moves, blocks should be swapped in/out
 	// (load or generate asynchronously, then copy over in update?)
-	game_block blocks[MAP_BUFFER_SIZE]; // 128MB
+	uint8_t blocks[MAP_BUFFER_SIZE]; // 64MB
 	uint16_t light[MAP_BUFFER_SIZE]; // 128MB
 	game_chunk chunks[MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH];
 	unsigned long seed;

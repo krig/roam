@@ -1,11 +1,13 @@
 #include "common.h"
+#include <time.h>
+#include <assert.h>
 #include "math3d.h"
 #include "game.h"
 #include "voxelmap.h"
 #include "noise.h"
 #include "rnd.h"
-#include <time.h>
-#include <assert.h>
+#include "images.h"
+#include "blocks.h"
 
 static inline size_t blockIndex(int x, int y, int z) {
 	return mod(z, MAP_BLOCK_WIDTH) * (MAP_BLOCK_WIDTH * MAP_BLOCK_HEIGHT) +
@@ -15,25 +17,21 @@ static inline size_t blockIndex(int x, int y, int z) {
 
 static inline uint8_t blockType(int x, int y, int z) {
 	if (y < 0)
-		return BLOCK_DARKSTONE;
+		return BLOCK_STONE;
 	if (y >= MAP_BLOCK_HEIGHT)
 		return BLOCK_AIR;
 	size_t idx = blockIndex(x, y, z);
 	if (idx >= MAP_BUFFER_SIZE)
 		return BLOCK_AIR;
-	return game.map.blocks[idx].type;
+	return game.map.blocks[idx];
 }
 
 extern ml_tex2d blocks_texture;
 
 static tc2us_t block_texcoords[NUM_BLOCKTYPES * 6 * 4];
 
-extern struct blockinfo_t blockinfo[];
-
 void gameLoadChunk(int x, int z);
 size_t gameTesselateSubChunk(int cx, int cy, int cz);
-
-#define TC_BIAS (1.0/4000.0)
 
 static inline tc2us_t tc2us(ml_vec2 tc) {
 	tc2us_t to = {
@@ -48,16 +46,17 @@ static inline tc2us_t tc2us(ml_vec2 tc) {
 static void initBlockTexcoords() {
 	ml_vec2 tcoffs[4] = {
 		{0, 0},
-		{0, BLOCK_TC_W - TC_BIAS},
-		{BLOCK_TC_W - TC_BIAS, 0},
-		{BLOCK_TC_W - TC_BIAS, BLOCK_TC_W - TC_BIAS}
+		{0, IMG_TCW - IMG_TC_BIAS},
+		{IMG_TCW - IMG_TC_BIAS, 0},
+		{IMG_TCW - IMG_TC_BIAS, IMG_TCW - IMG_TC_BIAS}
 	};
 	for (int t = 0; t < NUM_BLOCKTYPES; ++t) {
 		for (int i = 0; i < 6; ++i) {
-			BLOCKTC(t, i, 0) = tc2us(mlVec2Add(mlVec2AddScalar(idx2tc(blockinfo[t].tex[i]), TC_BIAS), tcoffs[0]));
-			BLOCKTC(t, i, 1) = tc2us(mlVec2Add(mlVec2AddScalar(idx2tc(blockinfo[t].tex[i]), TC_BIAS), tcoffs[1]));
-			BLOCKTC(t, i, 2) = tc2us(mlVec2Add(mlVec2AddScalar(idx2tc(blockinfo[t].tex[i]), TC_BIAS), tcoffs[2]));
-			BLOCKTC(t, i, 3) = tc2us(mlVec2Add(mlVec2AddScalar(idx2tc(blockinfo[t].tex[i]), TC_BIAS), tcoffs[3]));
+			ml_vec2 tl = mlVec2AddScalar(imgTC(blockinfo[t].img[i]), IMG_TC_BIAS);
+			BLOCKTC(t, i, 0) = tc2us(mlVec2Add(tl, tcoffs[0]));
+			BLOCKTC(t, i, 1) = tc2us(mlVec2Add(tl, tcoffs[1]));
+			BLOCKTC(t, i, 2) = tc2us(mlVec2Add(tl, tcoffs[2]));
+			BLOCKTC(t, i, 3) = tc2us(mlVec2Add(tl, tcoffs[3]));
 		}
 	}
 }
@@ -65,6 +64,7 @@ static void initBlockTexcoords() {
 void gameInitMap() {
 	printf("* Allocate and build initial map...\n");
 
+	initBlockInfo();
 	initBlockTexcoords();
 
 	memset(&game.map, 0, sizeof(game_map));
@@ -76,9 +76,9 @@ void gameInitMap() {
 	/*
 	for (size_t i = 0; i < MAP_BUFFER_SIZE; ++i) {
 		if ((i % 5) == 0) {
-			game.map.blocks[i].type = BLOCK_SHROOM;
+			game.map.blocks[i] = BLOCK_SHROOM;
 		} else {
-			game.map.blocks[i].type = BLOCK_AIR;
+			game.map.blocks[i] = BLOCK_AIR;
 		}
 		}*/
 
@@ -181,7 +181,7 @@ void gameLoadChunk(int x, int z) {
 	int bufx = mod(x, MAP_CHUNK_WIDTH);
 	int bufz = mod(z, MAP_CHUNK_WIDTH);
 	game_chunk* chunk = &(game.map.chunks[bufz*MAP_CHUNK_WIDTH + bufx]);
-	game_block* blocks = game.map.blocks;
+	uint8_t* blocks = game.map.blocks;
 	chunk->x = x;
 	chunk->z = z;
 
@@ -193,19 +193,16 @@ void gameLoadChunk(int x, int z) {
 
 	int fillx, filly, fillz;
 
-	/*
 	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
 		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
 			for (filly = 0; filly < MAP_BLOCK_HEIGHT; ++filly) {
 				if (filly < GROUND_LEVEL - 2)
-					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_STONE;
+					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_STONE;
 				else
-					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_AIR;
+					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_AIR;
 			}
 		}
 	}
-
-	*/
 
 #define NOISE_SCALE (1.0/(double)CHUNK_SIZE)
 
@@ -223,57 +220,70 @@ void gameLoadChunk(int x, int z) {
 				                      fillz * NOISE_SCALE);
 				if (density < 0.0) {
 					if (filly < 20)
-						blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_WATER;
+						blocks[blockIndex(fillx, filly, fillz)] = BLOCK_WATER;
 					else
-						blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_AIR;
+						blocks[blockIndex(fillx, filly, fillz)] = BLOCK_AIR;
 				} else if (((double)filly / (double)MAP_BLOCK_HEIGHT) < height) {
 					if (density < 0.2) {
-					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_MOSS;
+					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_MOSS;
 					} else if (density < 0.5) {
-						blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_DARKSTONE;
+						blocks[blockIndex(fillx, filly, fillz)] = BLOCK_DARKSTONE;
 					} else {
-						blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_LAVA;
+						blocks[blockIndex(fillx, filly, fillz)] = BLOCK_LAVA;
 					}
 				} else {
 					if (filly < 20)
-						blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_WATER;
+						blocks[blockIndex(fillx, filly, fillz)] = BLOCK_WATER;
 					else
-						blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_AIR;
+						blocks[blockIndex(fillx, filly, fillz)] = BLOCK_AIR;
 				}
 			}
 		}
 		}*/
 
+	/*
 	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
 		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
 			for (filly = 0; filly < MAP_BLOCK_HEIGHT; ++filly) {
 				if (filly == GROUND_LEVEL - 3)
-					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_GRASS;
+					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_GRASS;
 				else
-					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_AIR;
+					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_AIR;
 			}
 		}
 	}
-	
+	*/
 	for (int i = 0; i < NUM_BLOCKTYPES; ++i) {
 		int x = (i*2) % CHUNK_SIZE;
 		int z = ((i*2) / CHUNK_SIZE) * 2;
-		blocks[blockIndex(blockx + x, GROUND_LEVEL - 1, blockz + z)].type = i;
+		blocks[blockIndex(blockx + x, GROUND_LEVEL + 2, blockz + z)] = i;
 	}
-
+/*
 	for (int z = 2; z < 4; ++z)
 		for (int x = 2; x < 4; ++x)
 			for (int y = 2; y < 4; ++y)
-				blocks[blockIndex(x, GROUND_LEVEL + y, z)].type = BLOCK_STONE;
+				blocks[blockIndex(x, GROUND_LEVEL + y, z)] = BLOCK_STONE;
 
 	for (fillz = CHUNK_SIZE; fillz < CHUNK_SIZE*2; ++fillz) {
 		for (fillx = CHUNK_SIZE; fillx < CHUNK_SIZE*2; ++fillx) {
 			for (filly = GROUND_LEVEL + 2; filly < GROUND_LEVEL + 2 + CHUNK_SIZE; ++filly) {
-				blocks[blockIndex(fillx, filly, fillz)].type = (rand() % 2) ? BLOCK_SAND : BLOCK_AIR;
+				blocks[blockIndex(fillx, filly, fillz)] = (rand() % 2) ? BLOCK_SAND : BLOCK_AIR;
 			}
 		}
 	}
-	
+
+	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
+		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
+			for (filly = 0; filly < MAP_BLOCK_HEIGHT; ++filly) {
+				if (filly < GROUND_LEVEL)
+					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_STONE;
+				else
+					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_AIR;
+			}
+		}
+	}
+	*/
+
 }
 
 // tesselation buffer: size is maximum number of triangles generated
@@ -315,7 +325,7 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					continue;
 				}
 
-				if (blockType(bx+ix, by+iy+1, bz+iz) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_TOP] != 0) {
+				if (blockType(bx+ix, by+iy+1, bz+iz) == BLOCK_AIR) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_TOP, 0);
 					game_block_vtx corners[4] = {
 						{POS(ix, iy+1, iz), {0, INT8_MAX, 0, 0}, tc[0], 0xffffffff },
@@ -331,7 +341,7 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					verts[vi++] = corners[3];
 				}
 
-				if (blockType(bx+ix, by+iy-1, bz+iz) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_BOTTOM] != 0) {
+				if (blockType(bx+ix, by+iy-1, bz+iz) == BLOCK_AIR) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BOTTOM, 0);
 					game_block_vtx corners[4] = {
 						{POS(ix, iy, iz), {0, INT8_MIN, 0, 0}, tc[0], 0xffffffff },
@@ -346,7 +356,7 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					verts[vi++] = corners[0];
 					verts[vi++] = corners[3];
 				}
-				if (blockType(bx+ix-1, by+iy, bx+iz) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_LEFT] != 0) {
+				if (blockType(bx+ix-1, by+iy, bx+iz) == BLOCK_AIR) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_LEFT, 0);
 					game_block_vtx corners[4] = {
 						{POS(ix, iy, iz), {INT8_MIN, 0, 0, 0}, tc[1], 0xffffffff },
@@ -361,7 +371,7 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					verts[vi++] = corners[1];
 					verts[vi++] = corners[3];
 				}
-				if (blockType(bx+ix+1, by+iy, bz+iz) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_RIGHT] != 0) {
+				if (blockType(bx+ix+1, by+iy, bz+iz) == BLOCK_AIR) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_RIGHT, 0);
 					game_block_vtx corners[4] = {
 						{POS(ix+1, iy, iz), {INT8_MAX, 0, 0, 0}, tc[1], 0xffffffff },
@@ -376,7 +386,7 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					verts[vi++] = corners[0];
 					verts[vi++] = corners[3];
 				}
-				if (blockType(bx+ix, by+iy, bz+iz+1) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_FRONT] != 0) {
+				if (blockType(bx+ix, by+iy, bz+iz+1) == BLOCK_AIR) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_FRONT, 0);
 					game_block_vtx corners[4] = {
 						{POS(ix, iy, iz+1), {0, 0, INT8_MAX, 0}, tc[1], 0xffffffff },
@@ -391,7 +401,7 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					verts[vi++] = corners[2];
 					verts[vi++] = corners[3];
 				}
-				if (blockType(bx+ix, by+iy, bz+iz-1) == BLOCK_AIR && blockinfo[t].tex[BLOCK_TEX_BACK] != 0) {
+				if (blockType(bx+ix, by+iy, bz+iz-1) == BLOCK_AIR) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BACK, 0);
 					game_block_vtx corners[4] = {
 						{POS(ix, iy, iz), {0, 0, INT8_MIN, 0}, tc[1], 0xffffffff },

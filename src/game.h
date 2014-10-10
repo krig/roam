@@ -42,22 +42,6 @@ struct controls_t {
 	int exitgame;
 };
 
-enum blocktexidx_t {
-	BLOCK_TEX_TOP,
-	BLOCK_TEX_BOTTOM,
-	BLOCK_TEX_LEFT,
-	BLOCK_TEX_RIGHT,
-	BLOCK_TEX_FRONT,
-	BLOCK_TEX_BACK
-};
-
-struct blockinfo_t {
-	const char* name; // short description
-	// texture tile indices
-	// top, bottom, left, right, front, back
-	int tex[6];
-};
-
 struct game_t {
 	struct camera_t camera;
 	struct controls_t controls;
