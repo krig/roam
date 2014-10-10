@@ -111,6 +111,67 @@ void mlGetRotationMatrix(ml_matrix33* to, const ml_matrix* from) {
 	a[8] = b[10];
 }
 
+void
+mlGetFrustum(ml_frustum* frustum, ml_matrix* projection, ml_matrix* view) {
+	ml_matrix MP;
+	mlCopyMatrix(&MP, projection);
+	mlMulMatrix(&MP, view);
+	ml_vec4* p = frustum->planes;
+	float* m = MP.m;
+	mlVec4Assign(p[0], m[3] - m[0], m[7] - m[4], m[11] - m[8], m[15] - m[12]);
+	mlVec4Assign(p[1], m[3] + m[0], m[7] + m[4], m[11] + m[8], m[15] + m[12]);
+	mlVec4Assign(p[2], m[3] + m[1], m[7] + m[5], m[11] + m[9], m[15] + m[13]);
+	mlVec4Assign(p[3], m[3] - m[1], m[7] - m[5], m[11] - m[9], m[15] - m[13]);
+	mlVec4Assign(p[4], m[3] - m[2], m[7] - m[6], m[11] - m[10], m[15] - m[14]);
+	mlVec4Assign(p[5], m[3] + m[2], m[7] + m[6], m[11] + m[10], m[15] + m[14]);
+	for (int i = 0; i < 6; ++i)
+		p[i] = mlNormalizePlane(p[i]);
+}
+
+int mlTestFrustumAABB(ml_frustum* frustum, ml_vec3 p0, ml_vec3 p1) {
+		ml_vec3 pmin, pmax;
+		ml_vec3 vmin, vmax;
+		int result, i, m, n;
+		ml_vec4 p;
+		pmin.x = ML_MIN(p0.x, p1.x);
+		pmin.y = ML_MIN(p0.y, p1.y);
+		pmin.z = ML_MIN(p0.z, p1.z);
+		pmax.x = ML_MAX(p0.x, p1.x);
+		pmax.y = ML_MAX(p0.y, p1.y);
+		pmax.z = ML_MAX(p0.z, p1.z);
+		result = ML_INSIDE;
+		for (i = 0; i < 6; ++i) {
+			p = frustum->planes[i];
+			if (p.x >= 0) {
+				vmin.x = pmin.x;
+				vmax.x = pmax.x;
+			} else {
+				vmin.x = pmax.x;
+				vmax.x = pmin.x;
+			}
+			if (p.y >= 0) {
+				vmin.y = pmin.y;
+				vmax.y = pmax.y;
+			} else {
+				vmin.y = pmax.y;
+				vmax.y = pmin.y;
+			}
+			if (p.z >= 0) {
+				vmin.z = pmin.z;
+				vmax.z = pmax.z;
+			} else {
+				vmin.z = pmax.z;
+				vmax.z = pmin.z;
+			}
+			m = p.x * vmax.x + p.y * vmax.y + p.z * vmax.z + p.w;
+			if (m < 0)
+				return ML_OUTSIDE;
+			n = p.x * vmin.x + p.y * vmin.y + p.z * vmin.z + p.w;
+			if (n < 0) result = ML_INTERSECT;
+		}
+		return result;
+}
+
 ml_vec3 mlGetXAxis(const ml_matrix* from) {
 	ml_vec3 ret = { from->m[0], from->m[1], from->m[2] };
 	return ret;

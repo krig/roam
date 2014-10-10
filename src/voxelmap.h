@@ -7,7 +7,7 @@
  */
 
 #define CHUNK_SIZE 16
-#define VIEW_DISTANCE 16
+#define VIEW_DISTANCE 32
 #define GROUND_LEVEL 80
 #define MAP_CHUNK_WIDTH (VIEW_DISTANCE*2)
 #define MAP_CHUNK_HEIGHT 8
@@ -91,7 +91,7 @@ typedef struct game_map {
 void gameFreeMap(void);
 void gameInitMap(void);
 void gameUpdateMap(void);
-void gameDrawMap(void);
+void gameDrawMap(ml_frustum* frustum);
 
 // mod which handles negative numbers
 static inline int mod(int a, int b) {

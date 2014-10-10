@@ -12,6 +12,8 @@
 #define ML_LOG2E 1.44269504088896340736
 #define ML_PI_2 1.57079632679489661923
 #define ML_PI_4 0.785398163397448309616
+#define ML_MIN(a, b) (((b) < (a)) ? (b) : (a))
+#define ML_MAX(a, b) (((b) > (a)) ? (b) : (a))
 
 typedef struct ml_vec2 {
 	float x, y;
@@ -243,6 +245,12 @@ mlVec3Add(const ml_vec3 a, const ml_vec3 b) {
 	return to;
 }
 
+static inline ml_vec4
+mlVec4Add(const ml_vec4 a, const ml_vec4 b) {
+	ml_vec4 to = { a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w };
+	return to;
+}
+
 static inline ml_vec3
 mlVec3Sub(const ml_vec3 a, const ml_vec3 b) {
 	ml_vec3 to = { a.x - b.x, a.y - b.y, a.z - b.z };
@@ -252,6 +260,12 @@ mlVec3Sub(const ml_vec3 a, const ml_vec3 b) {
 static inline ml_vec3
 mlVec3Scalef(const ml_vec3 a, float f) {
 	ml_vec3 to = { a.x * f, a.y * f, a.z * f };
+	return to;
+}
+
+static inline ml_vec4
+mlVec4Scalef(const ml_vec4 a, float f) {
+	ml_vec4 to = { a.x * f, a.y * f, a.z * f, a.w * f };
 	return to;
 }
 
@@ -275,6 +289,18 @@ static inline ml_vec3
 mlVec3Invert(const ml_vec3 v) {
 	ml_vec3 to = { -v.x, -v.y, -v.z };
 	return to;
+}
+
+static inline ml_vec4
+mlNormalizePlane(ml_vec4 plane) {
+	ml_vec3 n = {plane.x, plane.y, plane.z};
+	float len = mlVec3Length(n);
+	n = mlVec3Scalef(n, 1.f / len);
+	plane.x = n.x;
+	plane.y = n.y;
+	plane.z = n.z;
+	plane.w = plane.w / len;
+	return plane;
 }
 
 /*
@@ -432,5 +458,20 @@ mlRGBA(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 	ml_clr c = { a, r, g, b };
 	return c;
 }
+
+typedef struct ml_frustum {
+	ml_vec4 planes[6];
+} ml_frustum;
+
+void
+mlGetFrustum(ml_frustum* frustum, ml_matrix* projection, ml_matrix* view);
+
+enum ml_CollisionResult {
+	ML_OUTSIDE,
+	ML_INSIDE,
+	ML_INTERSECT
+};
+
+int mlTestFrustumAABB(ml_frustum* frustum, ml_vec3 p0, ml_vec3 p1);
 
 // TODO: GL state stack - track state as a stack of uint64_ts...

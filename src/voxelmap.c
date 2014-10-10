@@ -105,7 +105,7 @@ void gameFreeMap() {
 void gameUpdateMap() {
 }
 
-void gameDrawMap() {
+void gameDrawMap(ml_frustum* frustum) {
 	// for each visible chunk...
 	// set up material etc. once.
 	ml_material* material = game.materials + MAT_CHUNK;
@@ -145,10 +145,21 @@ void gameDrawMap() {
 			ml_mesh* mesh = chunks[i].data + j;
 			if (mesh->vbo == 0)
 				continue;
+
+			ml_vec3 offset = { (float)(x*CHUNK_SIZE) - 0.5f,
+			                   (float)(j*CHUNK_SIZE) - 0.5f,
+			                   (float)(z*CHUNK_SIZE) - 0.5f};
+
+			ml_vec3 p1 = {offset.x + (float)CHUNK_SIZE,
+			              offset.y + (float)CHUNK_SIZE,
+			              offset.z + (float)CHUNK_SIZE };
+			// not calculating the frustum right...
+			if (mlTestFrustumAABB(frustum, offset, p1) == ML_OUTSIDE)
+				continue;
+
 			// update the chunk offset uniform
 			// bind the VBO
 			// can this be done once? probably...
-			ml_vec3 offset = { x*CHUNK_SIZE, j*CHUNK_SIZE, z*CHUNK_SIZE };
 			mlUniformVec3(material->chunk_offset, &offset);
 			mlMapMeshToMaterial(mesh, material);
 			glDrawArrays(mesh->mode, 0, mesh->count);

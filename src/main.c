@@ -241,6 +241,10 @@ gameRender(SDL_Point* viewport, float frametime) {
 
 	mlCopyMatrix(mlGetMatrix(&game.modelview), &view);
 
+	// calculate view frustum
+	ml_frustum frustum;
+	mlGetFrustum(&frustum, mlGetMatrix(&game.projection), &view);
+
 	// draw blocks (tesselate in parallel?)
 	// draw objects
 	// draw creatures
@@ -255,7 +259,7 @@ gameRender(SDL_Point* viewport, float frametime) {
 	mlVec3Assign(game.light_dir, -cos(toffs), sin(toffs), cos(toffs));
 	game.light_dir = mlVec3Normalize(game.light_dir);
 
-	gameDrawMap();
+	gameDrawMap(&frustum);
 
 	if (wireframe_mode)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
