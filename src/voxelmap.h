@@ -39,7 +39,7 @@ enum game_blocktype {
 	NUM_BLOCKTYPES
 };
 
-#define BLOCK_TC_W (16.0 / 128.0)
+#define BLOCK_TC_W (8.0 / 128.0)
 
 static inline ml_vec2 idx2tc(int idx) {
 	ml_vec2 tc;

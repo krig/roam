@@ -265,6 +265,14 @@ void gameLoadChunk(int x, int z) {
 		for (int x = 2; x < 4; ++x)
 			for (int y = 2; y < 4; ++y)
 				blocks[blockIndex(x, GROUND_LEVEL + y, z)].type = BLOCK_STONE;
+
+	for (fillz = CHUNK_SIZE; fillz < CHUNK_SIZE*2; ++fillz) {
+		for (fillx = CHUNK_SIZE; fillx < CHUNK_SIZE*2; ++fillx) {
+			for (filly = GROUND_LEVEL + 2; filly < GROUND_LEVEL + 2 + CHUNK_SIZE; ++filly) {
+				blocks[blockIndex(fillx, filly, fillz)].type = (rand() % 2) ? BLOCK_SAND : BLOCK_AIR;
+			}
+		}
+	}
 	
 }
 

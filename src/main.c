@@ -56,7 +56,7 @@ uint64_t good_seed() {
 
 static void
 gameInit() {
-	mlLoadTexture2D(&blocks_texture, "data/blocks.png");
+	mlLoadTexture2D(&blocks_texture, "data/blocks8-v1.png");
 
 	game.camera.cx = game.camera.cz = 0;
 	ml_vec3 offs = { 2.537648, GROUND_LEVEL + 1.336000, 0.514751 };
