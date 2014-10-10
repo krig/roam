@@ -433,11 +433,4 @@ mlRGBA(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 	return c;
 }
 
-// elements xyz are 0-32
-// w should be 0-3
-static inline uint32_t
-mlPackVectorChunkCoord(unsigned int x, unsigned int y, unsigned int z, unsigned int w) {
-	return ((x&0x3f)*31u) | (((y&0x3f)*31u)<<10) | (((z&0x3f)*31u)<<20) | ((w&0x3)<<30);
-}
-
 // TODO: GL state stack - track state as a stack of uint64_ts...

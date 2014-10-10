@@ -196,41 +196,65 @@ void gameLoadChunk(int x, int z) {
 
 	*/
 
-#define NOISE_SCALE (1.0/32.0)
+#define NOISE_SCALE (1.0/(double)CHUNK_SIZE)
 
 	printf("+");
 	fflush(stdout);
-
+/*
 	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
 		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
+			double height = simplexNoise(fillx * NOISE_SCALE, fillz * NOISE_SCALE) * 0.5 + 1.0;
 			for (filly = 0; filly < MAP_BLOCK_HEIGHT; ++filly) {
-				double density = osnNoise3D(fillx * NOISE_SCALE,
-				                            filly * NOISE_SCALE,
-				                            fillz * NOISE_SCALE) * (((double)MAP_BLOCK_HEIGHT - (double)filly) / (double)MAP_BLOCK_HEIGHT);
+				double density = (((double)MAP_BLOCK_HEIGHT - (double)filly) / (double)MAP_BLOCK_HEIGHT); // gradient
+				density -= simplexNoise(fillx * NOISE_SCALE,
+				                      filly * NOISE_SCALE);
+				density -= simplexNoise(filly * NOISE_SCALE,
+				                      fillz * NOISE_SCALE);
 				if (density < 0.0) {
 					if (filly < 20)
 						blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_WATER;
 					else
 						blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_AIR;
-					continue;
-				} else if (density < 0.2) {
+				} else if (((double)filly / (double)MAP_BLOCK_HEIGHT) < height) {
+					if (density < 0.2) {
 					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_MOSS;
-				} else if (density < 0.5) {
-					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_DARKSTONE;
+					} else if (density < 0.5) {
+						blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_DARKSTONE;
+					} else {
+						blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_LAVA;
+					}
 				} else {
-					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_LAVA;
+					if (filly < 20)
+						blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_WATER;
+					else
+						blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_AIR;
 				}
 			}
 		}
-	}
+		}*/
 
-	/*
+	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
+		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
+			for (filly = 0; filly < MAP_BLOCK_HEIGHT; ++filly) {
+				if (filly == GROUND_LEVEL - 3)
+					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_GRASS;
+				else
+					blocks[blockIndex(fillx, filly, fillz)].type = BLOCK_AIR;
+			}
+		}
+	}
+	
 	for (int i = 0; i < NUM_BLOCKTYPES; ++i) {
 		int x = (i*2) % CHUNK_SIZE;
 		int z = ((i*2) / CHUNK_SIZE) * 2;
-		blocks[blockIndex(blockx + x, GROUND_LEVEL + 3, blockz + z)].type = i;
+		blocks[blockIndex(blockx + x, GROUND_LEVEL - 1, blockz + z)].type = i;
 	}
-	*/
+
+	for (int z = 2; z < 4; ++z)
+		for (int x = 2; x < 4; ++x)
+			for (int y = 2; y < 4; ++y)
+				blocks[blockIndex(x, GROUND_LEVEL + y, z)].type = BLOCK_STONE;
+	
 }
 
 // tesselation buffer: size is maximum number of triangles generated
@@ -241,7 +265,7 @@ void gameLoadChunk(int x, int z) {
 
 #define TESSELATION_BUFFER_SIZE (CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE*36)
 static game_block_vtx tesselation_buffer[TESSELATION_BUFFER_SIZE];
-#define POS(x, y, z) mlPackVectorChunkCoord((unsigned int)(x), (unsigned int)(y), (unsigned int)(z), 0)
+#define POS(x, y, z) mapPackVectorChunkCoord((unsigned int)(x), (unsigned int)(y), (unsigned int)(z), 0)
 
 size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 	ml_mesh* mesh;

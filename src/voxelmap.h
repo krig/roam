@@ -6,9 +6,9 @@
 
  */
 
-#define CHUNK_SIZE 32
-#define VIEW_DISTANCE 4
-#define GROUND_LEVEL 100
+#define CHUNK_SIZE 16
+#define VIEW_DISTANCE 16
+#define GROUND_LEVEL 80
 #define MAP_CHUNK_WIDTH (VIEW_DISTANCE*2)
 #define MAP_CHUNK_HEIGHT 8
 #define MAP_BLOCK_WIDTH (MAP_CHUNK_WIDTH*CHUNK_SIZE)
@@ -101,4 +101,11 @@ static inline int mod(int a, int b) {
    if(ret < 0)
      ret+=b;
    return ret;
+}
+
+// elements xyz are 0-32
+// w should be 0-3
+static inline uint32_t
+mapPackVectorChunkCoord(unsigned int x, unsigned int y, unsigned int z, unsigned int w) {
+	return ((x)*(unsigned int)(1023/CHUNK_SIZE)) + (((y)*(unsigned int)(1023/CHUNK_SIZE))<<10) + (((z)*(unsigned int)(1023/CHUNK_SIZE))<<20) + ((w)<<30);
 }
