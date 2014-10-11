@@ -121,7 +121,8 @@ mlGetFrustum(ml_frustum* frustum, ml_matrix* projection, ml_matrix* view) {
 	ml_matrix MP;
 	mlCopyMatrix(&MP, projection);
 	mlMulMatrix(&MP, view);
-	ml_vec4* p = frustum->planes;
+	ml_vec4*__restrict__ p = frustum->planes;
+	ml_vec4*__restrict__ a = frustum->absplanes;
 	float* m = MP.m;
 	// right
 	mlVec4Assign(p[0], m[3] - m[0], m[7] - m[4], m[11] - m[8], m[15] - m[12]);
@@ -135,52 +136,26 @@ mlGetFrustum(ml_frustum* frustum, ml_matrix* projection, ml_matrix* view) {
 	mlVec4Assign(p[4], m[3] - m[2], m[7] - m[6], m[11] - m[10], m[15] - m[14]);
 	// near
 	mlVec4Assign(p[5], m[3] + m[2], m[7] + m[6], m[11] + m[10], m[15] + m[14]);
-	for (int i = 0; i < 6; ++i)
+	for (int i = 0; i < 6; ++i) {
 		p[i] = mlNormalizePlane(p[i]);
+		a[i] = mlVec4Abs(p[i]);
+	}
 }
 
-int mlTestFrustumAABB(ml_frustum* frustum, ml_vec3 p0, ml_vec3 p1) {
-	ml_vec3 pmin, pmax;
-	ml_vec3 vmin, vmax;
+// center: (max + min)/2
+// extents: (max - min)/2
+int mlTestFrustumAABB(ml_frustum* frustum, ml_vec3 center, ml_vec3 extent) {
 	int result, i;
-	float d;
-	ml_vec4 p;
-	pmin.x = ML_MIN(p0.x, p1.x);
-	pmin.y = ML_MIN(p0.y, p1.y);
-	pmin.z = ML_MIN(p0.z, p1.z);
-	pmax.x = ML_MAX(p0.x, p1.x);
-	pmax.y = ML_MAX(p0.y, p1.y);
-	pmax.z = ML_MAX(p0.z, p1.z);
+	ml_vec4 p, a;
 	result = ML_INSIDE;
 	for (i = 0; i < 6; ++i) {
 		p = frustum->planes[i];
-		if (p.x >= 0) {
-			vmin.x = pmin.x;
-			vmax.x = pmax.x;
-		} else {
-			vmin.x = pmax.x;
-			vmax.x = pmin.x;
-		}
-		if (p.y >= 0) {
-			vmin.y = pmin.y;
-			vmax.y = pmax.y;
-		} else {
-			vmin.y = pmax.y;
-			vmax.y = pmin.y;
-		}
-		if (p.z >= 0) {
-			vmin.z = pmin.z;
-			vmax.z = pmax.z;
-		} else {
-			vmin.z = pmax.z;
-			vmax.z = pmin.z;
-		}
-		d = p.x * vmax.x + p.y * vmax.y + p.z * vmax.z;
-		if (d < -p.w)
-			return ML_OUTSIDE;
-		d = p.x * vmin.x + p.y * vmin.y + p.z * vmin.z;
-		if (d < -p.w)
-			result = ML_INTERSECT;
+		a = frustum->absplanes[i];
+
+		float d = center.x * p.x + center.y * p.y + center.z * p.z + p.w;
+		float r = extent.x * a.x + extent.y * a.y + extent.z * a.z + a.w;
+		if (d + r <= 0) return ML_OUTSIDE;
+		if (d - r < 0) result = ML_INTERSECT;
 	}
 	return result;
 }

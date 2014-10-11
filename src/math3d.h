@@ -297,6 +297,12 @@ mlVec3Invert(const ml_vec3 v) {
 }
 
 static inline ml_vec4
+mlVec4Abs(const ml_vec4 v) {
+	ml_vec4 to = { fabs(v.x), fabs(v.y), fabs(v.z), fabs(v.w) };
+	return to;
+}
+
+static inline ml_vec4
 mlNormalizePlane(ml_vec4 plane) {
 	ml_vec3 n = {plane.x, plane.y, plane.z};
 	float len = mlVec3Length(n);
@@ -466,6 +472,7 @@ mlRGBA(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 
 typedef struct ml_frustum {
 	ml_vec4 planes[6];
+	ml_vec4 absplanes[6];
 } ml_frustum;
 
 void

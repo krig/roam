@@ -114,7 +114,9 @@ void gameDrawMap(ml_frustum* frustum) {
 	// figure out which chunks are visible
 	// draw visible chunks
 
-	ml_vec3 offset, p1;
+	float chunk_radius = (float)CHUNK_SIZE*0.5f;
+
+	ml_vec3 offset, center, extent;
 	game_chunk* chunks = game.map.chunks;
 	for (int i = 0; i < MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH; ++i) {
 		// calc chunk offset for this chunk
@@ -124,11 +126,11 @@ void gameDrawMap(ml_frustum* frustum) {
 			continue;
 
 		mlVec3Assign(offset, (float)(x*CHUNK_SIZE) - 0.5f, -0.5f, (float)(z*CHUNK_SIZE) - 0.5f);
-		mlVec3Assign(p1, offset.x + (float)CHUNK_SIZE, MAP_BLOCK_HEIGHT - 0.5f, offset.z + (float)CHUNK_SIZE);
-		// something is wrong with my frustum code.
-		if (mlTestFrustumAABB(frustum, offset, p1) == ML_OUTSIDE)
-			//if (mlTestPlaneAABB(frustum->planes[5], offset, p1) == ML_OUTSIDE)
+		mlVec3Assign(center, offset.x + chunk_radius, MAP_BLOCK_HEIGHT*0.5f, offset.z + chunk_radius);
+		mlVec3Assign(extent, chunk_radius, MAP_BLOCK_HEIGHT*0.5f, chunk_radius);
+		if (mlTestFrustumAABB(frustum, center, extent) == ML_OUTSIDE)
 			continue;
+		extent.y = chunk_radius;
 
 		// todo: figure out which meshes need to be drawn
 		for (int j = 0; j < MAP_CHUNK_HEIGHT; ++j) {
@@ -136,9 +138,9 @@ void gameDrawMap(ml_frustum* frustum) {
 			if (mesh->vbo == 0)
 				continue;
 
-			offset.y = (float)(j*CHUNK_SIZE) - 0.5f;
-			p1.y = offset.y + (float)CHUNK_SIZE;
-			if (mlTestFrustumAABB(frustum, offset, p1) == ML_OUTSIDE)
+			offset.y = (float)(CHUNK_SIZE*j) - 0.5f;
+			center.y = offset.y + chunk_radius;
+			if (mlTestFrustumAABB(frustum, center, extent) == ML_OUTSIDE)
 				continue;
 
 			// update the chunk offset uniform
