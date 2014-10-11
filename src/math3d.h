@@ -211,6 +211,9 @@ ml_vec3 mlGetZAxis(const ml_matrix* from);
 ml_vec3 mlMulMat33Vec(const ml_matrix33* m, const ml_vec3* v);
 
 void mlTranspose(ml_matrix* m);
+void mlTranspose33(ml_matrix33* m);
+bool mlInvertMatrix(ml_matrix* to, const ml_matrix* from);
+void mlInvertOrthoMatrix(ml_matrix* to, const ml_matrix* from);
 
 static inline float
 mlVec3Dot(const ml_vec3 a, const ml_vec3 b) {
@@ -473,5 +476,6 @@ enum ml_CollisionResult {
 };
 
 int mlTestFrustumAABB(ml_frustum* frustum, ml_vec3 p0, ml_vec3 p1);
+int mlTestPlaneAABB(ml_vec4 p, ml_vec3 p0, ml_vec3 p1);
 
 // TODO: GL state stack - track state as a stack of uint64_ts...

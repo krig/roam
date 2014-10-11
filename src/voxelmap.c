@@ -28,12 +28,10 @@ static inline uint8_t blockType(int x, int y, int z) {
 
 extern ml_tex2d blocks_texture;
 
-static tc2us_t block_texcoords[NUM_BLOCKTYPES * 6 * 4];
-
 void gameLoadChunk(int x, int z);
 size_t gameTesselateSubChunk(int cx, int cy, int cz);
 
-static inline tc2us_t tc2us(ml_vec2 tc) {
+static inline tc2us_t make_tc2us(ml_vec2 tc) {
 	tc2us_t to = {
 		(uint16_t)(tc.x * (double)0xffff),
 		(uint16_t)(tc.y * (double)0xffff)
@@ -41,22 +39,20 @@ static inline tc2us_t tc2us(ml_vec2 tc) {
 	return to;
 }
 
+/*
+  Set up a lookup table used for the texcoords of all regular blocks.
+  Things with different dimensions need a different system..
+ */
+static tc2us_t block_texcoords[NUM_BLOCKTYPES * 6 * 4];
 #define BLOCKTC(t, f, i) block_texcoords[(t)*(6*4) + (f)*4 + (i)]
-
 static void initBlockTexcoords() {
-	ml_vec2 tcoffs[4] = {
-		{0, 0},
-		{0, IMG_TCW - IMG_TC_BIAS},
-		{IMG_TCW - IMG_TC_BIAS, 0},
-		{IMG_TCW - IMG_TC_BIAS, IMG_TCW - IMG_TC_BIAS}
-	};
+	float bw = IMG_TCW - IMG_TC_BIAS;
+	ml_vec2 tcoffs[4] = {{0, 0}, {0, bw}, {bw, 0}, {bw, bw} };
 	for (int t = 0; t < NUM_BLOCKTYPES; ++t) {
 		for (int i = 0; i < 6; ++i) {
 			ml_vec2 tl = mlVec2AddScalar(imgTC(blockinfo[t].img[i]), IMG_TC_BIAS);
-			BLOCKTC(t, i, 0) = tc2us(mlVec2Add(tl, tcoffs[0]));
-			BLOCKTC(t, i, 1) = tc2us(mlVec2Add(tl, tcoffs[1]));
-			BLOCKTC(t, i, 2) = tc2us(mlVec2Add(tl, tcoffs[2]));
-			BLOCKTC(t, i, 3) = tc2us(mlVec2Add(tl, tcoffs[3]));
+			for (int j = 0; j < 4; ++j)
+				BLOCKTC(t, i, j) = make_tc2us(mlVec2Add(tl, tcoffs[j]));
 		}
 	}
 }
@@ -72,15 +68,6 @@ void gameInitMap() {
 	printf("* Seed: %lx\n", game.map.seed);
 	simplexInit(game.map.seed);
 	osnInit(game.map.seed);
-
-	/*
-	for (size_t i = 0; i < MAP_BUFFER_SIZE; ++i) {
-		if ((i % 5) == 0) {
-			game.map.blocks[i] = BLOCK_SHROOM;
-		} else {
-			game.map.blocks[i] = BLOCK_AIR;
-		}
-		}*/
 
 	ml_ivec3 player = { game.camera.cx, 0, game.camera.cz };
 	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
@@ -133,27 +120,29 @@ void gameDrawMap(ml_frustum* frustum) {
 	// figure out which chunks are visible
 	// draw visible chunks
 
+	ml_vec3 offset, p1;
 	game_chunk* chunks = game.map.chunks;
 	for (int i = 0; i < MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH; ++i) {
 		// calc chunk offset for this chunk
 		int x = chunks[i].x - game.camera.cx;
 		int z = chunks[i].z - game.camera.cz;
-		if (game.single_chunk_mode && (x != -1 || z != -1))
+		if (game.single_chunk_mode && (x != 0 || z != 0))
 			continue;
+
+		mlVec3Assign(offset, (float)(x*CHUNK_SIZE) - 0.5f, -0.5f, (float)(z*CHUNK_SIZE) - 0.5f);
+		mlVec3Assign(p1, offset.x + (float)CHUNK_SIZE, MAP_CHUNK_HEIGHT - 0.5f, offset.z + (float)CHUNK_SIZE);
+		// something is wrong with my frustum code.
+		//if (mlTestFrustumAABB(frustum, offset, p1) == ML_OUTSIDE)
+		//	continue;
+
 		// todo: figure out which meshes need to be drawn
 		for (int j = 0; j < MAP_CHUNK_HEIGHT; ++j) {
 			ml_mesh* mesh = chunks[i].data + j;
 			if (mesh->vbo == 0)
 				continue;
 
-			ml_vec3 offset = { (float)(x*CHUNK_SIZE) - 0.5f,
-			                   (float)(j*CHUNK_SIZE) - 0.5f,
-			                   (float)(z*CHUNK_SIZE) - 0.5f};
-
-			ml_vec3 p1 = {offset.x + (float)CHUNK_SIZE,
-			              offset.y + (float)CHUNK_SIZE,
-			              offset.z + (float)CHUNK_SIZE };
-			// not calculating the frustum right...
+			offset.y = (float)(j*CHUNK_SIZE) - 0.5f;
+			p1.y = offset.y + (float)CHUNK_SIZE;
 			if (mlTestFrustumAABB(frustum, offset, p1) == ML_OUTSIDE)
 				continue;
 

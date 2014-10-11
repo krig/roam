@@ -129,48 +129,88 @@ mlGetFrustum(ml_frustum* frustum, ml_matrix* projection, ml_matrix* view) {
 }
 
 int mlTestFrustumAABB(ml_frustum* frustum, ml_vec3 p0, ml_vec3 p1) {
-		ml_vec3 pmin, pmax;
-		ml_vec3 vmin, vmax;
-		int result, i, m, n;
-		ml_vec4 p;
-		pmin.x = ML_MIN(p0.x, p1.x);
-		pmin.y = ML_MIN(p0.y, p1.y);
-		pmin.z = ML_MIN(p0.z, p1.z);
-		pmax.x = ML_MAX(p0.x, p1.x);
-		pmax.y = ML_MAX(p0.y, p1.y);
-		pmax.z = ML_MAX(p0.z, p1.z);
-		result = ML_INSIDE;
-		for (i = 0; i < 6; ++i) {
-			p = frustum->planes[i];
-			if (p.x >= 0) {
-				vmin.x = pmin.x;
-				vmax.x = pmax.x;
-			} else {
-				vmin.x = pmax.x;
-				vmax.x = pmin.x;
-			}
-			if (p.y >= 0) {
-				vmin.y = pmin.y;
-				vmax.y = pmax.y;
-			} else {
-				vmin.y = pmax.y;
-				vmax.y = pmin.y;
-			}
-			if (p.z >= 0) {
-				vmin.z = pmin.z;
-				vmax.z = pmax.z;
-			} else {
-				vmin.z = pmax.z;
-				vmax.z = pmin.z;
-			}
-			m = p.x * vmax.x + p.y * vmax.y + p.z * vmax.z + p.w;
-			if (m < 0)
-				return ML_OUTSIDE;
-			n = p.x * vmin.x + p.y * vmin.y + p.z * vmin.z + p.w;
-			if (n < 0) result = ML_INTERSECT;
+	ml_vec3 pmin, pmax;
+	ml_vec3 vmin, vmax;
+	int result, i, m, n;
+	ml_vec4 p;
+	pmin.x = ML_MIN(p0.x, p1.x);
+	pmin.y = ML_MIN(p0.y, p1.y);
+	pmin.z = ML_MIN(p0.z, p1.z);
+	pmax.x = ML_MAX(p0.x, p1.x);
+	pmax.y = ML_MAX(p0.y, p1.y);
+	pmax.z = ML_MAX(p0.z, p1.z);
+	result = ML_INSIDE;
+	for (i = 0; i < 6; ++i) {
+		p = frustum->planes[i];
+		if (p.x >= 0) {
+			vmin.x = pmin.x;
+			vmax.x = pmax.x;
+		} else {
+			vmin.x = pmax.x;
+			vmax.x = pmin.x;
 		}
-		return result;
+		if (p.y >= 0) {
+			vmin.y = pmin.y;
+			vmax.y = pmax.y;
+		} else {
+			vmin.y = pmax.y;
+			vmax.y = pmin.y;
+		}
+		if (p.z >= 0) {
+			vmin.z = pmin.z;
+			vmax.z = pmax.z;
+		} else {
+			vmin.z = pmax.z;
+			vmax.z = pmin.z;
+		}
+		m = p.x * vmax.x + p.y * vmax.y + p.z * vmax.z + p.w;
+		if (m < 0)
+			return ML_OUTSIDE;
+		n = p.x * vmin.x + p.y * vmin.y + p.z * vmin.z + p.w;
+		if (n < 0) result = ML_INTERSECT;
+	}
+	return result;
 }
+
+int mlTestPlaneAABB(ml_vec4 p, ml_vec3 p0, ml_vec3 p1) {
+	ml_vec3 pmin, pmax;
+	ml_vec3 vmin, vmax;
+	int m, n;
+	pmin.x = ML_MIN(p0.x, p1.x);
+	pmin.y = ML_MIN(p0.y, p1.y);
+	pmin.z = ML_MIN(p0.z, p1.z);
+	pmax.x = ML_MAX(p0.x, p1.x);
+	pmax.y = ML_MAX(p0.y, p1.y);
+	pmax.z = ML_MAX(p0.z, p1.z);
+	if (p.x >= 0) {
+		vmin.x = pmin.x;
+		vmax.x = pmax.x;
+	} else {
+		vmin.x = pmax.x;
+		vmax.x = pmin.x;
+	}
+	if (p.y >= 0) {
+		vmin.y = pmin.y;
+		vmax.y = pmax.y;
+	} else {
+		vmin.y = pmax.y;
+		vmax.y = pmin.y;
+	}
+	if (p.z >= 0) {
+		vmin.z = pmin.z;
+		vmax.z = pmax.z;
+	} else {
+		vmin.z = pmax.z;
+		vmax.z = pmin.z;
+	}
+	m = p.x * vmax.x + p.y * vmax.y + p.z * vmax.z + p.w;
+	if (m < 0)
+		return ML_OUTSIDE;
+	n = p.x * vmin.x + p.y * vmin.y + p.z * vmin.z + p.w;
+
+	return (n < 0) ? ML_INTERSECT : ML_INSIDE;
+}
+
 
 ml_vec3 mlGetXAxis(const ml_matrix* from) {
 	ml_vec3 ret = { from->m[0], from->m[1], from->m[2] };
@@ -273,6 +313,172 @@ mlTranspose(ml_matrix* m) {
 	mlSwap(m->m[7], m->m[13]);
 	mlSwap(m->m[11], m->m[14]);
 #endif
+}
+
+void mlTranspose33(ml_matrix33* m) {
+	mlSwap(m->m[1], m->m[3]);
+	mlSwap(m->m[2], m->m[6]);
+	mlSwap(m->m[5], m->m[7]);
+}
+
+
+bool mlInvertMatrix(ml_matrix* to, const ml_matrix* from) {
+	float inv[16];
+	float* out = to->m;
+	const float* m = from->m;
+	int i;
+	float det;
+
+	inv[0] = m[5]  * m[10] * m[15] -
+		m[5]  * m[11] * m[14] -
+		m[9]  * m[6]  * m[15] +
+		m[9]  * m[7]  * m[14] +
+		m[13] * m[6]  * m[11] -
+		m[13] * m[7]  * m[10];
+
+	inv[4] = -m[4]  * m[10] * m[15] +
+		m[4]  * m[11] * m[14] +
+		m[8]  * m[6]  * m[15] -
+		m[8]  * m[7]  * m[14] -
+		m[12] * m[6]  * m[11] +
+		m[12] * m[7]  * m[10];
+
+	inv[8] = m[4]  * m[9] * m[15] -
+		m[4]  * m[11] * m[13] -
+		m[8]  * m[5] * m[15] +
+		m[8]  * m[7] * m[13] +
+		m[12] * m[5] * m[11] -
+		m[12] * m[7] * m[9];
+
+	inv[12] = -m[4]  * m[9] * m[14] +
+		m[4]  * m[10] * m[13] +
+		m[8]  * m[5] * m[14] -
+		m[8]  * m[6] * m[13] -
+		m[12] * m[5] * m[10] +
+		m[12] * m[6] * m[9];
+
+	inv[1] = -m[1]  * m[10] * m[15] +
+		m[1]  * m[11] * m[14] +
+		m[9]  * m[2] * m[15] -
+		m[9]  * m[3] * m[14] -
+		m[13] * m[2] * m[11] +
+		m[13] * m[3] * m[10];
+
+	inv[5] = m[0]  * m[10] * m[15] -
+		m[0]  * m[11] * m[14] -
+		m[8]  * m[2] * m[15] +
+		m[8]  * m[3] * m[14] +
+		m[12] * m[2] * m[11] -
+		m[12] * m[3] * m[10];
+
+	inv[9] = -m[0]  * m[9] * m[15] +
+		m[0]  * m[11] * m[13] +
+		m[8]  * m[1] * m[15] -
+		m[8]  * m[3] * m[13] -
+		m[12] * m[1] * m[11] +
+		m[12] * m[3] * m[9];
+
+	inv[13] = m[0]  * m[9] * m[14] -
+		m[0]  * m[10] * m[13] -
+		m[8]  * m[1] * m[14] +
+		m[8]  * m[2] * m[13] +
+		m[12] * m[1] * m[10] -
+		m[12] * m[2] * m[9];
+
+	inv[2] = m[1]  * m[6] * m[15] -
+		m[1]  * m[7] * m[14] -
+		m[5]  * m[2] * m[15] +
+		m[5]  * m[3] * m[14] +
+		m[13] * m[2] * m[7] -
+		m[13] * m[3] * m[6];
+
+	inv[6] = -m[0]  * m[6] * m[15] +
+		m[0]  * m[7] * m[14] +
+		m[4]  * m[2] * m[15] -
+		m[4]  * m[3] * m[14] -
+		m[12] * m[2] * m[7] +
+		m[12] * m[3] * m[6];
+
+	inv[10] = m[0]  * m[5] * m[15] -
+		m[0]  * m[7] * m[13] -
+		m[4]  * m[1] * m[15] +
+		m[4]  * m[3] * m[13] +
+		m[12] * m[1] * m[7] -
+		m[12] * m[3] * m[5];
+
+	inv[14] = -m[0]  * m[5] * m[14] +
+		m[0]  * m[6] * m[13] +
+		m[4]  * m[1] * m[14] -
+		m[4]  * m[2] * m[13] -
+		m[12] * m[1] * m[6] +
+		m[12] * m[2] * m[5];
+
+	inv[3] = -m[1] * m[6] * m[11] +
+		m[1] * m[7] * m[10] +
+		m[5] * m[2] * m[11] -
+		m[5] * m[3] * m[10] -
+		m[9] * m[2] * m[7] +
+		m[9] * m[3] * m[6];
+
+	inv[7] = m[0] * m[6] * m[11] -
+		m[0] * m[7] * m[10] -
+		m[4] * m[2] * m[11] +
+		m[4] * m[3] * m[10] +
+		m[8] * m[2] * m[7] -
+		m[8] * m[3] * m[6];
+
+	inv[11] = -m[0] * m[5] * m[11] +
+		m[0] * m[7] * m[9] +
+		m[4] * m[1] * m[11] -
+		m[4] * m[3] * m[9] -
+		m[8] * m[1] * m[7] +
+		m[8] * m[3] * m[5];
+
+	inv[15] = m[0] * m[5] * m[10] -
+		m[0] * m[6] * m[9] -
+		m[4] * m[1] * m[10] +
+		m[4] * m[2] * m[9] +
+		m[8] * m[1] * m[6] -
+		m[8] * m[2] * m[5];
+
+	det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+
+	if (det == 0)
+		return false;
+
+	det = 1.0 / det;
+
+	for (i = 0; i < 16; i++)
+		out[i] = inv[i] * det;
+
+	return true;
+}
+
+// Must be orthonormal
+void mlInvertOrthoMatrix(ml_matrix* to, const ml_matrix* from) {
+	ml_matrix33 R;
+	mlGetRotationMatrix(&R, from);
+	mlTranspose33(&R);
+	ml_vec3 T = { from->m[12], from->m[13], from->m[14] };
+	ml_vec3 t = {
+		-mlVec3Dot(*((ml_vec3*)&R.m[0]), T),
+		-mlVec3Dot(*((ml_vec3*)&R.m[3]), T),
+		-mlVec3Dot(*((ml_vec3*)&R.m[6]), T)
+	};
+	to->m[0] = R.m[0];
+	to->m[1] = R.m[1];
+	to->m[2] = R.m[2];
+	to->m[4] = R.m[3];
+	to->m[5] = R.m[4];
+	to->m[6] = R.m[5];
+	to->m[8] = R.m[6];
+	to->m[9] = R.m[7];
+	to->m[10] = R.m[8];
+	to->m[12] = t.x;
+	to->m[13] = t.y;
+	to->m[14] = t.z;
+	to->m[3] = to->m[7] = to->m[11] = 0;
+	to->m[15] = 1.f;
 }
 
 
@@ -613,5 +819,3 @@ void mlBindTexture2D(ml_tex2d* tex, int index) {
 	glActiveTexture(GL_TEXTURE0 + index);
 	glBindTexture(GL_TEXTURE_2D, tex->id);
 }
-
-
