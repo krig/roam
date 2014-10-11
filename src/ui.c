@@ -100,15 +100,39 @@ void uiSetScale(float scale) {
 	ui_scale = scale;
 }
 
+#define MAX_TEXT_LEN 256
+
+void uiTextMeasure(int* x, int* y, const char* str, ...) {
+	size_t len;
+	char buf[MAX_TEXT_LEN];
+	va_list va_args;
+	va_start(va_args, str);
+	vsnprintf(buf, MAX_TEXT_LEN, str, va_args);
+	va_end(va_args);
+	len = strlen(buf);
+	int cx = 0, cy = 0, mx = 0;
+	for (size_t i = 0; i < len; ++i) {
+		if (buf[i] == '\n') {
+			mx = (cx > mx) ? cx : mx;
+			cx = 0;
+			cy += 8;
+		}
+		cx += 8;
+	}
+	*x = mx;
+	*y = cy;
+}
+
+
 void uiText(float x, float y, uint32_t clr, const char* str, ...) {
-	char buf[256];
+	char buf[MAX_TEXT_LEN];
 	size_t len;
 	float scale;
 	float d;
 	ml_vtx_ui* ptr = ui_vertices + ui_count;
 	va_list va_args;
 	va_start(va_args, str);
-	vsnprintf(buf, 256, str, va_args);
+	vsnprintf(buf, MAX_TEXT_LEN, str, va_args);
 	va_end(va_args);
 	len = strlen(buf);
 	if (ui_count + len*6 > MAX_UI_VERTICES)
@@ -146,6 +170,24 @@ void uiText(float x, float y, uint32_t clr, const char* str, ...) {
 		rpos.x += scale;
 	}
 }
+
+void uiRect(float x, float y, float w, float h, uint32_t clr) {
+	float tl = 0.5f / 1024.f;
+	float br = 7.5f / 1024.f;
+	if (ui_count + 6 > MAX_UI_VERTICES)
+		return;
+	ml_vtx_ui quad[6] = {
+		{ { x, y }, { tl, 1.f }, clr },
+		{ { x + w, y }, { br, 1.f }, clr },
+		{ { x, y + h }, { tl, 0.f }, clr },
+		{ { x, y + h }, { tl, 0.f }, clr },
+		{ { x + w, y }, { br, 1.f }, clr },
+		{ { x + w, y + h }, { br, 0.f }, clr },
+	};
+	memcpy(ui_vertices + ui_count, quad, sizeof(quad));
+	ui_count += 6;
+}
+
 
 void uiDebugLine(ml_vec3 p1, ml_vec3 p2, uint32_t clr) {
 	if (debug_linevertcount + 2 > MAX_DEBUG_LINEVERTS)

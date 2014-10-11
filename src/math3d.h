@@ -200,6 +200,8 @@ void mlFPSMatrix(ml_matrix* to, ml_vec3 eye, float pitch, float yaw);
 void mlMulMatrix(ml_matrix* to, const ml_matrix* by);
 
 ml_vec4 mlMulMatVec(const ml_matrix* m, const ml_vec4* v);
+ml_vec3 mlMulMatVec3(const ml_matrix* m, const ml_vec3* v);
+ml_vec3 mlVec3RotateBy(const ml_matrix* m, const ml_vec3* v);
 
 void mlTranslate(ml_matrix* m, float x, float y, float z);
 void mlRotate(ml_matrix* m, float angle, float x, float y, float z);
@@ -208,7 +210,7 @@ void mlGetRotationMatrix(ml_matrix33* to, const ml_matrix* from);
 ml_vec3 mlGetXAxis(const ml_matrix* from);
 ml_vec3 mlGetYAxis(const ml_matrix* from);
 ml_vec3 mlGetZAxis(const ml_matrix* from);
-ml_vec3 mlMulMat33Vec(const ml_matrix33* m, const ml_vec3* v);
+ml_vec3 mlMulMat33Vec3(const ml_matrix33* m, const ml_vec3* v);
 
 void mlTranspose(ml_matrix* m);
 void mlTranspose33(ml_matrix33* m);

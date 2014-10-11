@@ -124,10 +124,11 @@ void gameDrawMap(ml_frustum* frustum) {
 			continue;
 
 		mlVec3Assign(offset, (float)(x*CHUNK_SIZE) - 0.5f, -0.5f, (float)(z*CHUNK_SIZE) - 0.5f);
-		mlVec3Assign(p1, offset.x + (float)CHUNK_SIZE, MAP_CHUNK_HEIGHT - 0.5f, offset.z + (float)CHUNK_SIZE);
+		mlVec3Assign(p1, offset.x + (float)CHUNK_SIZE, MAP_BLOCK_HEIGHT - 0.5f, offset.z + (float)CHUNK_SIZE);
 		// something is wrong with my frustum code.
-		//if (mlTestFrustumAABB(frustum, offset, p1) == ML_OUTSIDE)
-		//	continue;
+		if (mlTestFrustumAABB(frustum, offset, p1) == ML_OUTSIDE)
+			//if (mlTestPlaneAABB(frustum->planes[5], offset, p1) == ML_OUTSIDE)
+			continue;
 
 		// todo: figure out which meshes need to be drawn
 		for (int j = 0; j < MAP_CHUNK_HEIGHT; ++j) {

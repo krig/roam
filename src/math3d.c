@@ -37,6 +37,12 @@ void mlFPSRotation(float pitch, float yaw, ml_vec3* x, ml_vec3* y, ml_vec3* z) {
 }
 
 void mlFPSMatrix(ml_matrix* to, ml_vec3 eye, float pitch, float yaw) {
+	/* equivalent to:
+	mlSetIdentity(to);
+	mlRotate(to, -pitch, 1.f, 0, 0);
+	mlRotate(to, -yaw, 0, 1.f, 0);
+	mlTranslate(to, -eye.x, -eye.y, -eye.z);
+	*/
 	float cosPitch = cosf(pitch);
 	float sinPitch = sinf(pitch);
 	float cosYaw = cosf(yaw);
@@ -63,7 +69,6 @@ void mlFPSMatrix(ml_matrix* to, ml_vec3 eye, float pitch, float yaw) {
 }
 
 
-/* I don't think this is right. */
 void mlLookAt(ml_matrix* m,
               float eyeX, float eyeY, float eyeZ,
               float atX, float atY, float atZ,
@@ -118,11 +123,17 @@ mlGetFrustum(ml_frustum* frustum, ml_matrix* projection, ml_matrix* view) {
 	mlMulMatrix(&MP, view);
 	ml_vec4* p = frustum->planes;
 	float* m = MP.m;
+	// right
 	mlVec4Assign(p[0], m[3] - m[0], m[7] - m[4], m[11] - m[8], m[15] - m[12]);
+	// left
 	mlVec4Assign(p[1], m[3] + m[0], m[7] + m[4], m[11] + m[8], m[15] + m[12]);
+	// down
 	mlVec4Assign(p[2], m[3] + m[1], m[7] + m[5], m[11] + m[9], m[15] + m[13]);
+	// up
 	mlVec4Assign(p[3], m[3] - m[1], m[7] - m[5], m[11] - m[9], m[15] - m[13]);
+	// far
 	mlVec4Assign(p[4], m[3] - m[2], m[7] - m[6], m[11] - m[10], m[15] - m[14]);
+	// near
 	mlVec4Assign(p[5], m[3] + m[2], m[7] + m[6], m[11] + m[10], m[15] + m[14]);
 	for (int i = 0; i < 6; ++i)
 		p[i] = mlNormalizePlane(p[i]);
@@ -131,7 +142,8 @@ mlGetFrustum(ml_frustum* frustum, ml_matrix* projection, ml_matrix* view) {
 int mlTestFrustumAABB(ml_frustum* frustum, ml_vec3 p0, ml_vec3 p1) {
 	ml_vec3 pmin, pmax;
 	ml_vec3 vmin, vmax;
-	int result, i, m, n;
+	int result, i;
+	float d;
 	ml_vec4 p;
 	pmin.x = ML_MIN(p0.x, p1.x);
 	pmin.y = ML_MIN(p0.y, p1.y);
@@ -163,11 +175,12 @@ int mlTestFrustumAABB(ml_frustum* frustum, ml_vec3 p0, ml_vec3 p1) {
 			vmin.z = pmax.z;
 			vmax.z = pmin.z;
 		}
-		m = p.x * vmax.x + p.y * vmax.y + p.z * vmax.z + p.w;
-		if (m < 0)
+		d = p.x * vmax.x + p.y * vmax.y + p.z * vmax.z;
+		if (d < -p.w)
 			return ML_OUTSIDE;
-		n = p.x * vmin.x + p.y * vmin.y + p.z * vmin.z + p.w;
-		if (n < 0) result = ML_INTERSECT;
+		d = p.x * vmin.x + p.y * vmin.y + p.z * vmin.z;
+		if (d < -p.w)
+			result = ML_INTERSECT;
 	}
 	return result;
 }
@@ -175,7 +188,7 @@ int mlTestFrustumAABB(ml_frustum* frustum, ml_vec3 p0, ml_vec3 p1) {
 int mlTestPlaneAABB(ml_vec4 p, ml_vec3 p0, ml_vec3 p1) {
 	ml_vec3 pmin, pmax;
 	ml_vec3 vmin, vmax;
-	int m, n;
+	float d;
 	pmin.x = ML_MIN(p0.x, p1.x);
 	pmin.y = ML_MIN(p0.y, p1.y);
 	pmin.z = ML_MIN(p0.z, p1.z);
@@ -203,12 +216,12 @@ int mlTestPlaneAABB(ml_vec4 p, ml_vec3 p0, ml_vec3 p1) {
 		vmin.z = pmax.z;
 		vmax.z = pmin.z;
 	}
-	m = p.x * vmax.x + p.y * vmax.y + p.z * vmax.z + p.w;
-	if (m < 0)
+	d = p.x * vmax.x + p.y * vmax.y + p.z * vmax.z;
+	if (d < -p.w)
 		return ML_OUTSIDE;
-	n = p.x * vmin.x + p.y * vmin.y + p.z * vmin.z + p.w;
+	d = p.x * vmin.x + p.y * vmin.y + p.z * vmin.z;
 
-	return (n < 0) ? ML_INTERSECT : ML_INSIDE;
+	return (d < -p.w) ? ML_INTERSECT : ML_INSIDE;
 }
 
 
@@ -227,8 +240,22 @@ ml_vec3 mlGetZAxis(const ml_matrix* from) {
 	return ret;
 }
 
+ml_vec3 mlVec3RotateBy(const ml_matrix* m, const ml_vec3 *v) {
+	ml_vec3 ret;
+	ret.x = (v->x * m->m[0]) +
+		(v->y * m->m[4]) +
+		(v->z * m->m[8]);
+	ret.y = (v->x * m->m[1]) +
+		(v->y * m->m[5]) +
+		(v->z * m->m[9]);
+	ret.z = (v->x * m->m[2]) +
+		(v->y * m->m[6]) +
+		(v->z * m->m[10]);
+	return ret;
+}
 
-ml_vec3 mlMulMat33Vec(const ml_matrix33* m, const ml_vec3* v) {
+
+ml_vec3 mlMulMat33Vec3(const ml_matrix33* m, const ml_vec3* v) {
 	ml_vec3 ret;
 	ret.x = (v->x * m->m[0]) +
 		(v->y * m->m[3]) +
@@ -457,14 +484,11 @@ bool mlInvertMatrix(ml_matrix* to, const ml_matrix* from) {
 // Must be orthonormal
 void mlInvertOrthoMatrix(ml_matrix* to, const ml_matrix* from) {
 	ml_matrix33 R;
+	ml_vec3 T;
 	mlGetRotationMatrix(&R, from);
 	mlTranspose33(&R);
-	ml_vec3 T = { from->m[12], from->m[13], from->m[14] };
-	ml_vec3 t = {
-		-mlVec3Dot(*((ml_vec3*)&R.m[0]), T),
-		-mlVec3Dot(*((ml_vec3*)&R.m[3]), T),
-		-mlVec3Dot(*((ml_vec3*)&R.m[6]), T)
-	};
+	mlVec3Assign(T, -from->m[12], -from->m[13], -from->m[14]);
+	T = mlMulMat33Vec3(&R, &T);
 	to->m[0] = R.m[0];
 	to->m[1] = R.m[1];
 	to->m[2] = R.m[2];
@@ -474,9 +498,9 @@ void mlInvertOrthoMatrix(ml_matrix* to, const ml_matrix* from) {
 	to->m[8] = R.m[6];
 	to->m[9] = R.m[7];
 	to->m[10] = R.m[8];
-	to->m[12] = t.x;
-	to->m[13] = t.y;
-	to->m[14] = t.z;
+	to->m[12] = T.x;
+	to->m[13] = T.y;
+	to->m[14] = T.z;
 	to->m[3] = to->m[7] = to->m[11] = 0;
 	to->m[15] = 1.f;
 }
@@ -502,6 +526,24 @@ ml_vec4 mlMulMatVec(const ml_matrix* m, const ml_vec4* v) {
 		(v->w * m->m[15]);
 	return ret;
 }
+
+ml_vec3 mlMulMatVec3(const ml_matrix* m, const ml_vec3* v) {
+	ml_vec3 ret;
+	ret.x = (v->x * m->m[0]) +
+		(v->y * m->m[4]) +
+		(v->z * m->m[8]) +
+		(1.f * m->m[12]);
+	ret.y = (v->x * m->m[1]) +
+		(v->y * m->m[5]) +
+		(v->z * m->m[9]) +
+		(1.f * m->m[13]);
+	ret.z = (v->x * m->m[2]) +
+		(v->y * m->m[6]) +
+		(v->z * m->m[10]) +
+		(1.f * m->m[14]);
+	return ret;
+}
+
 
 GLuint mlCompileShader(GLenum type, const char* source) {
 	GLuint name;

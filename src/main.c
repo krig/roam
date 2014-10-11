@@ -218,6 +218,9 @@ gameRender(SDL_Point* viewport, float frametime) {
 
 	ml_matrix view;
 	mlFPSMatrix(&view, game.camera.offset, game.camera.pitch, game.camera.yaw);
+	//mlLookAt(&view, game.camera.offset.x, game.camera.offset.y, game.camera.offset.z,
+	//         2.f, GROUND_LEVEL, -2.f,
+	//         0.f, 1.f, 0.f);
 
 	mlCopyMatrix(mlGetMatrix(&game.modelview), &view);
 
@@ -251,12 +254,14 @@ gameRender(SDL_Point* viewport, float frametime) {
 	uiDebugLine(mc, mc2, 0xffff7f00);
 	uiDebugSphere(mc2, 0.15f, 0xffcf9f3f);
 
-	ml_vec3 origo = game.camera.offset;
-	origo.y -= 1.2f;
-	//origo = mlVec3Add(game.camera.offset, mlVec3Scalef(mlGetZAxis(&view), -1.f));
-	ml_vec3 xaxis = { 1, 0, 0 };
-	ml_vec3 yaxis = { 0, 1, 0 };
-	ml_vec3 zaxis = { 0, 0, 1 };
+	ml_matrix invview;
+	mlInvertOrthoMatrix(&invview, &view);
+
+	ml_vec3 origo = { 0.0f, -0.25f, -0.4f };
+	ml_vec3 xaxis = { 0.025, 0, 0 };
+	ml_vec3 yaxis = { 0, 0.025, 0 };
+	ml_vec3 zaxis = { 0, 0, 0.025 };
+	origo = mlMulMatVec3(&invview, &origo);
 	xaxis = mlVec3Add(origo, xaxis);
 	yaxis = mlVec3Add(origo, yaxis);
 	zaxis = mlVec3Add(origo, zaxis);
@@ -266,12 +271,12 @@ gameRender(SDL_Point* viewport, float frametime) {
 
 	uiDrawDebug(&game.projection, &game.modelview);
 
-
-	uiText(5, 15, 0xffaaaaaa, "%g, %g, %g",
+	uiRect(2, 2, 320, 5 + 16 + 2, 0x66000000);
+	uiText(5, 5, 0xffffffff, "%g, %g, %g\nfps: %d, t: %f",
 	       (double)game.camera.cx + game.camera.offset.x, \
 	       game.camera.offset.y,
-	       (double)game.camera.cz + game.camera.offset.z);
-	uiText(5, 5, 0xffaaaaaa, "fps: %d, t: %f", (int)(1.f / frametime), game.time_of_day);
+	       (double)game.camera.cz + game.camera.offset.z,
+	       (int)(1.f / frametime), game.time_of_day);
 	uiDraw(viewport);
 
 	if (mouse_captured)
