@@ -88,7 +88,7 @@ typedef struct ml_material {
 	GLint modelview;
 	GLint normalmat;
 	GLint chunk_offset;
-	GLint amb_color;
+	GLint amb_light;
 	GLint fog_color;
 	GLint light_dir;
 	GLint tex0;

@@ -24,6 +24,7 @@ struct blockinfo_t blockinfo[] = {
 	{ .name = "palm", .img = { IMG_PALM_CUT, IMG_PALM_CUT, IMG_PALM_TREE } },
 	{ .name = "snow grass 1", .img = { IMG_SNOW, IMG_WETGRASS, IMG_GRASS_SNOW_1 } },
 	{ .name = "snow grass 2", .img = { IMG_SNOW, IMG_WETGRASS, IMG_GRASS_SNOW_2 } },
+	{ .name = "test cube", .img = { IMG_TEST_U, IMG_TEST_D, IMG_TEST_L, IMG_TEST_R, IMG_TEST_F, IMG_TEST_B } },
 };
 
 void initBlockInfo() {

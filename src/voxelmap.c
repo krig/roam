@@ -47,7 +47,7 @@ static tc2us_t block_texcoords[NUM_BLOCKTYPES * 6 * 4];
 #define BLOCKTC(t, f, i) block_texcoords[(t)*(6*4) + (f)*4 + (i)]
 static void initBlockTexcoords() {
 	float bw = IMG_TCW - IMG_TC_BIAS;
-	ml_vec2 tcoffs[4] = {{0, 0}, {0, bw}, {bw, 0}, {bw, bw} };
+	ml_vec2 tcoffs[4] = {{0, bw}, {bw, bw}, {bw, 0}, {0, 0} };
 	for (int t = 0; t < NUM_BLOCKTYPES; ++t) {
 		for (int i = 0; i < 6; ++i) {
 			ml_vec2 tl = mlVec2AddScalar(imgTC(blockinfo[t].img[i]), IMG_TC_BIAS);
@@ -103,19 +103,13 @@ void gameDrawMap(ml_frustum* frustum) {
 	glUseProgram(material->program);
 	mlBindTexture2D(&blocks_texture, 0);
 
-	ml_vec3 tlight;
-	ml_matrix33 normalmat;
 	mlPushMatrix(&game.modelview);
-	mlGetRotationMatrix(&normalmat, mlGetMatrix(&game.modelview));
-	tlight = mlMulMat33Vec(&normalmat, &game.light_dir);
 
 	glUniform1i(material->tex0, 0);
 	mlUniformMatrix(material->projmat, mlGetMatrix(&game.projection));
 	mlUniformMatrix(material->modelview, mlGetMatrix(&game.modelview));
-	mlUniformVec4(material->amb_color, &game.ambient_color);
+	mlUniformVec3(material->amb_light, &game.amb_light);
 	mlUniformVec4(material->fog_color, &game.fog_color);
-	mlUniformVec3(material->light_dir, &tlight);
-	mlUniformMatrix33(material->normalmat, &normalmat);
 
 	// figure out which chunks are visible
 	// draw visible chunks
@@ -154,6 +148,20 @@ void gameDrawMap(ml_frustum* frustum) {
 			glDrawArrays(mesh->mode, 0, mesh->count);
 		}
 	}
+
+	/*
+	for (int i = 0; i < MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH; ++i) {
+		ml_mesh* mesh = &(chunks[i].billboards);
+		if (mesh->vbo != 0) {
+			glDisable(GL_CULL_FACE);
+			mlUniformVec3(material->chunk_offset, &offset);
+			mlMapMeshToMaterial(mesh, material);
+			glDrawArrays(mesh->mode, 0, mesh->count);
+			glEnable(GL_CULL_FACE);
+		}
+	}
+	*/
+
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	mlPopMatrix(&game.modelview);
@@ -317,94 +325,94 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 				if (blockType(bx+ix, by+iy+1, bz+iz) == BLOCK_AIR) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_TOP, 0);
 					game_block_vtx corners[4] = {
-						{POS(ix, iy+1, iz), {0, INT8_MAX, 0, 0}, tc[0], 0xffffffff },
-						{POS(ix, iy+1, iz+1), {0, INT8_MAX, 0, 0}, tc[1], 0xffffffff },
-						{POS(ix+1, iy+1, iz+1), {0, INT8_MAX, 0, 0}, tc[3], 0xffffffff },
-						{POS(ix+1, iy+1, iz), {0, INT8_MAX, 0, 0}, tc[2], 0xffffffff },
+						{POS(  ix, iy+1, iz+1), tc[0], 0xffffffff },
+						{POS(ix+1, iy+1, iz+1), tc[1], 0xffffffff },
+						{POS(ix+1, iy+1,   iz), tc[2], 0xffffffff },
+						{POS(  ix, iy+1,   iz), tc[3], 0xffffffff },
 					};
 					verts[vi++] = corners[0];
 					verts[vi++] = corners[1];
-					verts[vi++] = corners[2];
-					verts[vi++] = corners[0];
-					verts[vi++] = corners[2];
 					verts[vi++] = corners[3];
+					verts[vi++] = corners[3];
+					verts[vi++] = corners[1];
+					verts[vi++] = corners[2];
 				}
 
 				if (blockType(bx+ix, by+iy-1, bz+iz) == BLOCK_AIR) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BOTTOM, 0);
 					game_block_vtx corners[4] = {
-						{POS(ix, iy, iz), {0, INT8_MIN, 0, 0}, tc[0], 0xffffffff },
-						{POS(ix, iy, iz+1), {0, INT8_MIN, 0, 0}, tc[1], 0xffffffff },
-						{POS(ix+1, iy, iz+1), {0, INT8_MIN, 0, 0}, tc[3], 0xffffffff },
-						{POS(ix+1, iy, iz), {0, INT8_MIN, 0, 0}, tc[2], 0xffffffff },
+						{POS(  ix, iy,   iz), tc[0], 0xffffffff },
+						{POS(ix+1, iy,   iz), tc[1], 0xffffffff },
+						{POS(ix+1, iy, iz+1), tc[2], 0xffffffff },
+						{POS(  ix, iy, iz+1), tc[3], 0xffffffff },
 					};
 					verts[vi++] = corners[0];
-					verts[vi++] = corners[2];
+					verts[vi++] = corners[1];
+					verts[vi++] = corners[3];
+					verts[vi++] = corners[3];
 					verts[vi++] = corners[1];
 					verts[vi++] = corners[2];
-					verts[vi++] = corners[0];
-					verts[vi++] = corners[3];
 				}
-				if (blockType(bx+ix-1, by+iy, bx+iz) == BLOCK_AIR) {
+				if (blockType(bx+ix-1, by+iy, bz+iz) == BLOCK_AIR) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_LEFT, 0);
 					game_block_vtx corners[4] = {
-						{POS(ix, iy, iz), {INT8_MIN, 0, 0, 0}, tc[1], 0xffffffff },
-						{POS(ix, iy, iz+1), {INT8_MIN, 0, 0, 0}, tc[3], 0xffffffff },
-						{POS(ix, iy+1, iz), {INT8_MIN, 0, 0, 0}, tc[0], 0xffffffff },
-						{POS(ix, iy+1, iz+1), {INT8_MIN, 0, 0, 0}, tc[2], 0xfffffff },
+						{POS(ix,   iy,   iz), tc[0], 0xffffffff },
+						{POS(ix,   iy, iz+1), tc[1], 0xffffffff },
+						{POS(ix, iy+1, iz+1), tc[2], 0xffffffff },
+						{POS(ix, iy+1,   iz), tc[3], 0xffffffff },
 					};
 					verts[vi++] = corners[0];
 					verts[vi++] = corners[1];
-					verts[vi++] = corners[2];
-					verts[vi++] = corners[2];
-					verts[vi++] = corners[1];
 					verts[vi++] = corners[3];
+					verts[vi++] = corners[3];
+					verts[vi++] = corners[1];
+					verts[vi++] = corners[2];
 				}
-				if (blockType(bx+ix+1, by+iy, bz+iz) == BLOCK_AIR) {
+				if (blockType(bx+ix+1, by+iy, bx+iz) == BLOCK_AIR) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_RIGHT, 0);
 					game_block_vtx corners[4] = {
-						{POS(ix+1, iy, iz), {INT8_MAX, 0, 0, 0}, tc[1], 0xffffffff },
-						{POS(ix+1, iy, iz+1), {INT8_MAX, 0, 0, 0}, tc[3], 0xffffffff },
-						{POS(ix+1, iy+1, iz+1), {INT8_MAX, 0, 0, 0}, tc[2], 0xffffffff },
-						{POS(ix+1, iy+1, iz), {INT8_MAX, 0, 0, 0}, tc[0], 0xffffffff },
+						{POS(ix+1,   iy, iz+1), tc[0], 0xffffffff },
+						{POS(ix+1,   iy,   iz), tc[1], 0xffffffff },
+						{POS(ix+1, iy+1,   iz), tc[2], 0xffffffff },
+						{POS(ix+1, iy+1, iz+1), tc[3], 0xffffffff },
 					};
 					verts[vi++] = corners[0];
-					verts[vi++] = corners[2];
+					verts[vi++] = corners[1];
+					verts[vi++] = corners[3];
+					verts[vi++] = corners[3];
 					verts[vi++] = corners[1];
 					verts[vi++] = corners[2];
-					verts[vi++] = corners[0];
-					verts[vi++] = corners[3];
 				}
 				if (blockType(bx+ix, by+iy, bz+iz+1) == BLOCK_AIR) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_FRONT, 0);
 					game_block_vtx corners[4] = {
-						{POS(ix, iy, iz+1), {0, 0, INT8_MAX, 0}, tc[1], 0xffffffff },
-						{POS(ix+1, iy, iz+1), {0, 0, INT8_MAX, 0}, tc[3], 0xffffffff },
-						{POS(ix+1, iy+1, iz+1), {0, 0, INT8_MAX, 0}, tc[2], 0xffffffff },
-						{POS(ix, iy+1, iz+1), {0, 0, INT8_MAX, 0}, tc[0], 0xffffffff },
+						{POS(  ix,   iy, iz+1), tc[0], 0xffffffff },
+						{POS(ix+1,   iy, iz+1), tc[1], 0xffffffff },
+						{POS(ix+1, iy+1, iz+1), tc[2], 0xffffffff },
+						{POS(  ix, iy+1, iz+1), tc[3], 0xffffffff },
 					};
 					verts[vi++] = corners[0];
 					verts[vi++] = corners[1];
-					verts[vi++] = corners[2];
-					verts[vi++] = corners[0];
-					verts[vi++] = corners[2];
 					verts[vi++] = corners[3];
+					verts[vi++] = corners[3];
+					verts[vi++] = corners[1];
+					verts[vi++] = corners[2];
 				}
 				if (blockType(bx+ix, by+iy, bz+iz-1) == BLOCK_AIR) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BACK, 0);
 					game_block_vtx corners[4] = {
-						{POS(ix, iy, iz), {0, 0, INT8_MIN, 0}, tc[1], 0xffffffff },
-						{POS((ix+1), iy, iz), {0, 0, INT8_MIN, 0}, tc[3], 0xffffffff },
-						{POS((ix+1), (iy+1), iz), {0, 0, INT8_MIN, 0}, tc[2], 0xffffffff },
-						{POS(ix, (iy+1), iz), {0, 0, INT8_MIN, 0}, tc[0], 0xffffffff },
+						{POS(ix+1,   iy, iz), tc[0], 0xffffffff },
+						{POS(  ix,   iy, iz), tc[1], 0xffffffff },
+						{POS(  ix, iy+1, iz), tc[2], 0xffffffff },
+						{POS(ix+1, iy+1, iz), tc[3], 0xffffffff },
 					};
 					verts[vi++] = corners[0];
-					verts[vi++] = corners[2];
+					verts[vi++] = corners[1];
+					verts[vi++] = corners[3];
+					verts[vi++] = corners[3];
 					verts[vi++] = corners[1];
 					verts[vi++] = corners[2];
-					verts[vi++] = corners[0];
-					verts[vi++] = corners[3];
-				}
+					}
 				++nprocessed;
 
 				if (vi > TESSELATION_BUFFER_SIZE)
@@ -416,7 +424,7 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 	if (vi == 0)
 		return vi;
 
-	mlCreateMesh(mesh, vi, verts, ML_POS_10_2 | ML_N_4B | ML_TC_2US | ML_CLR_4UB);
+	mlCreateMesh(mesh, vi, verts, ML_POS_10_2 | ML_TC_2US | ML_CLR_4UB);
 	return vi;
 }
 

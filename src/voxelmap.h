@@ -24,7 +24,6 @@ typedef struct tc2us_t {
 
 typedef struct game_block_vtx {
 	uint32_t pos; // 10_10_10_2
-	int8_t n[4];
 	tc2us_t tc;
 	uint32_t clr;
 } game_block_vtx;

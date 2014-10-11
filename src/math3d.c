@@ -566,7 +566,7 @@ void mlCreateMaterial(ml_material* material, const char* vsource, const char* fs
 	material->modelview = glGetUniformLocation(program, "modelview");
 	material->normalmat = glGetUniformLocation(program, "normalmat");
 	material->chunk_offset = glGetUniformLocation(program, "chunk_offset");
-	material->amb_color = glGetUniformLocation(program, "amb_color");
+	material->amb_light = glGetUniformLocation(program, "amb_light");
 	material->fog_color = glGetUniformLocation(program, "fog_color");
 	material->light_dir = glGetUniformLocation(program, "light_dir");
 	material->tex0 = glGetUniformLocation(program, "tex0");

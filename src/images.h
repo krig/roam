@@ -66,6 +66,12 @@ enum img_types {
 	IMG_LAVA = IMG_AT(6, 4),
 	IMG_GRASS_SNOW_1 = IMG_AT(8, 4),
 	IMG_GRASS_SNOW_2 = IMG_AT(9, 4),
+	IMG_TEST_L = IMG_AT(0, 7),
+	IMG_TEST_R,
+	IMG_TEST_F,
+	IMG_TEST_B,
+	IMG_TEST_U,
+	IMG_TEST_D,
 	NUM_IMG_TYPES
 };
 

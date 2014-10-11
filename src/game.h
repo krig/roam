@@ -51,7 +51,7 @@ struct game_t {
 	game_map map;
 
 	double time_of_day; // (0 - 1 looping: 0 is midday, 0.5 is midnight)
-	ml_vec4 ambient_color;
+	ml_vec3 amb_light;
 	ml_vec4 fog_color;
 	ml_vec3 light_dir;
 

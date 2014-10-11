@@ -62,9 +62,7 @@ gameInit() {
 
 	game.time_of_day = 0.f; // (0 - 1 looping: 0 is midday, 0.5 is midnight)
 #define H2F(r) (float)(0x##r)/255.f
-
-	//mlVec4Assign(game.ambient_color, H2F(61), H2F(04), H2F(5F), 0.4f);
-	mlVec4Assign(game.ambient_color, H2F(e0), H2F(e0), H2F(ff), 0.4f);
+	mlVec3Assign(game.amb_light, H2F(e0), H2F(e0), H2F(ff));
 	mlVec4Assign(game.fog_color, H2F(28), H2F(30), H2F(48), 0.0063f);
 
 	gameInitMap();
@@ -187,6 +185,11 @@ gameUpdate(float dt) {
 		game.time_of_day = fmod(game.time_of_day + (dt * (1.0 / 5.0)), 1.f);
 	else
 		game.time_of_day = fmod(game.time_of_day + (dt * (1.0 / DAY_LENGTH)), 1.f);
+	// todo: cycle ambient light across the day/night cycle, so that it's
+	// reddish in the morning, yellow in the day, reddish in the evening and blue in the night
+	// todo: also shift fog color and clear color across the day
+	float lightlevel = fabs(game.time_of_day * 2.0 - 1.0); // first [-1, 1], then abs: now 0 is midnight and 1 is midday
+	mlVec3Assign(game.amb_light, H2F(e0) * lightlevel, H2F(e0) * lightlevel, H2F(ff) * lightlevel);
 }
 
 static void
