@@ -43,6 +43,14 @@ typedef struct ml_ivec4 {
 	int x, y, z, w;
 } ml_ivec4;
 
+typedef struct ml_vec3d {
+	double x, y, z;
+} ml_vec3d;
+
+typedef struct ml_chunk {
+	int x, z;
+} ml_chunk;
+
 typedef struct ml_matrix {
 	float m[16];
 } ml_matrix;

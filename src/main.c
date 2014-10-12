@@ -35,9 +35,8 @@ static void
 gameInit() {
 	mlLoadTexture2D(&blocks_texture, "data/blocks8-v1.png");
 
-	game.camera.cx = game.camera.cz = 0;
-	ml_vec3 offs = { 2.537648, OCEAN_LEVEL + 1.336000, 0.514751 };
-	game.camera.offset = offs;
+	ml_vec3d offs = { 2.537648, OCEAN_LEVEL + 1.336000, 0.514751 };
+	game.camera.pos = offs;
 	game.camera.pitch = -0.544628;
 	game.camera.yaw = 1.056371;
 	game.fast_day_mode = false;
@@ -99,11 +98,11 @@ gameHandleEvent(SDL_Event* event) {
 	case SDL_KEYDOWN:
 		if (event->key.keysym.sym == game.controls.exitgame)
 			return false;
-		else if (event->key.keysym.sym == game.controls.debuginfo)
-			printf("(%d, %d) + (%f, %f, %f) p:%f, y:%f\n",
-			       game.camera.cx, game.camera.cz,
-			       game.camera.offset.x, game.camera.offset.y, game.camera.offset.z,
-			       game.camera.pitch, game.camera.yaw);
+		//else if (event->key.keysym.sym == game.controls.debuginfo)
+		//	printf("(%d, %d) + (%f, %f, %f) p:%f, y:%f\n",
+		//	       game.camera.cx, game.camera.cz,
+		//	       game.camera.offset.x, game.camera.offset.y, game.camera.offset.z,
+		//	       game.camera.pitch, game.camera.yaw);
 		else if (event->key.keysym.sym == game.controls.wireframe)
 			wireframe_mode = !wireframe_mode;
 		else if (event->key.keysym.sym == SDLK_i)
@@ -130,15 +129,15 @@ static void
 playerMove(float right, float forward) {
 	ml_vec3 xaxis, yaxis, zaxis;
 	mlFPSRotation(0, game.camera.yaw, &xaxis, &yaxis, &zaxis);
-	game.camera.offset.x += xaxis.x * right;
-	game.camera.offset.z += xaxis.z * right;
-	game.camera.offset.x += zaxis.x * -forward;
-	game.camera.offset.z += zaxis.z * -forward;
+	game.camera.pos.x += xaxis.x * right;
+	game.camera.pos.z += xaxis.z * right;
+	game.camera.pos.x += zaxis.x * -forward;
+	game.camera.pos.z += zaxis.z * -forward;
 }
 
 static void
 playerJump(float speed) {
-	game.camera.offset.y += speed;
+	game.camera.pos.y += speed;
 }
 
 static void
@@ -216,8 +215,10 @@ gameRender(SDL_Point* viewport, float frametime) {
 	if (wireframe_mode)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
+	ml_vec3 viewcenter = cameraChunkOffset();
+
 	ml_matrix view;
-	mlFPSMatrix(&view, game.camera.offset, game.camera.pitch, game.camera.yaw);
+	mlFPSMatrix(&view, viewcenter, game.camera.pitch, game.camera.yaw);
 	//mlLookAt(&view, game.camera.offset.x, game.camera.offset.y, game.camera.offset.z,
 	//         2.f, OCEAN_LEVEL, -2.f,
 	//         0.f, 1.f, 0.f);
@@ -237,7 +238,6 @@ gameRender(SDL_Point* viewport, float frametime) {
 	// fbo effects?
 	// draw ui
 
-
 	double toffs = fmod((game.time_of_day * ML_TWO_PI) + ML_PI_2, ML_TWO_PI);
 	mlVec3Assign(game.light_dir, -cos(toffs), sin(toffs), cos(toffs));
 	game.light_dir = mlVec3Normalize(game.light_dir);
@@ -246,6 +246,19 @@ gameRender(SDL_Point* viewport, float frametime) {
 
 	if (wireframe_mode)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+	ml_ivec3 pp = { game.camera.pos.x,
+	                game.camera.pos.y,
+	                game.camera.pos.z };
+	ml_ivec3 hit;
+	if (gameRayTest(pp, mlVec3Normalize(mlGetZAxis(&view)), 5, &hit)) {
+		ml_vec3 center = { (float)hit.x,
+		                   (float)hit.y,
+		                   (float)hit.z
+		};
+		ml_vec3 extent = { 0.55f, 0.55f, 0.55f };
+		uiDebugAABB(center, extent, 0xffffffff);
+	}
 
 	/*
 	ml_vec3 mc = mlVec3Scalef(mlVec3Normalize(game.light_dir), 4.f);
@@ -275,9 +288,9 @@ gameRender(SDL_Point* viewport, float frametime) {
 
 	uiRect(2, 2, 320, 5 + 16 + 2, 0x66000000);
 	uiText(5, 5, 0xffffffff, "%g, %g, %g\nfps: %d, t: %f",
-	       (double)game.camera.cx + game.camera.offset.x, \
-	       game.camera.offset.y,
-	       (double)game.camera.cz + game.camera.offset.z,
+	       game.camera.pos.x, \
+	       game.camera.pos.y,
+	       game.camera.pos.z,
 	       (int)(1.f / frametime), game.time_of_day);
 	uiDraw(viewport);
 

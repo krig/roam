@@ -19,9 +19,7 @@ enum E_Materials {
 };
 
 struct camera_t {
-	int cx;
-	int cz;
-	ml_vec3 offset;
+	ml_vec3d pos;
 	float pitch;
 	float yaw;
 };
@@ -60,3 +58,19 @@ struct game_t {
 };
 
 extern struct game_t game;
+
+
+static inline ml_chunk cameraChunk() {
+	ml_chunk c = { game.camera.pos.x / CHUNK_SIZE,
+	               game.camera.pos.z / CHUNK_SIZE };
+	return c;
+}
+
+static inline ml_vec3 cameraChunkOffset() {
+	ml_vec3 ret = {
+		fmod(game.camera.pos.x, CHUNK_SIZE),
+		game.camera.pos.y,
+		fmod(game.camera.pos.z, CHUNK_SIZE)
+	};
+	return ret;
+}

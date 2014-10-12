@@ -74,3 +74,8 @@ mapPackVectorChunkCoord(unsigned int x, unsigned int y, unsigned int z, unsigned
 	assert(x <= CHUNK_SIZE && y <= CHUNK_SIZE && z <= CHUNK_SIZE && w < 4);
 	return ((x)*(unsigned int)(1023/CHUNK_SIZE)) + (((y)*(unsigned int)(1023/CHUNK_SIZE))<<10) + (((z)*(unsigned int)(1023/CHUNK_SIZE))<<20) + ((w)<<30);
 }
+
+// origin block
+// direction vector
+// length in blocks
+bool gameRayTest(ml_ivec3 origin, ml_vec3 dir, int len, ml_ivec3* hit);

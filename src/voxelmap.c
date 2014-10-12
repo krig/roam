@@ -59,6 +59,8 @@ static void initBlockTexcoords() {
 	}
 }
 
+static ml_chunk map_chunk;
+
 void gameInitMap() {
 	printf("* Allocate and build initial map...\n");
 
@@ -71,17 +73,17 @@ void gameInitMap() {
 	simplexInit(game.map.seed);
 	osnInit(game.map.seed);
 
-	int cx = game.camera.cx;
-	int cz = game.camera.cz;
+	ml_chunk camera = cameraChunk();
 	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
 		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x)
-			gameLoadChunk(cx + x, cz + z);
+			gameLoadChunk(camera.x + x, camera.z + z);
 
 
 	// tesselate column
 	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
 		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x)
-			gameTesselateChunk(cx + x, cz + z);
+			gameTesselateChunk(camera.x + x, camera.z + z);
+	map_chunk = camera;
 
 	gameUpdateMap();
 	printf("* Map load complete.\n");
@@ -90,69 +92,34 @@ void gameInitMap() {
 void gameFreeMap() {
 }
 
-static inline void setbit(uint32_t* bv, int index) {
-	int b = index%32;
-	bv[index/32] |= (1U<<b);
-}
-
 void gameUpdateMap() {
-	int ncx = game.camera.cx, ncz = game.camera.cz;
-	if (game.camera.offset.x < 0.f) {
-		ncx -= ((int)(game.camera.offset.x) / CHUNK_SIZE + 1);
-	} else if ((int)game.camera.offset.x >= CHUNK_SIZE) {
-		ncx += ((int)game.camera.offset.x / CHUNK_SIZE);
-	}
-	if (game.camera.offset.z < 0.f) {
-		ncz -= ((int)(game.camera.offset.z) / CHUNK_SIZE + 1);
-	} else if ((int)game.camera.offset.z >= CHUNK_SIZE) {
-		ncz += ((int)game.camera.offset.z / CHUNK_SIZE);
-	}
-	if (ncx != game.camera.cx || ncz != game.camera.cz) {
-		ml_vec3 noffs;
-		if (game.camera.offset.x < 0.f)
-			noffs.x = (double)CHUNK_SIZE + fmod(game.camera.offset.x, (double)CHUNK_SIZE);
-		else
-			noffs.x = fmod(game.camera.offset.x, (double)CHUNK_SIZE);
-		if (game.camera.offset.z < 0.f)
-			noffs.z = (double)CHUNK_SIZE + fmod(game.camera.offset.z, (double)CHUNK_SIZE);
-		else
-			noffs.z = fmod(game.camera.offset.z, (double)CHUNK_SIZE);
-		noffs.y = game.camera.offset.y;
-		printf("chunk [%d, %d (%f, %f)] -> [%d, %d (%f, %f)]\n",
-		       game.camera.cx, game.camera.cz,
-		       game.camera.offset.x, game.camera.offset.z,
-		       ncx, ncz,
-		       noffs.x, noffs.z);
-		game.camera.cx = ncx;
-		game.camera.cz = ncz;
-		game.camera.offset = noffs;
+	ml_chunk nc = cameraChunk();
+	if (nc.x != map_chunk.x || nc.z != map_chunk.z) {
+		map_chunk = nc;
+		game_chunk* chunks = game.map.chunks;
+		int cx = nc.x;
+		int cz = nc.z;
 
-		{
-			game_chunk* chunks = game.map.chunks;
-			int cx = game.camera.cx;
-			int cz = game.camera.cz;
-
-			for (int dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
-				for (int dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
-					int bx = mod(cx + dx, MAP_CHUNK_WIDTH);
-					int bz = mod(cz + dz, MAP_CHUNK_WIDTH);
-					game_chunk* chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
-					if (chunk->x != cx + dx ||
-					    chunk->z != cz + dz) {
-						gameUnloadChunk(chunk->x, chunk->z);
-						gameLoadChunk(cx + dx, cz + dz);
-						chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
-						assert(chunk->x == (cx + dx) && chunk->z == (cz + dz));
-					}
+		for (int dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
+			for (int dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
+				int bx = mod(cx + dx, MAP_CHUNK_WIDTH);
+				int bz = mod(cz + dz, MAP_CHUNK_WIDTH);
+				game_chunk* chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
+				if (chunk->x != cx + dx ||
+				    chunk->z != cz + dz) {
+					gameUnloadChunk(chunk->x, chunk->z);
+					gameLoadChunk(cx + dx, cz + dz);
+					chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
+					assert(chunk->x == (cx + dx) && chunk->z == (cz + dz));
 				}
 			}
-			for (int dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
-				for (int dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
-					int bx = mod(cx + dx, MAP_CHUNK_WIDTH);
-					int bz = mod(cz + dz, MAP_CHUNK_WIDTH);
-					game_chunk* chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
-					gameTesselateChunk(cx + dx, cz + dz);
-				}
+		}
+		for (int dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
+			for (int dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
+				int bx = mod(cx + dx, MAP_CHUNK_WIDTH);
+				int bz = mod(cz + dz, MAP_CHUNK_WIDTH);
+				game_chunk* chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
+				gameTesselateChunk(cx + dx, cz + dz);
 			}
 		}
 	}
@@ -180,16 +147,15 @@ void gameDrawMap(ml_frustum* frustum) {
 	float chunk_radius = (float)CHUNK_SIZE*0.5f;
 	ml_vec3 offset, center, extent;
 	game_chunk* chunks = game.map.chunks;
-	int cx = game.camera.cx;
-	int cz = game.camera.cz;
+	ml_chunk camera = cameraChunk();
 
 	for (int dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
 		for (int dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
-			int bx = mod(cx + dx, MAP_CHUNK_WIDTH);
-			int bz = mod(cz + dz, MAP_CHUNK_WIDTH);
+			int bx = mod(camera.x + dx, MAP_CHUNK_WIDTH);
+			int bz = mod(camera.z + dz, MAP_CHUNK_WIDTH);
 			game_chunk* chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
-			int x = chunk->x - game.camera.cx;
-			int z = chunk->z - game.camera.cz;
+			int x = chunk->x - camera.x;
+			int z = chunk->z - camera.z;
 
 			if (game.single_chunk_mode && (x != 0 || z != 0))
 				continue;
@@ -479,3 +445,22 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 	return (vi > 0);
 }
 
+bool gameRayTest(ml_ivec3 origin, ml_vec3 dir, int len, ml_ivec3* hit) {
+	for (int i = 0; i < len; ++i) {
+		ml_vec3 offs = mlVec3Scalef(dir, (float)len);
+		ml_ivec3 block = { origin.x + (int)(offs.x),
+		                   origin.y + (int)(offs.y),
+		                   origin.z + (int)(offs.z)
+		};
+		if (block.y < 0 || block.y > MAP_BLOCK_HEIGHT)
+			return false;
+		size_t idx = blockIndex(block.x, block.y, block.z);
+		if (idx >= MAP_BUFFER_SIZE)
+			return false;
+		if (game.map.blocks[idx] != BLOCK_AIR) {
+			*hit = block;
+			return true;
+		}
+	}
+	return false;
+}
