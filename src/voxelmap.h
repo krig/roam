@@ -7,9 +7,9 @@
  */
 
 #define CHUNK_SIZE 16
-#define VIEW_DISTANCE 32
+#define VIEW_DISTANCE 16
 #define OCEAN_LEVEL 80
-#define MAP_CHUNK_WIDTH (VIEW_DISTANCE*2)
+#define MAP_CHUNK_WIDTH (VIEW_DISTANCE*2 + 2)
 #define MAP_CHUNK_HEIGHT 16
 #define MAP_BLOCK_WIDTH (MAP_CHUNK_WIDTH*CHUNK_SIZE)
 #define MAP_BLOCK_HEIGHT (MAP_CHUNK_HEIGHT*CHUNK_SIZE)
@@ -33,6 +33,7 @@ typedef struct game_block_vtx {
 typedef struct game_chunk {
 	int x; // actual coordinates of chunk
 	int z;
+	bool dirty;
 	ml_mesh data[MAP_CHUNK_HEIGHT];
 	// add per-chunk state information here (things like command blocks...)
 } game_chunk;

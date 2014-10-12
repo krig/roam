@@ -351,7 +351,7 @@ main(int argc, char* argv[]) {
 
 	mlPerspective(mlGetMatrix(&game.projection), mlDeg2Rad(70.f),
 	              (float)sz.x / (float)sz.y,
-	              0.1f, VIEW_DISTANCE*CHUNK_SIZE + CHUNK_SIZE);
+	              0.1f, 1024.f);
 
 	gameInit();
 	glCheck(__LINE__);
@@ -372,7 +372,7 @@ main(int argc, char* argv[]) {
 					glViewport(0, 0, sz.x, sz.y);
 					mlPerspective(mlGetMatrix(&game.projection), mlDeg2Rad(70.f),
 					              (float)sz.x / (float)sz.y,
-					              0.1f, 100.f);
+					              0.1f, 1024.f);
 				} else if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
 					SDL_SetRelativeMouseMode(SDL_FALSE);
 					mouse_captured = false;

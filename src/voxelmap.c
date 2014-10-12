@@ -30,7 +30,8 @@ static inline uint8_t blockType(int x, int y, int z) {
 extern ml_tex2d blocks_texture;
 
 void gameLoadChunk(int x, int z);
-size_t gameTesselateSubChunk(int cx, int cy, int cz);
+void gameUnloadChunk(int x, int z);
+void gameTesselateChunk(int x, int z);
 
 static inline tc2us_t make_tc2us(ml_vec2 tc) {
 	tc2us_t to = {
@@ -70,27 +71,91 @@ void gameInitMap() {
 	simplexInit(game.map.seed);
 	osnInit(game.map.seed);
 
-	ml_ivec3 player = { game.camera.cx, 0, game.camera.cz };
+	int cx = game.camera.cx;
+	int cz = game.camera.cz;
 	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
 		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x)
-			gameLoadChunk(player.x + x, player.z + z);
-	printf("\n");
+			gameLoadChunk(cx + x, cz + z);
 
 
 	// tesselate column
 	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
 		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x)
-			for (int y = 0; y < MAP_CHUNK_HEIGHT; ++y)
-				gameTesselateSubChunk(player.x + x, y, player.z + z);
+			gameTesselateChunk(cx + x, cz + z);
 
 	gameUpdateMap();
-	printf("\n* Map load complete.\n");
+	printf("* Map load complete.\n");
 }
 
 void gameFreeMap() {
 }
 
+static inline void setbit(uint32_t* bv, int index) {
+	int b = index%32;
+	bv[index/32] |= (1U<<b);
+}
+
 void gameUpdateMap() {
+	int ncx = game.camera.cx, ncz = game.camera.cz;
+	if (game.camera.offset.x < 0.f) {
+		ncx -= ((int)(game.camera.offset.x) / CHUNK_SIZE + 1);
+	} else if ((int)game.camera.offset.x >= CHUNK_SIZE) {
+		ncx += ((int)game.camera.offset.x / CHUNK_SIZE);
+	}
+	if (game.camera.offset.z < 0.f) {
+		ncz -= ((int)(game.camera.offset.z) / CHUNK_SIZE + 1);
+	} else if ((int)game.camera.offset.z >= CHUNK_SIZE) {
+		ncz += ((int)game.camera.offset.z / CHUNK_SIZE);
+	}
+	if (ncx != game.camera.cx || ncz != game.camera.cz) {
+		ml_vec3 noffs;
+		if (game.camera.offset.x < 0.f)
+			noffs.x = (double)CHUNK_SIZE + fmod(game.camera.offset.x, (double)CHUNK_SIZE);
+		else
+			noffs.x = fmod(game.camera.offset.x, (double)CHUNK_SIZE);
+		if (game.camera.offset.z < 0.f)
+			noffs.z = (double)CHUNK_SIZE + fmod(game.camera.offset.z, (double)CHUNK_SIZE);
+		else
+			noffs.z = fmod(game.camera.offset.z, (double)CHUNK_SIZE);
+		noffs.y = game.camera.offset.y;
+		printf("chunk [%d, %d (%f, %f)] -> [%d, %d (%f, %f)]\n",
+		       game.camera.cx, game.camera.cz,
+		       game.camera.offset.x, game.camera.offset.z,
+		       ncx, ncz,
+		       noffs.x, noffs.z);
+		game.camera.cx = ncx;
+		game.camera.cz = ncz;
+		game.camera.offset = noffs;
+
+		{
+			game_chunk* chunks = game.map.chunks;
+			int cx = game.camera.cx;
+			int cz = game.camera.cz;
+
+			for (int dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
+				for (int dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
+					int bx = mod(cx + dx, MAP_CHUNK_WIDTH);
+					int bz = mod(cz + dz, MAP_CHUNK_WIDTH);
+					game_chunk* chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
+					if (chunk->x != cx + dx ||
+					    chunk->z != cz + dz) {
+						gameUnloadChunk(chunk->x, chunk->z);
+						gameLoadChunk(cx + dx, cz + dz);
+						chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
+						assert(chunk->x == (cx + dx) && chunk->z == (cz + dz));
+					}
+				}
+			}
+			for (int dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
+				for (int dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
+					int bx = mod(cx + dx, MAP_CHUNK_WIDTH);
+					int bz = mod(cz + dz, MAP_CHUNK_WIDTH);
+					game_chunk* chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
+					gameTesselateChunk(cx + dx, cz + dz);
+				}
+			}
+		}
+	}
 }
 
 void gameDrawMap(ml_frustum* frustum) {
@@ -112,47 +177,59 @@ void gameDrawMap(ml_frustum* frustum) {
 	mlUniformVec3(material->amb_light, &game.amb_light);
 	mlUniformVec4(material->fog_color, &game.fog_color);
 
-	// figure out which chunks are visible
-	// draw visible chunks
-
 	float chunk_radius = (float)CHUNK_SIZE*0.5f;
-
 	ml_vec3 offset, center, extent;
 	game_chunk* chunks = game.map.chunks;
-	for (int i = 0; i < MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH; ++i) {
-		// calc chunk offset for this chunk
-		int x = chunks[i].x - game.camera.cx;
-		int z = chunks[i].z - game.camera.cz;
-		if (game.single_chunk_mode && (x != 0 || z != 0))
-			continue;
+	int cx = game.camera.cx;
+	int cz = game.camera.cz;
 
-		mlVec3Assign(offset, (float)(x*CHUNK_SIZE) - 0.5f, -0.5f, (float)(z*CHUNK_SIZE) - 0.5f);
-		mlVec3Assign(center, offset.x + chunk_radius, MAP_BLOCK_HEIGHT*0.5f, offset.z + chunk_radius);
-		mlVec3Assign(extent, chunk_radius, MAP_BLOCK_HEIGHT*0.5f, chunk_radius);
-		if (mlTestFrustumAABB(frustum, center, extent) == ML_OUTSIDE)
-			continue;
-		extent.y = chunk_radius;
+	for (int dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
+		for (int dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
+			int bx = mod(cx + dx, MAP_CHUNK_WIDTH);
+			int bz = mod(cz + dz, MAP_CHUNK_WIDTH);
+			game_chunk* chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
+			int x = chunk->x - game.camera.cx;
+			int z = chunk->z - game.camera.cz;
 
-		// todo: figure out which meshes need to be drawn
-		for (int j = 0; j < MAP_CHUNK_HEIGHT; ++j) {
-			ml_mesh* mesh = chunks[i].data + j;
-			if (mesh->vbo == 0)
+			if (game.single_chunk_mode && (x != 0 || z != 0))
 				continue;
 
-			offset.y = (float)(CHUNK_SIZE*j) - 0.5f;
-			center.y = offset.y + chunk_radius;
+
+			mlVec3Assign(offset, (float)(x*CHUNK_SIZE) - 0.5f, -0.5f, (float)(z*CHUNK_SIZE) - 0.5f);
+			mlVec3Assign(center, offset.x + chunk_radius, MAP_BLOCK_HEIGHT*0.5f, offset.z + chunk_radius);
+			mlVec3Assign(extent, chunk_radius, MAP_BLOCK_HEIGHT*0.5f, chunk_radius);
 			if (mlTestFrustumAABB(frustum, center, extent) == ML_OUTSIDE)
 				continue;
 
-			if (game.single_chunk_mode)
-				uiDebugAABB(center, extent, 0xff00ff00);
+			if (chunk->dirty) {
+				uiDebugAABB(center, extent, 0x44ff2222);
+				continue;
+			}
 
-			// update the chunk offset uniform
-			// bind the VBO
-			// can this be done once? probably...
-			mlUniformVec3(material->chunk_offset, &offset);
-			mlMapMeshToMaterial(mesh, material);
-			glDrawArrays(mesh->mode, 0, mesh->count);
+			extent.y = chunk_radius;
+
+			// todo: figure out which meshes need to be drawn
+			int ndrawn = 0;
+			for (int j = 0; j < MAP_CHUNK_HEIGHT; ++j) {
+				ml_mesh* mesh = chunk->data + j;
+				if (mesh->vbo == 0)
+					continue;
+
+				offset.y = (float)(CHUNK_SIZE*j) - 0.5f;
+				center.y = offset.y + chunk_radius;
+				if (mlTestFrustumAABB(frustum, center, extent) == ML_OUTSIDE)
+					continue;
+
+				//uiDebugAABB(center, extent, 0x4422ff22);
+
+				// update the chunk offset uniform
+				// bind the VBO
+				// can this be done once? probably...
+				mlUniformVec3(material->chunk_offset, &offset);
+				mlMapMeshToMaterial(mesh, material);
+				glDrawArrays(mesh->mode, 0, mesh->count);
+				++ndrawn;
+			}
 		}
 	}
 
@@ -186,18 +263,17 @@ void gameLoadChunk(int x, int z) {
 	int fillx, filly, fillz;
 	int bufx = mod(x, MAP_CHUNK_WIDTH);
 	int bufz = mod(z, MAP_CHUNK_WIDTH);
-	game_chunk* chunk = &(game.map.chunks[bufz*MAP_CHUNK_WIDTH + bufx]);
+	game_chunk* chunk = game.map.chunks + (bufz*MAP_CHUNK_WIDTH + bufx);
 	uint8_t* blocks = game.map.blocks;
 	chunk->x = x;
 	chunk->z = z;
+	chunk->dirty = true;
+	printf("load: (%d, %d) [%d, %d]\n", x, z, bufx, bufz);
 
 	blockx = x * CHUNK_SIZE;
 	blockz = z * CHUNK_SIZE;
 
 #define NOISE_SCALE (1.0/((double)CHUNK_SIZE * 16))
-
-	printf("+");
-	fflush(stdout);
 
 	uint64_t snowseed = game.map.seed ^ ((uint64_t)blockx << 32) ^ (uint64_t)blockz;
 
@@ -242,6 +318,15 @@ void gameLoadChunk(int x, int z) {
 	*/
 }
 
+void gameUnloadChunk(int x, int z) {
+	int bufx = mod(x, MAP_CHUNK_WIDTH);
+	int bufz = mod(z, MAP_CHUNK_WIDTH);
+	game_chunk* chunk = game.map.chunks + (bufz*MAP_CHUNK_WIDTH + bufx);
+	for (int i = 0; i < MAP_CHUNK_HEIGHT; ++i)
+		mlDestroyMesh(chunk->data + i);
+	chunk->dirty = true;
+}
+
 // tesselation buffer: size is maximum number of triangles generated
 //   1: fill tesselation buffer
 //  2: allocate mesh
@@ -252,8 +337,22 @@ void gameLoadChunk(int x, int z) {
 static game_block_vtx tesselation_buffer[TESSELATION_BUFFER_SIZE];
 #define POS(x, y, z) mapPackVectorChunkCoord((unsigned int)(x), (unsigned int)(y), (unsigned int)(z), 0)
 
-size_t gameTesselateSubChunk(int cx, int cy, int cz) {
-	ml_mesh* mesh;
+bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy);
+
+void gameTesselateChunk(int x, int z) {
+	int bufx = mod(x, MAP_CHUNK_WIDTH);
+	int bufz = mod(z, MAP_CHUNK_WIDTH);
+	game_chunk* chunk = game.map.chunks + bufz*MAP_CHUNK_WIDTH + bufx;
+	if (chunk->dirty) {
+		ml_mesh* mesh = chunk->data;
+		for (int y = 0; y < MAP_CHUNK_HEIGHT; ++y)
+			gameTesselateSubChunk(mesh + y, bufx, bufz, y);
+		chunk->dirty = false;
+	}
+}
+
+
+bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 	int ix, iy, iz;
 	int bx, by, bz;
 	size_t vi;
@@ -261,14 +360,9 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 
 	verts = tesselation_buffer;
 	vi = 0;
-	cx = mod(cx, MAP_CHUNK_WIDTH);
-	cz = mod(cz, MAP_CHUNK_WIDTH);
-	mesh = game.map.chunks[cz*MAP_CHUNK_WIDTH + cx].data + cy;
-	bx = cx*CHUNK_SIZE;
+	bx = bufx*CHUNK_SIZE;
 	by = cy*CHUNK_SIZE;
-	bz = cz*CHUNK_SIZE;
-	printf(".");
-	fflush(stdout);
+	bz = bufz*CHUNK_SIZE;
 	size_t nprocessed = 0;
 
 	// fill in verts
@@ -375,15 +469,13 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 				++nprocessed;
 
 				if (vi > TESSELATION_BUFFER_SIZE)
-					roamError("Tesselation buffer too small for chunk (%d, %d, %d): %zu verts, %zu blocks processed", cx, cy, cz, vi, nprocessed);
+					roamError("Tesselation buffer too small for chunk (%d, %d, %d): %zu verts, %zu blocks processed", bufx, cy, bufz, vi, nprocessed);
 			}
 		}
 	}
 
-	if (vi == 0)
-		return vi;
-
-	mlCreateMesh(mesh, vi, verts, ML_POS_10_2 | ML_TC_2US | ML_CLR_4UB);
-	return vi;
+	if (vi > 0)
+		mlCreateMesh(mesh, vi, verts, ML_POS_10_2 | ML_TC_2US | ML_CLR_4UB);
+	return (vi > 0);
 }
 
