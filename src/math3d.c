@@ -160,61 +160,6 @@ int mlTestFrustumAABB(ml_frustum* frustum, ml_vec3 center, ml_vec3 extent) {
 	return result;
 }
 
-int mlTestPlaneAABB(ml_vec4 p, ml_vec3 p0, ml_vec3 p1) {
-	ml_vec3 pmin, pmax;
-	ml_vec3 vmin, vmax;
-	float d;
-	pmin.x = ML_MIN(p0.x, p1.x);
-	pmin.y = ML_MIN(p0.y, p1.y);
-	pmin.z = ML_MIN(p0.z, p1.z);
-	pmax.x = ML_MAX(p0.x, p1.x);
-	pmax.y = ML_MAX(p0.y, p1.y);
-	pmax.z = ML_MAX(p0.z, p1.z);
-	if (p.x >= 0) {
-		vmin.x = pmin.x;
-		vmax.x = pmax.x;
-	} else {
-		vmin.x = pmax.x;
-		vmax.x = pmin.x;
-	}
-	if (p.y >= 0) {
-		vmin.y = pmin.y;
-		vmax.y = pmax.y;
-	} else {
-		vmin.y = pmax.y;
-		vmax.y = pmin.y;
-	}
-	if (p.z >= 0) {
-		vmin.z = pmin.z;
-		vmax.z = pmax.z;
-	} else {
-		vmin.z = pmax.z;
-		vmax.z = pmin.z;
-	}
-	d = p.x * vmax.x + p.y * vmax.y + p.z * vmax.z;
-	if (d < -p.w)
-		return ML_OUTSIDE;
-	d = p.x * vmin.x + p.y * vmin.y + p.z * vmin.z;
-
-	return (d < -p.w) ? ML_INTERSECT : ML_INSIDE;
-}
-
-
-ml_vec3 mlGetXAxis(const ml_matrix* from) {
-	ml_vec3 ret = { from->m[0], from->m[1], from->m[2] };
-	return ret;
-}
-
-ml_vec3 mlGetYAxis(const ml_matrix* from) {
-	ml_vec3 ret = { from->m[4], from->m[5], from->m[6] };
-	return ret;
-}
-
-ml_vec3 mlGetZAxis(const ml_matrix* from) {
-	ml_vec3 ret = { from->m[8], from->m[9], from->m[10] };
-	return ret;
-}
-
 ml_vec3 mlVec3RotateBy(const ml_matrix* m, const ml_vec3 *v) {
 	ml_vec3 ret;
 	ret.x = (v->x * m->m[0]) +

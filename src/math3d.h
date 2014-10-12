@@ -207,15 +207,25 @@ void mlTranslate(ml_matrix* m, float x, float y, float z);
 void mlRotate(ml_matrix* m, float angle, float x, float y, float z);
 
 void mlGetRotationMatrix(ml_matrix33* to, const ml_matrix* from);
-ml_vec3 mlGetXAxis(const ml_matrix* from);
-ml_vec3 mlGetYAxis(const ml_matrix* from);
-ml_vec3 mlGetZAxis(const ml_matrix* from);
 ml_vec3 mlMulMat33Vec3(const ml_matrix33* m, const ml_vec3* v);
 
 void mlTranspose(ml_matrix* m);
 void mlTranspose33(ml_matrix33* m);
 bool mlInvertMatrix(ml_matrix* to, const ml_matrix* from);
 void mlInvertOrthoMatrix(ml_matrix* to, const ml_matrix* from);
+
+static inline ml_vec3 mlGetXAxis(const ml_matrix* from) {
+	return *(ml_vec3*)&from->m[0];
+}
+
+static inline ml_vec3 mlGetYAxis(const ml_matrix* from) {
+	return *(ml_vec3*)&from->m[4];
+}
+
+static inline ml_vec3 mlGetZAxis(const ml_matrix* from) {
+	return *(ml_vec3*)&from->m[8];
+}
+
 
 static inline float
 mlVec3Dot(const ml_vec3 a, const ml_vec3 b) {
@@ -484,7 +494,77 @@ enum ml_CollisionResult {
 	ML_INTERSECT
 };
 
-int mlTestFrustumAABB(ml_frustum* frustum, ml_vec3 p0, ml_vec3 p1);
-int mlTestPlaneAABB(ml_vec4 p, ml_vec3 p0, ml_vec3 p1);
+int mlTestFrustumAABB(ml_frustum* frustum, ml_vec3 center, ml_vec3 extent);
+
+static inline int mlTestPlaneAABB(ml_vec4 plane, ml_vec3 center, ml_vec3 extent) {
+	ml_vec4 absplane = { fabs(plane.x), fabs(plane.y), fabs(plane.z), fabs(plane.w) };
+	float d = center.x * plane.x + center.y * plane.y + center.z * plane.z + plane.w;
+	float r = extent.x * absplane.x + extent.y * absplane.y + extent.z * absplane.z + absplane.w;
+	if (d + r <= 0) return ML_OUTSIDE;
+	if (d - r < 0) return ML_INTERSECT;
+	return ML_INSIDE;
+}
+
+static inline bool mlTestAABBAABB(ml_vec3 center1, ml_vec3 extent1, ml_vec3 center2, ml_vec3 extent2) {
+	return (fabs(center1.x - center2.x) < extent1.x + extent2.x) &&
+		(fabs(center1.y - center2.y) < extent1.y + extent2.y) &&
+		(fabs(center1.z - center2.z) < extent1.z + extent2.z);
+}
+
+static inline bool mlTestPointAABB(ml_vec3 point, ml_vec3 center, ml_vec3 extent) {
+	return (fabs(center.x - point.x) < extent.x) &&
+		(fabs(center.y - point.y) < extent.y) &&
+		(fabs(center.z - point.z) < extent.z);
+}
+
+/* based on code by Pierre Terdiman
+   http://www.codercorner.com/RayAABB.cpp
+ */
+static inline bool mlTestRayAABB(ml_vec3 origin, ml_vec3 dir, ml_vec3 center, ml_vec3 extent) {
+	ml_vec3 diff;
+
+	diff.x = origin.x - center.x;
+	if (fabsf(diff.x) > extent.x && diff.x*dir.x >= 0.0f)
+		return false;
+
+	diff.y = origin.y - center.y;
+	if (fabsf(diff.y) > extent.y && diff.y*dir.y >= 0.0f)
+		return false;
+
+	diff.z = origin.z - center.z;
+	if (fabsf(diff.z) > extent.z && diff.z*dir.z >= 0.0f)
+		return false;
+
+	ml_vec3 absdir = { fabsf(dir.x), fabsf(dir.y), fabsf(dir.z) };
+	float f;
+	f = dir.y * diff.z - dir.z * diff.y;
+	if (fabsf(f) > extent.y*absdir.z + extent.z*absdir.y)
+		return false;
+	f = dir.z * diff.x - dir.x * diff.z;
+	if (fabsf(f) > extent.x*absdir.z + extent.z*absdir.x)
+		return false;
+	f = dir.x * diff.y - dir.y * diff.x;
+	if (fabsf(f) > extent.x*absdir.y + extent.y*absdir.x)
+		return false;
+	return true;
+}
+
+/* http://tog.acm.org/resources/GraphicsGems/gems/BoxSphere.c */
+static inline bool mlTestSphereAABB(ml_vec3 pos, float radius, ml_vec3 center, ml_vec3 extent) {
+	float dmin = 0;
+	ml_vec3 bmin = { center.x - extent.x, center.y - extent.y, center.z - extent.z };
+	ml_vec3 bmax = { center.x + extent.x, center.y + extent.y, center.z + extent.z };
+	if (pos.x < bmin.x) dmin = pos.x - bmin.x;
+	else if (pos.x > bmax.x) dmin = pos.x - bmax.x;
+	if (dmin <= radius) return true;
+	if (pos.y < bmin.y) dmin = pos.y - bmin.y;
+	else if (pos.y > bmax.y) dmin = pos.y - bmax.y;
+	if (dmin <= radius) return true;
+	if (pos.z < bmin.z) dmin = pos.z - bmin.z;
+	else if (pos.z > bmax.z) dmin = pos.z - bmax.z;
+	if (dmin <= radius) return true;
+	return false;
+}
+
 
 // TODO: GL state stack - track state as a stack of uint64_ts...
