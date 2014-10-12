@@ -204,42 +204,42 @@ void gameLoadChunk(int x, int z) {
 		}
 	}
 
-#define NOISE_SCALE (1.0/(double)CHUNK_SIZE)
+#define NOISE_SCALE (1.0/((double)CHUNK_SIZE * 32))
 
 	printf("+");
 	fflush(stdout);
-/*
+
 	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
 		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
-			double height = simplexNoise(fillx * NOISE_SCALE, fillz * NOISE_SCALE) * 0.5 + 1.0;
+			double height = fabs(simplexNoise(fillx * NOISE_SCALE, fillz * NOISE_SCALE));
 			for (filly = 0; filly < MAP_BLOCK_HEIGHT; ++filly) {
+				if (filly < height * (double)MAP_BLOCK_HEIGHT)
+					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_MELON;
+				else
+					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_AIR;
+				/*
 				double density = (((double)MAP_BLOCK_HEIGHT - (double)filly) / (double)MAP_BLOCK_HEIGHT); // gradient
 				density -= simplexNoise(fillx * NOISE_SCALE,
 				                      filly * NOISE_SCALE);
 				density -= simplexNoise(filly * NOISE_SCALE,
 				                      fillz * NOISE_SCALE);
-				if (density < 0.0) {
-					if (filly < 20)
-						blocks[blockIndex(fillx, filly, fillz)] = BLOCK_WATER;
-					else
-						blocks[blockIndex(fillx, filly, fillz)] = BLOCK_AIR;
+				if (filly < 20) {
+					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_SNOW;
+				} else if (density < 0.8) {
+					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_AIR;
 				} else if (((double)filly / (double)MAP_BLOCK_HEIGHT) < height) {
-					if (density < 0.2) {
-					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_MOSS;
-					} else if (density < 0.5) {
-						blocks[blockIndex(fillx, filly, fillz)] = BLOCK_DARKSTONE;
+					if (density < 0.9) {
+					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_PIG;
 					} else {
-						blocks[blockIndex(fillx, filly, fillz)] = BLOCK_LAVA;
+						blocks[blockIndex(fillx, filly, fillz)] = BLOCK_MELON;
 					}
 				} else {
-					if (filly < 20)
-						blocks[blockIndex(fillx, filly, fillz)] = BLOCK_WATER;
-					else
-						blocks[blockIndex(fillx, filly, fillz)] = BLOCK_AIR;
+					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_AIR;
 				}
+				*/
 			}
 		}
-		}*/
+	}
 
 	/*
 	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
@@ -253,11 +253,12 @@ void gameLoadChunk(int x, int z) {
 		}
 	}
 	*/
+	/*
 	for (int i = 0; i < NUM_BLOCKTYPES; ++i) {
 		int x = (i*2) % CHUNK_SIZE;
 		int z = ((i*2) / CHUNK_SIZE) * 2;
 		blocks[blockIndex(blockx + x, GROUND_LEVEL + 2, blockz + z)] = i;
-	}
+		}*/
 /*
 	for (int z = 2; z < 4; ++z)
 		for (int x = 2; x < 4; ++x)

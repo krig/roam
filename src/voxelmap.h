@@ -7,7 +7,7 @@
  */
 
 #define CHUNK_SIZE 16
-#define VIEW_DISTANCE 12
+#define VIEW_DISTANCE 16
 #define GROUND_LEVEL 80
 #define MAP_CHUNK_WIDTH (VIEW_DISTANCE*2)
 #define MAP_CHUNK_HEIGHT 8
@@ -64,9 +64,12 @@ static inline int mod(int a, int b) {
    return ret;
 }
 
+#include <assert.h>
+
 // elements xyz are 0-32
 // w should be 0-3
 static inline uint32_t
 mapPackVectorChunkCoord(unsigned int x, unsigned int y, unsigned int z, unsigned int w) {
+	assert(x <= CHUNK_SIZE && y <= CHUNK_SIZE && z <= CHUNK_SIZE && w < 4);
 	return ((x)*(unsigned int)(1023/CHUNK_SIZE)) + (((y)*(unsigned int)(1023/CHUNK_SIZE))<<10) + (((z)*(unsigned int)(1023/CHUNK_SIZE))<<20) + ((w)<<30);
 }
