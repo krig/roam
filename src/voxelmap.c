@@ -8,6 +8,7 @@
 #include "rnd.h"
 #include "images.h"
 #include "blocks.h"
+#include "ui.h"
 
 static inline size_t blockIndex(int x, int y, int z) {
 	return mod(z, MAP_BLOCK_WIDTH) * (MAP_BLOCK_WIDTH * MAP_BLOCK_HEIGHT) +
@@ -17,7 +18,7 @@ static inline size_t blockIndex(int x, int y, int z) {
 
 static inline uint8_t blockType(int x, int y, int z) {
 	if (y < 0)
-		return BLOCK_STONE;
+		return BLOCK_BLACKROCK;
 	if (y >= MAP_BLOCK_HEIGHT)
 		return BLOCK_AIR;
 	size_t idx = blockIndex(x, y, z);
@@ -143,6 +144,9 @@ void gameDrawMap(ml_frustum* frustum) {
 			if (mlTestFrustumAABB(frustum, center, extent) == ML_OUTSIDE)
 				continue;
 
+			if (game.single_chunk_mode)
+				uiDebugAABB(center, extent, 0xff00ff00);
+
 			// update the chunk offset uniform
 			// bind the VBO
 			// can this be done once? probably...
@@ -178,6 +182,8 @@ void gameDrawMap(ml_frustum* frustum) {
 // and tesselate the whole thing
 
 void gameLoadChunk(int x, int z) {
+	int blockx, blockz;
+	int fillx, filly, fillz;
 	int bufx = mod(x, MAP_CHUNK_WIDTH);
 	int bufz = mod(z, MAP_CHUNK_WIDTH);
 	game_chunk* chunk = &(game.map.chunks[bufz*MAP_CHUNK_WIDTH + bufx]);
@@ -185,106 +191,55 @@ void gameLoadChunk(int x, int z) {
 	chunk->x = x;
 	chunk->z = z;
 
-	int blockx = x * CHUNK_SIZE;
-	int blockz = z * CHUNK_SIZE;
+	blockx = x * CHUNK_SIZE;
+	blockz = z * CHUNK_SIZE;
 
-	// fill blocks in column...
-	/**/
-
-	int fillx, filly, fillz;
-
-	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
-		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
-			for (filly = 0; filly < MAP_BLOCK_HEIGHT; ++filly) {
-				if (filly < GROUND_LEVEL - 2)
-					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_STONE;
-				else
-					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_AIR;
-			}
-		}
-	}
-
-#define NOISE_SCALE (1.0/((double)CHUNK_SIZE * 32))
+#define NOISE_SCALE (1.0/((double)CHUNK_SIZE * 16))
 
 	printf("+");
 	fflush(stdout);
 
+	uint64_t snowseed = game.map.seed ^ ((uint64_t)blockx << 32) ^ (uint64_t)blockz;
+
+	int p, b;
 	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
 		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
-			double height = fabs(simplexNoise(fillx * NOISE_SCALE, fillz * NOISE_SCALE));
-			for (filly = 0; filly < MAP_BLOCK_HEIGHT; ++filly) {
-				if (filly < height * (double)MAP_BLOCK_HEIGHT)
-					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_MELON;
-				else
-					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_AIR;
-				/*
-				double density = (((double)MAP_BLOCK_HEIGHT - (double)filly) / (double)MAP_BLOCK_HEIGHT); // gradient
-				density -= simplexNoise(fillx * NOISE_SCALE,
-				                      filly * NOISE_SCALE);
-				density -= simplexNoise(filly * NOISE_SCALE,
-				                      fillz * NOISE_SCALE);
-				if (filly < 20) {
-					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_SNOW;
-				} else if (density < 0.8) {
-					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_AIR;
-				} else if (((double)filly / (double)MAP_BLOCK_HEIGHT) < height) {
-					if (density < 0.9) {
-					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_PIG;
+			double height = fBmSimplex(fillx, fillz, 0.5, NOISE_SCALE, 2.1117, 5);
+			height = 100.0 + height * 40.0;
+			b = BLOCK_AIR;
+			p = BLOCK_AIR;
+			for (filly = MAP_BLOCK_HEIGHT; filly >= 0; --filly) {
+				if (filly < 2) {
+					b = BLOCK_BLACKROCK;
+				} else if (filly < height) {
+					if (p == BLOCK_AIR) {
+						snowseed = osnRand(snowseed);
+						if (height > (140.0 - (snowseed % 10))) {
+							b = BLOCK_SNOWY_GRASS_1;
+						} else {
+							b = BLOCK_WET_GRASS;
+						}
 					} else {
-						blocks[blockIndex(fillx, filly, fillz)] = BLOCK_MELON;
+						b = BLOCK_WET_DIRT;
 					}
+				} else if (filly <= OCEAN_LEVEL) {
+					b = BLOCK_OCEAN;
 				} else {
-					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_AIR;
+					b = BLOCK_AIR;
 				}
-				*/
+				blocks[blockIndex(fillx, filly, fillz)] = b;
+				p = b;
 			}
 		}
 	}
 
-	/*
-	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
-		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
-			for (filly = 0; filly < MAP_BLOCK_HEIGHT; ++filly) {
-				if (filly == GROUND_LEVEL - 3)
-					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_GRASS;
-				else
-					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_AIR;
-			}
-		}
-	}
-	*/
 	/*
 	for (int i = 0; i < NUM_BLOCKTYPES; ++i) {
 		int x = (i*2) % CHUNK_SIZE;
 		int z = ((i*2) / CHUNK_SIZE) * 2;
-		blocks[blockIndex(blockx + x, GROUND_LEVEL + 2, blockz + z)] = i;
-		}*/
-/*
-	for (int z = 2; z < 4; ++z)
-		for (int x = 2; x < 4; ++x)
-			for (int y = 2; y < 4; ++y)
-				blocks[blockIndex(x, GROUND_LEVEL + y, z)] = BLOCK_STONE;
-
-	for (fillz = CHUNK_SIZE; fillz < CHUNK_SIZE*2; ++fillz) {
-		for (fillx = CHUNK_SIZE; fillx < CHUNK_SIZE*2; ++fillx) {
-			for (filly = GROUND_LEVEL + 2; filly < GROUND_LEVEL + 2 + CHUNK_SIZE; ++filly) {
-				blocks[blockIndex(fillx, filly, fillz)] = (rand() % 2) ? BLOCK_SAND : BLOCK_AIR;
-			}
+		blocks[blockIndex(blockx + x, OCEAN_LEVEL + 2, blockz + z)] = i;
 		}
-	}
-
-	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
-		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
-			for (filly = 0; filly < MAP_BLOCK_HEIGHT; ++filly) {
-				if (filly < GROUND_LEVEL)
-					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_STONE;
-				else
-					blocks[blockIndex(fillx, filly, fillz)] = BLOCK_AIR;
-			}
-		}
-	}
 	*/
-
 }
 
 // tesselation buffer: size is maximum number of triangles generated
@@ -372,7 +327,7 @@ size_t gameTesselateSubChunk(int cx, int cy, int cz) {
 					verts[vi++] = corners[1];
 					verts[vi++] = corners[2];
 				}
-				if (blockType(bx+ix+1, by+iy, bx+iz) == BLOCK_AIR) {
+				if (blockType(bx+ix+1, by+iy, bz+iz) == BLOCK_AIR) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_RIGHT, 0);
 					game_block_vtx corners[4] = {
 						{POS(ix+1,   iy, iz+1), tc[0], 0xffffffff },

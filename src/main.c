@@ -36,7 +36,7 @@ gameInit() {
 	mlLoadTexture2D(&blocks_texture, "data/blocks8-v1.png");
 
 	game.camera.cx = game.camera.cz = 0;
-	ml_vec3 offs = { 2.537648, GROUND_LEVEL + 1.336000, 0.514751 };
+	ml_vec3 offs = { 2.537648, OCEAN_LEVEL + 1.336000, 0.514751 };
 	game.camera.offset = offs;
 	game.camera.pitch = -0.544628;
 	game.camera.yaw = 1.056371;
@@ -63,7 +63,7 @@ gameInit() {
 	game.time_of_day = 0.f; // (0 - 1 looping: 0 is midday, 0.5 is midnight)
 #define H2F(r) (float)(0x##r)/255.f
 	mlVec3Assign(game.amb_light, H2F(e0), H2F(e0), H2F(ff));
-	mlVec4Assign(game.fog_color, H2F(28), H2F(30), H2F(48), 0.0063f);
+	mlVec4Assign(game.fog_color, H2F(28), H2F(30), H2F(48), 0.0043f);
 
 	gameInitMap();
 
@@ -219,7 +219,7 @@ gameRender(SDL_Point* viewport, float frametime) {
 	ml_matrix view;
 	mlFPSMatrix(&view, game.camera.offset, game.camera.pitch, game.camera.yaw);
 	//mlLookAt(&view, game.camera.offset.x, game.camera.offset.y, game.camera.offset.z,
-	//         2.f, GROUND_LEVEL, -2.f,
+	//         2.f, OCEAN_LEVEL, -2.f,
 	//         0.f, 1.f, 0.f);
 
 	mlCopyMatrix(mlGetMatrix(&game.modelview), &view);
@@ -247,12 +247,14 @@ gameRender(SDL_Point* viewport, float frametime) {
 	if (wireframe_mode)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
+	/*
 	ml_vec3 mc = mlVec3Scalef(mlVec3Normalize(game.light_dir), 4.f);
 	ml_vec3 mc2 = mlVec3Scalef(mlVec3Normalize(game.light_dir), 5.f);
-	mc.y += GROUND_LEVEL;
-	mc2.y += GROUND_LEVEL;
+	mc.y += OCEAN_LEVEL;
+	mc2.y += OCEAN_LEVEL;
 	uiDebugLine(mc, mc2, 0xffff7f00);
 	uiDebugSphere(mc2, 0.15f, 0xffcf9f3f);
+	*/
 
 	ml_matrix invview;
 	mlInvertOrthoMatrix(&invview, &view);

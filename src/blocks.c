@@ -5,9 +5,10 @@
 
 struct blockinfo_t blockinfo[] = {
 	{ .name = "air", .img = { 0 } },
-	{ .name = "grass", .img = { IMG_GREENGRASS } },
-	{ .name = "wetgrass", .img = { IMG_WETGRASS } },
+	{ .name = "grass", .img = { IMG_GREEN_GRASS } },
+	{ .name = "wet grass", .img = { IMG_WET_GRASS, IMG_WET_DIRT, IMG_WET_GRASS_SIDE } },
 	{ .name = "dirt", .img = { IMG_DIRT } },
+	{ .name = "wet dirt", .img = { IMG_WET_DIRT } },
 	{ .name = "solid dirt", .img = { IMG_SOLID_DIRT } },
 	{ .name = "stone", .img = { IMG_LIGHT_STONE } },
 	{ .name = "clay", .img = { IMG_CLAY } },
@@ -22,9 +23,11 @@ struct blockinfo_t blockinfo[] = {
 	{ .name = "birch", .img = { IMG_BIRCH_CUT, IMG_BIRCH_CUT, IMG_BIRCH_TREE } },
 	{ .name = "oak", .img = { IMG_OAK_CUT, IMG_OAK_CUT, IMG_OAK_TREE } },
 	{ .name = "palm", .img = { IMG_PALM_CUT, IMG_PALM_CUT, IMG_PALM_TREE } },
-	{ .name = "snow grass 1", .img = { IMG_SNOW, IMG_WETGRASS, IMG_GRASS_SNOW_1 } },
-	{ .name = "snow grass 2", .img = { IMG_SNOW, IMG_WETGRASS, IMG_GRASS_SNOW_2 } },
+	{ .name = "snow grass 1", .img = { IMG_SNOW, IMG_WET_GRASS, IMG_GRASS_SNOW_1 } },
+	{ .name = "snow grass 2", .img = { IMG_SNOW, IMG_WET_GRASS, IMG_GRASS_SNOW_2 } },
 	{ .name = "test cube", .img = { IMG_TEST_U, IMG_TEST_D, IMG_TEST_L, IMG_TEST_R, IMG_TEST_F, IMG_TEST_B } },
+	{ .name = "black rock", .img = { IMG_BLACKROCK } },
+	{ .name = "ocean", .img = { IMG_OCEAN1 } },
 };
 
 void initBlockInfo() {

@@ -9,8 +9,8 @@
 
 enum img_types {
 	IMG_INVALID,
-	IMG_GREENGRASS = IMG_AT(0, 0),
-	IMG_WETGRASS = IMG_AT(1, 0),
+	IMG_GREEN_GRASS = IMG_AT(0, 0),
+	IMG_WET_GRASS = IMG_AT(1, 0),
 	IMG_DIRT = IMG_AT(2, 0),
 	IMG_WET_DIRT = IMG_AT(3, 0),
 	IMG_SOLID_DIRT,
@@ -72,6 +72,7 @@ enum img_types {
 	IMG_TEST_B,
 	IMG_TEST_U,
 	IMG_TEST_D,
+	IMG_WET_GRASS_SIDE,
 	NUM_IMG_TYPES
 };
 

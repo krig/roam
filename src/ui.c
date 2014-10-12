@@ -11,11 +11,11 @@ static GLuint ui_vao = 0;
 static GLuint ui_vbo = 0;
 static GLsizei ui_count = 0;
 static float ui_scale = 1;
-#define MAX_UI_VERTICES 2048
+#define MAX_UI_VERTICES 8192
 static ml_vtx_ui ui_vertices[MAX_UI_VERTICES];
 
 // debug 3d drawing
-#define MAX_DEBUG_LINEVERTS 2048
+#define MAX_DEBUG_LINEVERTS 8192
 static ml_material* debug_material = NULL;
 static GLint debug_projmat_index = -1;
 static GLint debug_modelview_index = -1;
@@ -202,26 +202,30 @@ void uiDebugLine(ml_vec3 p1, ml_vec3 p2, uint32_t clr) {
 	//       p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
 }
 
-void uiDebugAABB(ml_vec3 minp, ml_vec3 maxp, uint32_t clr) {
+void uiDebugAABB(ml_vec3 center, ml_vec3 extent, uint32_t clr) {
+	ml_vec3 maxp = mlVec3Add(center, extent);
+	ml_vec3 minp = mlVec3Sub(center, extent);
 	ml_vec3 corners[8] = {
 		{ minp.x, minp.y, minp.z },
 		{ maxp.x, minp.y, minp.z },
-		{ minp.x, minp.y, maxp.z },
 		{ maxp.x, minp.y, maxp.z },
+		{ minp.x, minp.y, maxp.z },
 
 		{ minp.x, maxp.y, minp.z },
 		{ maxp.x, maxp.y, minp.z },
-		{ minp.x, maxp.y, maxp.z },
 		{ maxp.x, maxp.y, maxp.z },
+		{ minp.x, maxp.y, maxp.z },
 	};
 	uiDebugLine(corners[0], corners[1], clr);
 	uiDebugLine(corners[1], corners[2], clr);
 	uiDebugLine(corners[2], corners[3], clr);
 	uiDebugLine(corners[3], corners[0], clr);
+
 	uiDebugLine(corners[4], corners[5], clr);
 	uiDebugLine(corners[5], corners[6], clr);
 	uiDebugLine(corners[6], corners[7], clr);
 	uiDebugLine(corners[7], corners[4], clr);
+
 	uiDebugLine(corners[0], corners[4], clr);
 	uiDebugLine(corners[1], corners[5], clr);
 	uiDebugLine(corners[2], corners[6], clr);
