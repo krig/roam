@@ -1,6 +1,7 @@
 #include "common.h"
 #include "math3d.h"
 #include "ui.h"
+#include "game.h"
 
 // UI drawing
 static ml_material* ui_material = NULL;
@@ -231,6 +232,19 @@ void uiDebugAABB(ml_vec3 center, ml_vec3 extent, uint32_t clr) {
 	uiDebugLine(corners[2], corners[6], clr);
 	uiDebugLine(corners[3], corners[7], clr);
 }
+
+void uiDebugBlock(ml_ivec3 block, uint32_t clr) {
+	ml_vec3 pos;
+	ml_vec3 ext;
+	ml_chunk camera = cameraChunk();
+	mlVec3Assign(pos,
+	             block.x - camera.x*CHUNK_SIZE,
+	             block.y,
+	             block.z - camera.z*CHUNK_SIZE);
+	mlVec3Assign(ext, 0.52f, 0.52f, 0.52f);
+	uiDebugAABB(pos, ext, clr);
+}
+
 
 void uiDebugPoint(ml_vec3 p, uint32_t clr) {
 	ml_vec3 p0, p1, p2, p3, p4, p5;

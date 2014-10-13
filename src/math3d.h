@@ -43,9 +43,9 @@ typedef struct ml_ivec4 {
 	int x, y, z, w;
 } ml_ivec4;
 
-typedef struct ml_vec3d {
+typedef struct ml_dvec3 {
 	double x, y, z;
-} ml_vec3d;
+} ml_dvec3;
 
 typedef struct ml_chunk {
 	int x, z;
@@ -186,6 +186,23 @@ mlWrap(float t, float lo, float hi) {
     return t;
 }
 
+static inline ml_vec2
+mlMakeVec2(float x, float y) {
+	ml_vec2 v = { x, y };
+	return v;
+}
+
+static inline ml_vec3
+mlMakeVec3(float x, float y, float z) {
+	ml_vec3 v = { x, y, z };
+	return v;
+}
+
+static inline ml_vec4
+mlMakeVec4(float x, float y, float z, float w) {
+	ml_vec4 v = { x, y, z, w };
+	return v;
+}
 
 #define mlVec2Assign(v, a, b) { (v).x = (a); (v).y = (b); }
 #define mlVec3Assign(v, a, b, c) { (v).x = (a); (v).y = (b); (v).z = (c); }

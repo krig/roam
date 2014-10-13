@@ -35,12 +35,12 @@ static void
 gameInit() {
 	mlLoadTexture2D(&blocks_texture, "data/blocks8-v1.png");
 
-	ml_vec3d offs = { 2.537648, OCEAN_LEVEL + 1.336000, 0.514751 };
+	ml_dvec3 offs = { 2.537648, OCEAN_LEVEL + 1.336000, 0.514751 };
 	game.camera.pos = offs;
 	game.camera.pitch = -0.544628;
 	game.camera.yaw = 1.056371;
 	game.fast_day_mode = false;
-	game.single_chunk_mode = false;
+	game.debug_mode = false;
 
 	struct controls_t default_controls = {
 		.left = SDL_SCANCODE_A,
@@ -65,6 +65,14 @@ gameInit() {
 	mlVec4Assign(game.fog_color, H2F(28), H2F(30), H2F(48), 0.0043f);
 
 	gameInitMap();
+
+	while (blockType(game.camera.pos.x,
+	                 game.camera.pos.y-1,
+	                 game.camera.pos.z) != BLOCK_AIR &&
+	       blockType(game.camera.pos.x,
+	                 game.camera.pos.y,
+	                 game.camera.pos.z) != BLOCK_AIR)
+		game.camera.pos.y += 1.0;
 
 	printf("* Load materials + UI\n");
 	mlCreateMaterial(&game.materials[MAT_BASIC], basic_vshader, basic_fshader);
@@ -91,6 +99,7 @@ gameExit() {
 }
 
 static ml_ivec3 picked_block;
+static ml_ivec3 prepicked_block;
 
 
 static bool
@@ -108,30 +117,41 @@ gameHandleEvent(SDL_Event* event) {
 		//	       game.camera.pitch, game.camera.yaw);
 		else if (event->key.keysym.sym == game.controls.wireframe)
 			wireframe_mode = !wireframe_mode;
-		else if (event->key.keysym.sym == SDLK_i)
-			game.single_chunk_mode = !game.single_chunk_mode;
-		else if (event->key.keysym.sym == SDLK_l)
+		else if (event->key.keysym.sym == SDLK_F1)
+			game.debug_mode = !game.debug_mode;
+		else if (event->key.keysym.sym == SDLK_F2)
 			game.fast_day_mode = true;
 		break;
 	case SDL_KEYUP:
-		if (event->key.keysym.sym == SDLK_l)
+		if (event->key.keysym.sym == SDLK_F2)
 			game.fast_day_mode = false;
 		break;
 	case SDL_MOUSEBUTTONDOWN:
 		switch (event->button.button) {
-		case SDL_BUTTON_LEFT:
-			break;
-		case SDL_BUTTON_RIGHT:
+		case SDL_BUTTON_LEFT: {
 			printf("deleting picked block (%d, %d, %d)\n",
 			       picked_block.x, picked_block.y, picked_block.z);
 			if (blockTypeByCoord(picked_block) != BLOCK_AIR) {
+				printf("can delete.\n");
 				game.map.blocks[blockByCoord(picked_block)] = BLOCK_AIR;
-				ml_chunk chunk = blockToChunk(picked_block);
-				printf("reload chunk [%d, %d]\n", chunk.x, chunk.z);
-				gameUnloadChunk(chunk.x, chunk.z);
-				gameTesselateChunk(chunk.x, chunk.z);
+				gameUpdateBlock(picked_block);
 			}
-			break;
+		} break;
+		case SDL_BUTTON_RIGHT: {
+			printf("creating block (%d, %d, %d)\n",
+			       prepicked_block.x, prepicked_block.y, prepicked_block.z);
+
+			ml_ivec3 head = cameraBlock();
+			ml_ivec3 feet = head;
+			feet.y -= 1;
+			if (blockTypeByCoord(prepicked_block) == BLOCK_AIR &&
+			    !blockCompare(head, prepicked_block) &&
+			    !blockCompare(feet, prepicked_block)) {
+				printf("can create.\n");
+				game.map.blocks[blockByCoord(prepicked_block)] = BLOCK_PIG;
+				gameUpdateBlock(prepicked_block);
+			}
+		} break;
 		}
 	default:
 		break;
@@ -250,6 +270,8 @@ gameRender(SDL_Point* viewport, float frametime) {
 	ml_frustum frustum;
 	mlGetFrustum(&frustum, mlGetMatrix(&game.projection), &view);
 
+	uiRect(viewport->x/2 - 1, viewport->y/2, 2, 2, 0x7fffffff);
+
 	// draw blocks (tesselate in parallel?)
 	// draw objects
 	// draw creatures
@@ -282,15 +304,18 @@ gameRender(SDL_Point* viewport, float frametime) {
 
 
 	{
-		ml_ivec3 pp = { round(game.camera.pos.x), round(game.camera.pos.y), round(game.camera.pos.z) };
-		ml_vec3 v = { frustum.planes[5].x, frustum.planes[5].y, frustum.planes[5].z };
-		if (gameRayTest(pp, v, 8, &picked_block)) {
-			ml_vec3 center = { (float)(picked_block.x - camera.x*CHUNK_SIZE),
-							   (float)(picked_block.y),
-			                   (float)(picked_block.z - camera.z*CHUNK_SIZE)
-			};
-			ml_vec3 extent = { 0.51f, 0.51f, 0.51f };
-			uiDebugAABB(center, extent, 0xffffffff);
+		ml_ivec3 pp = {
+			round(game.camera.pos.x),
+			round(game.camera.pos.y),
+			round(game.camera.pos.z)
+		};
+		ml_vec3 v = {
+			frustum.planes[5].x,
+			frustum.planes[5].y,
+			frustum.planes[5].z
+		};
+		if (gameRayTest(pp, v, 16, &picked_block, &prepicked_block)) {
+			uiDebugBlock(picked_block, 0xff00ff00);
 		}
 	}
 
@@ -309,10 +334,12 @@ gameRender(SDL_Point* viewport, float frametime) {
 	uiDrawDebug(&game.projection, &game.modelview);
 
 	uiRect(2, 2, 320, 5 + 16 + 2, 0x66000000);
-	uiText(5, 5, 0xffffffff, "%g, %g, %g\nfps: %d, t: %f",
-	       game.camera.pos.x, \
+	uiText(5, 5, 0xffffffff, "%g, %g, %g (%d, %d)\nfps: %d, t: %f",
+	       game.camera.pos.x,
 	       game.camera.pos.y,
 	       game.camera.pos.z,
+	       camera.x,
+	       camera.z,
 	       (int)(1.f / frametime), game.time_of_day);
 	uiDraw(viewport);
 

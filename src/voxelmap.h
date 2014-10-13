@@ -80,7 +80,7 @@ mapPackVectorChunkCoord(unsigned int x, unsigned int y, unsigned int z, unsigned
 // origin block
 // direction vector
 // length in blocks
-bool gameRayTest(ml_ivec3 origin, ml_vec3 dir, int len, ml_ivec3* hit);
+bool gameRayTest(ml_ivec3 origin, ml_vec3 dir, int len, ml_ivec3* hit, ml_ivec3* prehit);
 
 static inline size_t blockIndex(int x, int y, int z) {
 	return mod(z, MAP_BLOCK_WIDTH) * (MAP_BLOCK_WIDTH * MAP_BLOCK_HEIGHT) +
@@ -99,11 +99,12 @@ static inline uint8_t blockTypeByCoord(ml_ivec3 xyz) {
 }
 
 static inline ml_chunk blockToChunk(ml_ivec3 block) {
-	ml_chunk c = { block.x / CHUNK_SIZE,
-	               block.z / CHUNK_SIZE };
+	ml_chunk c = { floor(round(block.x) / CHUNK_SIZE),
+	               floor(round(block.z) / CHUNK_SIZE) };
 	return c;
 }
 
 void gameLoadChunk(int x, int z);
 void gameUnloadChunk(int x, int z);
 void gameTesselateChunk(int x, int z);
+void gameUpdateBlock(ml_ivec3 block);

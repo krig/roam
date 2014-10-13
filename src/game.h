@@ -19,7 +19,7 @@ enum E_Materials {
 };
 
 struct camera_t {
-	ml_vec3d pos;
+	ml_dvec3 pos;
 	float pitch;
 	float yaw;
 };
@@ -54,22 +54,34 @@ struct game_t {
 	ml_vec3 light_dir;
 
 	bool fast_day_mode;
-	bool single_chunk_mode;
+	bool debug_mode;
 };
 
 extern struct game_t game;
 
 static inline ml_chunk cameraChunk() {
-	ml_chunk c = { game.camera.pos.x / CHUNK_SIZE,
-	               game.camera.pos.z / CHUNK_SIZE };
+	ml_chunk c = { floor(round(game.camera.pos.x) / CHUNK_SIZE),
+	               floor(round(game.camera.pos.z) / CHUNK_SIZE) };
 	return c;
 }
 
+static inline ml_ivec3 cameraBlock() {
+	ml_ivec3 b = { round(game.camera.pos.x),
+	               round(game.camera.pos.y),
+	               round(game.camera.pos.z) };
+	return b;
+}
+
+static inline bool blockCompare(ml_ivec3 a, ml_ivec3 b) {
+	return (a.x == b.x && a.y == b.y && a.z == b.z);
+}
+
 static inline ml_vec3 cameraChunkOffset() {
+	ml_chunk c = cameraChunk();
 	ml_vec3 ret = {
-		fmod(game.camera.pos.x, CHUNK_SIZE),
+		game.camera.pos.x - (double)(c.x * CHUNK_SIZE),
 		game.camera.pos.y,
-		fmod(game.camera.pos.z, CHUNK_SIZE)
+		game.camera.pos.z - (double)(c.z * CHUNK_SIZE)
 	};
 	return ret;
 }

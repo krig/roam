@@ -88,7 +88,9 @@ void gameUpdateMap() {
 		game_chunk* chunks = game.map.chunks;
 		int cx = nc.x;
 		int cz = nc.z;
-		printf("[%d, %d] -> [%d, %d]\n", map_chunk.x, map_chunk.z, cx, cz);
+		printf("[%d, %d] -> [%d, %d] (%g, %g)\n",
+		       map_chunk.x, map_chunk.z, cx, cz,
+		       game.camera.pos.x, game.camera.pos.z);
 		map_chunk = nc;
 
 		for (int dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
@@ -107,9 +109,6 @@ void gameUpdateMap() {
 		}
 		for (int dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
 			for (int dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
-				int bx = mod(cx + dx, MAP_CHUNK_WIDTH);
-				int bz = mod(cz + dz, MAP_CHUNK_WIDTH);
-				game_chunk* chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
 				gameTesselateChunk(cx + dx, cz + dz);
 			}
 		}
@@ -147,10 +146,6 @@ void gameDrawMap(ml_frustum* frustum) {
 			game_chunk* chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
 			int x = chunk->x - camera.x;
 			int z = chunk->z - camera.z;
-
-			if (game.single_chunk_mode && (x != 0 || z != 0))
-				continue;
-
 
 			mlVec3Assign(offset, (float)(x*CHUNK_SIZE) - 0.5f, -0.5f, (float)(z*CHUNK_SIZE) - 0.5f);
 			mlVec3Assign(center, offset.x + chunk_radius, MAP_BLOCK_HEIGHT*0.5f, offset.z + chunk_radius);
@@ -209,6 +204,47 @@ void gameDrawMap(ml_frustum* frustum) {
 	glUseProgram(0);
 	glDisable(GL_TEXTURE_2D);
 }
+
+void gameUpdateBlock(ml_ivec3 block) {
+	ml_chunk chunk = blockToChunk(block);
+	bool tess[4] = { false, false, false, false };
+	int mx = block.x % CHUNK_SIZE;
+	int mz = block.z % CHUNK_SIZE;
+	if (mx == 0 || mx == -CHUNK_SIZE-1) {
+		tess[0] = true;
+	} else if (mx == -1 || mx == CHUNK_SIZE-1) {
+		tess[1] = true;
+	}
+	if (mz == 0 || mz == -CHUNK_SIZE-1) {
+		tess[2] = true;
+	} else if (mz == -1 || mz == CHUNK_SIZE-1) {
+		tess[3] = true;
+	}
+	printf("reload chunk [%d, %d] [%d, %d]\n", chunk.x, chunk.z, mx, mz);
+	gameUnloadChunk(chunk.x, chunk.z);
+	gameTesselateChunk(chunk.x, chunk.z);
+	if (tess[0]) {
+		printf("reload chunk [%d, %d]\n", chunk.x-1, chunk.z);
+		gameUnloadChunk(chunk.x-1, chunk.z);
+		gameTesselateChunk(chunk.x-1, chunk.z);
+	}
+	if (tess[1]) {
+		printf("reload chunk [%d, %d]\n", chunk.x+1, chunk.z);
+		gameUnloadChunk(chunk.x+1, chunk.z);
+		gameTesselateChunk(chunk.x+1, chunk.z);
+	}
+	if (tess[2]) {
+		printf("reload chunk [%d, %d]\n", chunk.x, chunk.z-1);
+		gameUnloadChunk(chunk.x, chunk.z-1);
+		gameTesselateChunk(chunk.x, chunk.z-1);
+	}
+	if (tess[3]) {
+		printf("reload chunk [%d, %d]\n", chunk.x, chunk.z+1);
+		gameUnloadChunk(chunk.x, chunk.z+1);
+		gameTesselateChunk(chunk.x, chunk.z+1);
+	}
+}
+
 
 // TODO: chunk saving/loading
 // TODO: asynchronous
@@ -279,9 +315,12 @@ void gameUnloadChunk(int x, int z) {
 	int bufx = mod(x, MAP_CHUNK_WIDTH);
 	int bufz = mod(z, MAP_CHUNK_WIDTH);
 	game_chunk* chunk = game.map.chunks + (bufz*MAP_CHUNK_WIDTH + bufx);
+	if (chunk->x != x || chunk->z != z)
+		return;
 	for (int i = 0; i < MAP_CHUNK_HEIGHT; ++i)
 		mlDestroyMesh(chunk->data + i);
 	chunk->dirty = true;
+	//printf("unloaded chunk: [%d, %d] [%d, %d]\n", x, z, bufx, bufz);
 }
 
 // tesselation buffer: size is maximum number of triangles generated
@@ -300,11 +339,14 @@ void gameTesselateChunk(int x, int z) {
 	int bufx = mod(x, MAP_CHUNK_WIDTH);
 	int bufz = mod(z, MAP_CHUNK_WIDTH);
 	game_chunk* chunk = game.map.chunks + bufz*MAP_CHUNK_WIDTH + bufx;
+	if (chunk->x != x || chunk->z != z)
+		return;
 	if (chunk->dirty) {
 		ml_mesh* mesh = chunk->data;
 		for (int y = 0; y < MAP_CHUNK_HEIGHT; ++y)
 			gameTesselateSubChunk(mesh + y, bufx, bufz, y);
 		chunk->dirty = false;
+		//printf("tesselated chunk: [%d, %d] [%d, %d]\n", x, z, bufx, bufz);
 	}
 }
 
@@ -436,22 +478,33 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 	return (vi > 0);
 }
 
-bool gameRayTest(ml_ivec3 origin, ml_vec3 dir, int len, ml_ivec3* hit) {
-	for (int i = 0; i < len; ++i) {
-		ml_vec3 offs = mlVec3Scalef(dir, (float)i);
-		ml_ivec3 block = { origin.x + round(offs.x),
-		                   origin.y + round(offs.y),
-		                   origin.z + round(offs.z)
-		};
-		if (block.y < 0 || block.y > MAP_BLOCK_HEIGHT)
-			return false;
-		size_t idx = blockIndex(block.x, block.y, block.z);
-		if (idx >= MAP_BUFFER_SIZE)
-			return false;
-		if (game.map.blocks[idx] != BLOCK_AIR) {
-			*hit = block;
-			return true;
+bool gameRayTest(ml_ivec3 origin, ml_vec3 dir, int len, ml_ivec3* hit, ml_ivec3* prehit) {
+	ml_dvec3 blockf = { origin.x, origin.y, origin.z };
+	ml_ivec3 block = origin;
+	ml_ivec3 prev = {0, 0, 0};
+	int step = 32;
+	for (int i = 0; i < len*step; ++i) {
+		block.x = round(blockf.x);
+		block.y = round(blockf.y);
+		block.z = round(blockf.z);
+		if (block.x != prev.x || block.y != prev.y || block.z != prev.z) {
+			uint8_t t = blockTypeByCoord(block);
+			if (t != BLOCK_AIR) {
+				if (game.debug_mode) {
+					uiDebugBlock(prev, 0xff0000ff);
+					uiDebugBlock(block, 0xff00ff00);
+				}
+				if (hit != NULL)
+					*hit = block;
+				if (prehit != NULL)
+					*prehit = prev;
+				return true;
+			}
+			prev = block;
 		}
+		blockf.x += dir.x / step;
+		blockf.y += dir.y / step;
+		blockf.z += dir.z / step;
 	}
 	return false;
 }
