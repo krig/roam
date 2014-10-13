@@ -59,7 +59,6 @@ struct game_t {
 
 extern struct game_t game;
 
-
 static inline ml_chunk cameraChunk() {
 	ml_chunk c = { game.camera.pos.x / CHUNK_SIZE,
 	               game.camera.pos.z / CHUNK_SIZE };

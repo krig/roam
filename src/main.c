@@ -90,6 +90,9 @@ gameExit() {
 	mlDestroyTexture2D(&blocks_texture);
 }
 
+static ml_ivec3 picked_block;
+
+
 static bool
 gameHandleEvent(SDL_Event* event) {
 	switch (event->type) {
@@ -113,6 +116,23 @@ gameHandleEvent(SDL_Event* event) {
 	case SDL_KEYUP:
 		if (event->key.keysym.sym == SDLK_l)
 			game.fast_day_mode = false;
+		break;
+	case SDL_MOUSEBUTTONDOWN:
+		switch (event->button.button) {
+		case SDL_BUTTON_LEFT:
+			break;
+		case SDL_BUTTON_RIGHT:
+			printf("deleting picked block (%d, %d, %d)\n",
+			       picked_block.x, picked_block.y, picked_block.z);
+			if (blockTypeByCoord(picked_block) != BLOCK_AIR) {
+				game.map.blocks[blockByCoord(picked_block)] = BLOCK_AIR;
+				ml_chunk chunk = blockToChunk(picked_block);
+				printf("reload chunk [%d, %d]\n", chunk.x, chunk.z);
+				gameUnloadChunk(chunk.x, chunk.z);
+				gameTesselateChunk(chunk.x, chunk.z);
+			}
+			break;
+		}
 	default:
 		break;
 	}
@@ -215,6 +235,7 @@ gameRender(SDL_Point* viewport, float frametime) {
 	if (wireframe_mode)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
+	ml_chunk camera = cameraChunk();
 	ml_vec3 viewcenter = cameraChunkOffset();
 
 	ml_matrix view;
@@ -247,19 +268,6 @@ gameRender(SDL_Point* viewport, float frametime) {
 	if (wireframe_mode)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-	ml_ivec3 pp = { game.camera.pos.x,
-	                game.camera.pos.y,
-	                game.camera.pos.z };
-	ml_ivec3 hit;
-	if (gameRayTest(pp, mlVec3Normalize(mlGetZAxis(&view)), 5, &hit)) {
-		ml_vec3 center = { (float)hit.x,
-		                   (float)hit.y,
-		                   (float)hit.z
-		};
-		ml_vec3 extent = { 0.55f, 0.55f, 0.55f };
-		uiDebugAABB(center, extent, 0xffffffff);
-	}
-
 	/*
 	ml_vec3 mc = mlVec3Scalef(mlVec3Normalize(game.light_dir), 4.f);
 	ml_vec3 mc2 = mlVec3Scalef(mlVec3Normalize(game.light_dir), 5.f);
@@ -271,6 +279,20 @@ gameRender(SDL_Point* viewport, float frametime) {
 
 	ml_matrix invview;
 	mlInvertOrthoMatrix(&invview, &view);
+
+
+	{
+		ml_ivec3 pp = { round(game.camera.pos.x), round(game.camera.pos.y), round(game.camera.pos.z) };
+		ml_vec3 v = { frustum.planes[5].x, frustum.planes[5].y, frustum.planes[5].z };
+		if (gameRayTest(pp, v, 8, &picked_block)) {
+			ml_vec3 center = { (float)(picked_block.x - camera.x*CHUNK_SIZE),
+							   (float)(picked_block.y),
+			                   (float)(picked_block.z - camera.z*CHUNK_SIZE)
+			};
+			ml_vec3 extent = { 0.51f, 0.51f, 0.51f };
+			uiDebugAABB(center, extent, 0xffffffff);
+		}
+	}
 
 	ml_vec3 origo = { 0.0f, -0.25f, -0.4f };
 	ml_vec3 xaxis = { 0.025, 0, 0 };

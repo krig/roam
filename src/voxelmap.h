@@ -6,10 +6,12 @@
 
  */
 
+#include "blocks.h"
+
 #define CHUNK_SIZE 16
-#define VIEW_DISTANCE 16
+#define VIEW_DISTANCE 32
 #define OCEAN_LEVEL 80
-#define MAP_CHUNK_WIDTH (VIEW_DISTANCE*2 + 2)
+#define MAP_CHUNK_WIDTH (VIEW_DISTANCE*2)
 #define MAP_CHUNK_HEIGHT 16
 #define MAP_BLOCK_WIDTH (MAP_CHUNK_WIDTH*CHUNK_SIZE)
 #define MAP_BLOCK_HEIGHT (MAP_CHUNK_HEIGHT*CHUNK_SIZE)
@@ -79,3 +81,29 @@ mapPackVectorChunkCoord(unsigned int x, unsigned int y, unsigned int z, unsigned
 // direction vector
 // length in blocks
 bool gameRayTest(ml_ivec3 origin, ml_vec3 dir, int len, ml_ivec3* hit);
+
+static inline size_t blockIndex(int x, int y, int z) {
+	return mod(z, MAP_BLOCK_WIDTH) * (MAP_BLOCK_WIDTH * MAP_BLOCK_HEIGHT) +
+		mod(x, MAP_BLOCK_WIDTH) * MAP_BLOCK_HEIGHT +
+		y;
+}
+
+static inline size_t blockByCoord(ml_ivec3 xyz) {
+	return blockIndex(xyz.x, xyz.y, xyz.z);
+}
+
+uint8_t blockType(int x, int y, int z);
+
+static inline uint8_t blockTypeByCoord(ml_ivec3 xyz) {
+	return blockType(xyz.x, xyz.y, xyz.z);
+}
+
+static inline ml_chunk blockToChunk(ml_ivec3 block) {
+	ml_chunk c = { block.x / CHUNK_SIZE,
+	               block.z / CHUNK_SIZE };
+	return c;
+}
+
+void gameLoadChunk(int x, int z);
+void gameUnloadChunk(int x, int z);
+void gameTesselateChunk(int x, int z);

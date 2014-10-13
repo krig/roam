@@ -10,13 +10,17 @@
 #include "blocks.h"
 #include "ui.h"
 
-static inline size_t blockIndex(int x, int y, int z) {
-	return mod(z, MAP_BLOCK_WIDTH) * (MAP_BLOCK_WIDTH * MAP_BLOCK_HEIGHT) +
-		mod(x, MAP_BLOCK_WIDTH) * MAP_BLOCK_HEIGHT +
-		y;
+extern ml_tex2d blocks_texture;
+
+static inline tc2us_t make_tc2us(ml_vec2 tc) {
+	tc2us_t to = {
+		(uint16_t)(tc.x * (double)0xffff),
+		(uint16_t)(tc.y * (double)0xffff)
+	};
+	return to;
 }
 
-static inline uint8_t blockType(int x, int y, int z) {
+uint8_t blockType(int x, int y, int z) {
 	if (y < 0)
 		return BLOCK_BLACKROCK;
 	if (y >= MAP_BLOCK_HEIGHT)
@@ -25,20 +29,6 @@ static inline uint8_t blockType(int x, int y, int z) {
 	if (idx >= MAP_BUFFER_SIZE)
 		return BLOCK_AIR;
 	return game.map.blocks[idx];
-}
-
-extern ml_tex2d blocks_texture;
-
-void gameLoadChunk(int x, int z);
-void gameUnloadChunk(int x, int z);
-void gameTesselateChunk(int x, int z);
-
-static inline tc2us_t make_tc2us(ml_vec2 tc) {
-	tc2us_t to = {
-		(uint16_t)(tc.x * (double)0xffff),
-		(uint16_t)(tc.y * (double)0xffff)
-	};
-	return to;
 }
 
 /*
@@ -95,10 +85,11 @@ void gameFreeMap() {
 void gameUpdateMap() {
 	ml_chunk nc = cameraChunk();
 	if (nc.x != map_chunk.x || nc.z != map_chunk.z) {
-		map_chunk = nc;
 		game_chunk* chunks = game.map.chunks;
 		int cx = nc.x;
 		int cz = nc.z;
+		printf("[%d, %d] -> [%d, %d]\n", map_chunk.x, map_chunk.z, cx, cz);
+		map_chunk = nc;
 
 		for (int dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
 			for (int dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
@@ -234,7 +225,7 @@ void gameLoadChunk(int x, int z) {
 	chunk->x = x;
 	chunk->z = z;
 	chunk->dirty = true;
-	printf("load: (%d, %d) [%d, %d]\n", x, z, bufx, bufz);
+	//printf("load: (%d, %d) [%d, %d]\n", x, z, bufx, bufz);
 
 	blockx = x * CHUNK_SIZE;
 	blockz = z * CHUNK_SIZE;
@@ -447,10 +438,10 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 
 bool gameRayTest(ml_ivec3 origin, ml_vec3 dir, int len, ml_ivec3* hit) {
 	for (int i = 0; i < len; ++i) {
-		ml_vec3 offs = mlVec3Scalef(dir, (float)len);
-		ml_ivec3 block = { origin.x + (int)(offs.x),
-		                   origin.y + (int)(offs.y),
-		                   origin.z + (int)(offs.z)
+		ml_vec3 offs = mlVec3Scalef(dir, (float)i);
+		ml_ivec3 block = { origin.x + round(offs.x),
+		                   origin.y + round(offs.y),
+		                   origin.z + round(offs.z)
 		};
 		if (block.y < 0 || block.y > MAP_BLOCK_HEIGHT)
 			return false;
