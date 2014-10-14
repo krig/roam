@@ -65,12 +65,26 @@ void gameInitMap() {
 	osnInit(game.map.seed);
 
 	ml_chunk camera = cameraChunk();
-	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
-		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x)
+	// load the closest chunks around the player synchronously
+	gameLoadChunk(camera.x, camera.z);
+	gameLoadChunk(camera.x + 1, camera.z);
+	gameLoadChunk(camera.x - 1, camera.z);
+	gameLoadChunk(camera.x, camera.z + 1);
+	gameLoadChunk(camera.x, camera.z - 1);
+	gameLoadChunk(camera.x - 1, camera.z - 1);
+	gameLoadChunk(camera.x + 1, camera.z - 1);
+	gameLoadChunk(camera.x - 1, camera.z + 1);
+	gameLoadChunk(camera.x + 1, camera.z + 1);
+	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z) {
+		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x) {
+			if ((abs(x) < 2) && (abs(z) < 2))
+				continue;
 			gameLoadChunk(camera.x + x, camera.z + z);
-
+		}
+	}
 
 	// tesselate column
+	// todo: queue jobs from the middle out
 	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
 		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x)
 			gameTesselateChunk(camera.x + x, camera.z + z);
@@ -327,7 +341,7 @@ void gameTesselateChunk(int x, int z) {
 		mlDestroyMesh(chunk->data + i);
 	chunk->dirty = true;
 	if (chunk->x != x || chunk->z != z)
-		return;
+		roamError("incorrect tesselation");
 	ml_mesh* mesh = chunk->data;
 	for (int y = 0; y < MAP_CHUNK_HEIGHT; ++y)
 		gameTesselateSubChunk(mesh + y, bufx, bufz, y);
