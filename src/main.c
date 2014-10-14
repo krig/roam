@@ -10,6 +10,7 @@
 #include "game.h"
 #include "geometry.h"
 #include "u8.h"
+#include "threads.h"
 
 static SDL_Window* window;
 static SDL_GLContext context;
@@ -66,6 +67,7 @@ gameInit() {
 	mlVec3Assign(game.amb_light, H2F(e0), H2F(e0), H2F(ff));
 	mlVec4Assign(game.fog_color, H2F(28), H2F(30), H2F(48), 0.0043f);
 
+	threadsInit();
 	gameInitMap();
 
 	while (blockType(game.camera.pos.x,
@@ -96,6 +98,7 @@ gameExit() {
 		mlDestroyMaterial(game.materials + i);
 	mlDestroyMatrixStack(&game.projection);
 	mlDestroyMatrixStack(&game.modelview);
+	threadsExit();
 	gameFreeMap();
 	mlDestroyTexture2D(&blocks_texture);
 }
@@ -216,6 +219,7 @@ gameUpdate(float dt) {
 			SDL_SetRelativeMouseMode(SDL_TRUE);
 	}
 
+	threadsUpdate();
 	gameUpdateMap();
 	// update player/input
 	// update blocks

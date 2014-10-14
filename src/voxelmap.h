@@ -105,6 +105,5 @@ static inline ml_chunk blockToChunk(ml_ivec3 block) {
 }
 
 void gameLoadChunk(int x, int z);
-void gameUnloadChunk(int x, int z);
 void gameTesselateChunk(int x, int z);
 void gameUpdateBlock(ml_ivec3 block);

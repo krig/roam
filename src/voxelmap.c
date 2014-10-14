@@ -9,6 +9,7 @@
 #include "images.h"
 #include "blocks.h"
 #include "ui.h"
+#include "threads.h"
 
 extern ml_tex2d blocks_texture;
 
@@ -100,7 +101,6 @@ void gameUpdateMap() {
 				game_chunk* chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
 				if (chunk->x != cx + dx ||
 				    chunk->z != cz + dz) {
-					gameUnloadChunk(chunk->x, chunk->z);
 					gameLoadChunk(cx + dx, cz + dz);
 					chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
 					assert(chunk->x == (cx + dx) && chunk->z == (cz + dz));
@@ -221,26 +221,21 @@ void gameUpdateBlock(ml_ivec3 block) {
 		tess[3] = true;
 	}
 	printf("reload chunk [%d, %d] [%d, %d]\n", chunk.x, chunk.z, mx, mz);
-	gameUnloadChunk(chunk.x, chunk.z);
 	gameTesselateChunk(chunk.x, chunk.z);
 	if (tess[0]) {
 		printf("reload chunk [%d, %d]\n", chunk.x-1, chunk.z);
-		gameUnloadChunk(chunk.x-1, chunk.z);
 		gameTesselateChunk(chunk.x-1, chunk.z);
 	}
 	if (tess[1]) {
 		printf("reload chunk [%d, %d]\n", chunk.x+1, chunk.z);
-		gameUnloadChunk(chunk.x+1, chunk.z);
 		gameTesselateChunk(chunk.x+1, chunk.z);
 	}
 	if (tess[2]) {
 		printf("reload chunk [%d, %d]\n", chunk.x, chunk.z-1);
-		gameUnloadChunk(chunk.x, chunk.z-1);
 		gameTesselateChunk(chunk.x, chunk.z-1);
 	}
 	if (tess[3]) {
 		printf("reload chunk [%d, %d]\n", chunk.x, chunk.z+1);
-		gameUnloadChunk(chunk.x, chunk.z+1);
 		gameTesselateChunk(chunk.x, chunk.z+1);
 	}
 }
@@ -311,18 +306,6 @@ void gameLoadChunk(int x, int z) {
 	*/
 }
 
-void gameUnloadChunk(int x, int z) {
-	int bufx = mod(x, MAP_CHUNK_WIDTH);
-	int bufz = mod(z, MAP_CHUNK_WIDTH);
-	game_chunk* chunk = game.map.chunks + (bufz*MAP_CHUNK_WIDTH + bufx);
-	if (chunk->x != x || chunk->z != z)
-		return;
-	for (int i = 0; i < MAP_CHUNK_HEIGHT; ++i)
-		mlDestroyMesh(chunk->data + i);
-	chunk->dirty = true;
-	//printf("unloaded chunk: [%d, %d] [%d, %d]\n", x, z, bufx, bufz);
-}
-
 // tesselation buffer: size is maximum number of triangles generated
 //   1: fill tesselation buffer
 //  2: allocate mesh
@@ -338,16 +321,17 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy);
 void gameTesselateChunk(int x, int z) {
 	int bufx = mod(x, MAP_CHUNK_WIDTH);
 	int bufz = mod(z, MAP_CHUNK_WIDTH);
-	game_chunk* chunk = game.map.chunks + bufz*MAP_CHUNK_WIDTH + bufx;
+	//threadsTesselateChunk(x, y, bufx, bufz);
+	game_chunk* chunk = game.map.chunks + (bufz*MAP_CHUNK_WIDTH + bufx);
+	for (int i = 0; i < MAP_CHUNK_HEIGHT; ++i)
+		mlDestroyMesh(chunk->data + i);
+	chunk->dirty = true;
 	if (chunk->x != x || chunk->z != z)
 		return;
-	if (chunk->dirty) {
-		ml_mesh* mesh = chunk->data;
-		for (int y = 0; y < MAP_CHUNK_HEIGHT; ++y)
-			gameTesselateSubChunk(mesh + y, bufx, bufz, y);
-		chunk->dirty = false;
-		//printf("tesselated chunk: [%d, %d] [%d, %d]\n", x, z, bufx, bufz);
-	}
+	ml_mesh* mesh = chunk->data;
+	for (int y = 0; y < MAP_CHUNK_HEIGHT; ++y)
+		gameTesselateSubChunk(mesh + y, bufx, bufz, y);
+	chunk->dirty = false;
 }
 
 
