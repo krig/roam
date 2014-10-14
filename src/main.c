@@ -1,4 +1,5 @@
 #include <time.h>
+#include <pthread.h>
 #include "common.h"
 #include "math3d.h"
 #include "shaders.h"
@@ -8,6 +9,7 @@
 #include "voxelmap.h"
 #include "game.h"
 #include "geometry.h"
+#include "u8.h"
 
 static SDL_Window* window;
 static SDL_GLContext context;
