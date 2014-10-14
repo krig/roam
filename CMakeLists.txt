@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(roam)
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0 -g -Wall -pedantic -std=c11")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -Wall -pedantic -std=c11 -DNDEBUG")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -Wall -m64 -mfpmath=sse -mtune=generic -pedantic -std=c11 -DNDEBUG")
 include(FindPkgConfig)
 find_package(Threads)
 pkg_search_module(GL REQUIRED gl)
