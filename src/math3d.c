@@ -531,6 +531,10 @@ void mlCreateMaterial(ml_material* material, const char* vsource, const char* fs
 	material->amb_light = glGetUniformLocation(program, "amb_light");
 	material->fog_color = glGetUniformLocation(program, "fog_color");
 	material->light_dir = glGetUniformLocation(program, "light_dir");
+	material->sun_dir = glGetUniformLocation(program, "sun_dir");
+	material->sun_color = glGetUniformLocation(program, "sun_color");
+	material->sky_dark = glGetUniformLocation(program, "sky_dark");
+	material->sky_light = glGetUniformLocation(program, "sky_light");
 	material->tex0 = glGetUniformLocation(program, "tex0");
 	material->position = glGetAttribLocation(program, "position");
 	material->texcoord = glGetAttribLocation(program, "texcoord");

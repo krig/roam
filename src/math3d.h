@@ -100,6 +100,10 @@ typedef struct ml_material {
 	GLint fog_color;
 	GLint light_dir;
 	GLint tex0;
+	GLint sun_dir;
+	GLint sun_color;
+	GLint sky_dark;
+	GLint sky_light;
 	GLint position;
 	GLint texcoord;
 	GLint color;
@@ -149,8 +153,8 @@ typedef struct ml_matrixstack {
 #define mlDeg2Rad(d) (((d) * ML_PI) / 180.0)
 #define mlRad2Deg(r) (((r) * 180.0) / ML_PI)
 #define mlSwap(a, b) do { __typeof__ (a) _swap_##__LINE__ = (a); (a) = (b); (b) = _swap_##__LINE__; } while (0)
-#define mlMax(a, b) do { __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _a : _b; } while(0)
-#define mlMin(a, b) do { __typeof__ (a) _a = (a); __typeof__ (b) _b = (b); _a > _b ? _b : _a; } while(0)
+#define mlMax(a, b) ((b) > (a) ? (b) : (a))
+#define mlMin(a, b) ((b) < (a) ? (b) : (a))
 
 static inline bool
 mlFIsValid(float f) {
@@ -421,12 +425,11 @@ mlDrawBegin(ml_renderable* renderable) {
 
 static inline void
 mlDrawEnd(ml_renderable* renderable) {
-	ml_mesh mesh;
-	memcpy(&mesh, renderable->mesh, sizeof(ml_mesh));
-	if (mesh.ibo > 0)
-		glDrawElements(mesh.mode, mesh.count, mesh.ibotype, 0);
+	const ml_mesh* mesh = renderable->mesh;
+	if (mesh->ibo > 0)
+		glDrawElements(mesh->mode, mesh->count, mesh->ibotype, 0);
 	else
-		glDrawArrays(mesh.mode, 0, mesh.count);
+		glDrawArrays(mesh->mode, 0, mesh->count);
 	glBindVertexArray(0);
 	glUseProgram(0);
 }

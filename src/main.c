@@ -10,6 +10,7 @@
 #include "game.h"
 #include "geometry.h"
 #include "u8.h"
+#include "sky.h"
 
 static SDL_Window* window;
 static SDL_GLContext context;
@@ -19,6 +20,9 @@ static bool wireframe_mode = false;
 struct game_t game;
 
 ml_tex2d blocks_texture;
+
+static void gameUpdateTime(float dt);
+
 
 uint64_t good_seed() {
 	FILE* f = fopen("/dev/urandom", "rb");
@@ -61,11 +65,18 @@ gameInit() {
 	};
 	game.controls = default_controls;
 
-	game.time_of_day = 0.f; // (0 - 1 looping: 0 is midday, 0.5 is midnight)
-#define H2F(r) (float)(0x##r)/255.f
-	mlVec3Assign(game.amb_light, H2F(e0), H2F(e0), H2F(ff));
-	mlVec4Assign(game.fog_color, H2F(28), H2F(30), H2F(48), 0.0043f);
 
+	printf("* Load materials + UI\n");
+	mlCreateMaterial(&game.materials[MAT_BASIC], basic_vshader, basic_fshader);
+	mlCreateMaterial(&game.materials[MAT_UI], ui_vshader, ui_fshader);
+	mlCreateMaterial(&game.materials[MAT_DEBUG], debug_vshader, debug_fshader);
+	mlCreateMaterial(&game.materials[MAT_CHUNK], chunk_vshader, chunk_fshader);
+	mlCreateMaterial(&game.materials[MAT_SKY], sky_vshader, sky_fshader);
+	uiInit(game.materials + MAT_UI, game.materials + MAT_DEBUG);
+
+	game.day = 0;
+	game.time_of_day = 0;
+	gameUpdateTime(0);
 	gameInitMap();
 
 	while (blockType(game.camera.pos.x,
@@ -76,12 +87,7 @@ gameInit() {
 	                 game.camera.pos.z) != BLOCK_AIR)
 		game.camera.pos.y += 1.0;
 
-	printf("* Load materials + UI\n");
-	mlCreateMaterial(&game.materials[MAT_BASIC], basic_vshader, basic_fshader);
-	mlCreateMaterial(&game.materials[MAT_UI], ui_vshader, ui_fshader);
-	mlCreateMaterial(&game.materials[MAT_DEBUG], debug_vshader, debug_fshader);
-	mlCreateMaterial(&game.materials[MAT_CHUNK], chunk_vshader, chunk_fshader);
-	uiInit(game.materials + MAT_UI, game.materials + MAT_DEBUG);
+	skyInit();
 
 	glCheck(__LINE__);
 
@@ -89,14 +95,117 @@ gameInit() {
 	SDL_SetRelativeMouseMode(SDL_TRUE);
 }
 
+static ml_vec3
+sun_mix(ml_vec3* colors, double day_amt, double dusk_amt, double night_amt, double dawn_amt) {
+	ml_vec3 c;
+	c.x = colors[0].x*day_amt + colors[1].x*dusk_amt + colors[2].x*night_amt + colors[3].x*dawn_amt;
+	c.y = colors[0].y*day_amt + colors[1].y*dusk_amt + colors[2].y*night_amt + colors[3].y*dawn_amt;
+	c.z = colors[0].z*day_amt + colors[1].z*dusk_amt + colors[2].z*night_amt + colors[3].z*dawn_amt;
+	return c;
+}
+
+static inline ml_vec3
+mkrgb(uint32_t rgb) {
+	ml_vec3 c = {((float)((rgb>>16)&0xff)/255.f),
+	             ((float)((rgb>>8)&0xff)/255.f),
+	             ((float)((rgb)&0xff)/255.f) };
+	return c;
+}
+
+static void
+gameUpdateTime(float dt) {
+	double daylength = DAY_LENGTH;
+	if (game.fast_day_mode)
+		daylength = 10.0;
+	double step = (dt / daylength);
+	game.time_of_day += step;
+	while (game.time_of_day >= 1.0) {
+		game.day += 1;
+		game.time_of_day -= 1.0;
+	}
+
+	double t = game.time_of_day;
+	double day_amt, night_amt, dawn_amt, dusk_amt;
+
+	if (t >= 0 && t < 0.5) {
+		day_amt = 1.0;
+		night_amt = dawn_amt = dusk_amt = 0;
+	} else if (t >= 0.5 && t < 0.6) {
+		double f = (t - 0.5) * 10.0; // 0-1
+		dusk_amt = sin(f * ML_PI);
+		day_amt = mlClampd(1.0 - f*2.0, 0.0, 1.0);
+		night_amt = mlClampd((f - 0.5)*2.0, 0.0, 1.0);
+		dawn_amt = 0;
+	} else if (t >= 0.6 && t < 0.9) {
+		night_amt = 1.0;
+		dawn_amt = dusk_amt = day_amt = 0;
+	} else {
+		double f = (t - 0.9) * 10.0; // 0-1
+		dawn_amt = sin(f * ML_PI);
+		night_amt = mlClampd(1.0 - f*2.0, 0.0, 1.0);
+		day_amt = mlClampd((f - 0.5)*2.0, 0.0, 1.0);
+		dusk_amt = 0;
+	}
+
+	double low_light = 0.1;
+	double lightlevel = mlMax(day_amt, low_light);
+	game.light_level = lightlevel;
+
+#define MKRGB(rgb) mkrgb(0x##rgb)
+
+	// day, dusk, night, dawn
+	ml_vec3 ambient[4] = {
+		MKRGB(ffffff),
+		MKRGB(544769),
+		MKRGB(101010),
+		MKRGB(6f2168),
+	};
+	ml_vec3 sky_dark[4] = {
+		MKRGB(3F6CB4),
+		MKRGB(40538e),
+		MKRGB(030710),
+		MKRGB(3d2163),
+	};
+	ml_vec3 sky_light[4] = {
+		MKRGB(A6BEDB),
+		MKRGB(6a6ca5),
+		MKRGB(272e58),
+		MKRGB(e16e7a),
+	};
+	ml_vec3 sun_color[4] = {
+		MKRGB(E8EAE7),
+		MKRGB(fdf2c9),
+		MKRGB(e2f3fa),
+		MKRGB(fefebb),
+	};
+	ml_vec3 fog[4] = {
+		MKRGB(B5D2E2),
+		MKRGB(ad6369),
+		MKRGB(666666),
+		MKRGB(f7847a),
+	};
+
+	game.amb_light = sun_mix(ambient, day_amt, dusk_amt, night_amt, dawn_amt);
+	game.sky_dark = sun_mix(sky_dark, day_amt, dusk_amt, night_amt, dawn_amt);
+	game.sky_light = sun_mix(sky_light, day_amt, dusk_amt, night_amt, dawn_amt);
+	game.sun_color = sun_mix(sun_color, day_amt, dusk_amt, night_amt, dawn_amt);
+	ml_vec3 fog_color = sun_mix(fog, day_amt, dusk_amt, night_amt, dawn_amt);
+	double fog_density = (night_amt * 0.002) + (dawn_amt * 0.005) + (day_amt * 0.004) + (dusk_amt * 0.004);
+
+	mlVec4Assign(game.fog_color, fog_color.x, fog_color.y, fog_color.z, fog_density);
+	mlVec3Assign(game.light_dir, cos(t * ML_TWO_PI), -sin(t * ML_TWO_PI), 0);
+	game.light_dir = mlVec3Normalize(game.light_dir);
+}
+
 static void
 gameExit() {
+	gameFreeMap();
+	skyExit();
 	uiExit();
 	for (int i = 0; i < MAX_MATERIALS; ++i)
 		mlDestroyMaterial(game.materials + i);
 	mlDestroyMatrixStack(&game.projection);
 	mlDestroyMatrixStack(&game.modelview);
-	gameFreeMap();
 	mlDestroyTexture2D(&blocks_texture);
 }
 
@@ -222,15 +331,7 @@ gameUpdate(float dt) {
 	// update creatures
 	// update effects
 
-	if (game.fast_day_mode)
-		game.time_of_day = fmod(game.time_of_day + (dt * (1.0 / 5.0)), 1.f);
-	else
-		game.time_of_day = fmod(game.time_of_day + (dt * (1.0 / DAY_LENGTH)), 1.f);
-	// todo: cycle ambient light across the day/night cycle, so that it's
-	// reddish in the morning, yellow in the day, reddish in the evening and blue in the night
-	// todo: also shift fog color and clear color across the day
-	float lightlevel = fabs(game.time_of_day * 2.0 - 1.0); // first [-1, 1], then abs: now 0 is midnight and 1 is midday
-	mlVec3Assign(game.amb_light, H2F(e0) * lightlevel, H2F(e0) * lightlevel, H2F(ff) * lightlevel);
+	gameUpdateTime(dt);
 }
 
 static void
@@ -250,7 +351,7 @@ gameRender(SDL_Point* viewport, float frametime) {
 	glDepthFunc(GL_LESS);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
-	glClearColor(H2F(28), H2F(30), H2F(48), 1.f);
+	glClearColor(game.fog_color.x, game.fog_color.y, game.fog_color.z, 1.f);
 	glClearDepth(1.f);
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
@@ -283,11 +384,9 @@ gameRender(SDL_Point* viewport, float frametime) {
 	// fbo effects?
 	// draw ui
 
-	double toffs = fmod((game.time_of_day * ML_TWO_PI) + ML_PI_2, ML_TWO_PI);
-	mlVec3Assign(game.light_dir, -cos(toffs), sin(toffs), cos(toffs));
-	game.light_dir = mlVec3Normalize(game.light_dir);
-
 	gameDrawMap(&frustum);
+
+	skyDraw();
 
 	if (wireframe_mode)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

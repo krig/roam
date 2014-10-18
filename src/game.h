@@ -15,6 +15,7 @@ enum E_Materials {
 	MAT_UI,
 	MAT_DEBUG,
 	MAT_CHUNK,
+	MAT_SKY,
 	MAX_MATERIALS
 };
 
@@ -48,10 +49,15 @@ struct game_t {
 	ml_matrixstack modelview;
 	game_map map;
 
-	double time_of_day; // (0 - 1 looping: 0 is midday, 0.5 is midnight)
+	int day; // increases after every day/night cycle
+	double time_of_day;
+	double light_level;
 	ml_vec3 amb_light;
 	ml_vec4 fog_color;
 	ml_vec3 light_dir;
+	ml_vec3 sun_color;
+	ml_vec3 sky_dark;
+	ml_vec3 sky_light;
 
 	bool fast_day_mode;
 	bool debug_mode;
