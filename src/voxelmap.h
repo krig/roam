@@ -32,12 +32,23 @@ typedef struct game_block_vtx {
 
 #pragma pack(pop)
 
+enum CHUNK_STATE {
+	CHUNK_UNLOADED,
+	CHUNK_ECOLOGY, /* ecology has been generated */
+	CHUNK_TERRAIN, /* terrain has been generated */
+	CHUNK_PLANTS, /* plants have been generated */
+ 	CHUNK_LIT /* chunk has been lit */
+};
+
 typedef struct game_chunk {
 	int x; // actual coordinates of chunk
 	int z;
 	bool dirty;
-	ml_mesh data[MAP_CHUNK_HEIGHT];
-	// add per-chunk state information here (things like command blocks...)
+	uint32_t state;
+	ml_mesh solid[MAP_CHUNK_HEIGHT];
+	ml_mesh alpha; // sort before rendering - should not be a mesh?
+	ml_mesh twosided; // render twosided
+	// add per-chunk state information here (things like command blocks..., entities)
 } game_chunk;
 
 typedef struct game_map {

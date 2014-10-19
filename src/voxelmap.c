@@ -163,7 +163,7 @@ void gameDrawMap(ml_frustum* frustum) {
 			// todo: figure out which meshes need to be drawn
 			int ndrawn = 0;
 			for (int j = 0; j < MAP_CHUNK_HEIGHT; ++j) {
-				ml_mesh* mesh = chunk->data + j;
+				ml_mesh* mesh = chunk->solid + j;
 				if (mesh->vbo == 0)
 					continue;
 
@@ -318,7 +318,7 @@ void gameUnloadChunk(int x, int z) {
 	if (chunk->x != x || chunk->z != z)
 		return;
 	for (int i = 0; i < MAP_CHUNK_HEIGHT; ++i)
-		mlDestroyMesh(chunk->data + i);
+		mlDestroyMesh(chunk->solid + i);
 	chunk->dirty = true;
 	//printf("unloaded chunk: [%d, %d] [%d, %d]\n", x, z, bufx, bufz);
 }
@@ -342,7 +342,7 @@ void gameTesselateChunk(int x, int z) {
 	if (chunk->x != x || chunk->z != z)
 		return;
 	if (chunk->dirty) {
-		ml_mesh* mesh = chunk->data;
+		ml_mesh* mesh = chunk->solid;
 		for (int y = 0; y < MAP_CHUNK_HEIGHT; ++y)
 			gameTesselateSubChunk(mesh + y, bufx, bufz, y);
 		chunk->dirty = false;
@@ -350,6 +350,7 @@ void gameTesselateChunk(int x, int z) {
 	}
 }
 
+#define BSOLID(x,y,z) (blockinfo[blockType(x,y,z)].density >= density)
 
 bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 	int ix, iy, iz;
@@ -368,13 +369,16 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 	for (iz = 0; iz < CHUNK_SIZE; ++iz) {
 		for (ix = 0; ix < CHUNK_SIZE; ++ix) {
 			for (iy = 0; iy < CHUNK_SIZE; ++iy) {
-				uint8_t t = blockType(bx+ix, by+iy, bz+iz);
+				size_t idx = blockIndex(bx+ix, by+iy, bz+iz);
+				uint8_t t = game.map.blocks[idx];
+				uint16_t light = game.map.light[idx];
+				int density = blockinfo[t].density;
 				if (t == BLOCK_AIR) {
 					++nprocessed;
 					continue;
 				}
 
-				if (blockType(bx+ix, by+iy+1, bz+iz) == BLOCK_AIR) {
+				if (!BSOLID(bx+ix, by+iy+1, bz+iz)) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_TOP, 0);
 					game_block_vtx corners[4] = {
 						{POS(  ix, iy+1, iz+1), tc[0], 0xffffffff },
@@ -390,7 +394,7 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 					verts[vi++] = corners[2];
 				}
 
-				if (blockType(bx+ix, by+iy-1, bz+iz) == BLOCK_AIR) {
+				if (!BSOLID(bx+ix, by+iy-1, bz+iz)) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BOTTOM, 0);
 					game_block_vtx corners[4] = {
 						{POS(  ix, iy,   iz), tc[0], 0xffffffff },
@@ -405,7 +409,7 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 					verts[vi++] = corners[1];
 					verts[vi++] = corners[2];
 				}
-				if (blockType(bx+ix-1, by+iy, bz+iz) == BLOCK_AIR) {
+				if (!BSOLID(bx+ix-1, by+iy, bz+iz)) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_LEFT, 0);
 					game_block_vtx corners[4] = {
 						{POS(ix,   iy,   iz), tc[0], 0xffffffff },
@@ -420,7 +424,7 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 					verts[vi++] = corners[1];
 					verts[vi++] = corners[2];
 				}
-				if (blockType(bx+ix+1, by+iy, bz+iz) == BLOCK_AIR) {
+				if (!BSOLID(bx+ix+1, by+iy, bz+iz)) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_RIGHT, 0);
 					game_block_vtx corners[4] = {
 						{POS(ix+1,   iy, iz+1), tc[0], 0xffffffff },
@@ -435,7 +439,7 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 					verts[vi++] = corners[1];
 					verts[vi++] = corners[2];
 				}
-				if (blockType(bx+ix, by+iy, bz+iz+1) == BLOCK_AIR) {
+				if (!BSOLID(bx+ix, by+iy, bz+iz+1)) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_FRONT, 0);
 					game_block_vtx corners[4] = {
 						{POS(  ix,   iy, iz+1), tc[0], 0xffffffff },
@@ -450,7 +454,7 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 					verts[vi++] = corners[1];
 					verts[vi++] = corners[2];
 				}
-				if (blockType(bx+ix, by+iy, bz+iz-1) == BLOCK_AIR) {
+				if (!BSOLID(bx+ix, by+iy, bz+iz-1)) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BACK, 0);
 					game_block_vtx corners[4] = {
 						{POS(ix+1,   iy, iz), tc[0], 0xffffffff },
@@ -464,7 +468,7 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 					verts[vi++] = corners[3];
 					verts[vi++] = corners[1];
 					verts[vi++] = corners[2];
-					}
+				}
 				++nprocessed;
 
 				if (vi > TESSELATION_BUFFER_SIZE)
