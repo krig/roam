@@ -421,7 +421,7 @@ bool uiConsoleHandleEvent(SDL_Event* event) {
 		}
 		return true;
 	case SDL_TEXTINPUT:
-		printf("%s (%c) (%d)\n", event->text.text, event->text.text[0], event->text.text[0]);
+		//printf("%s (%c) (%d)\n", event->text.text, event->text.text[0], event->text.text[0]);
 		if (console_first_char) {
 			console_first_char = false;
 			printf("Discarding %s\n", event->text.text);
