@@ -61,6 +61,7 @@ struct game_t {
 
 	bool fast_day_mode;
 	bool debug_mode;
+	bool running;
 };
 
 extern struct game_t game;

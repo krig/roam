@@ -1,5 +1,7 @@
 #include <time.h>
 #include <pthread.h>
+#define STB_DEFINE
+#include "stb.h"
 #include "common.h"
 #include "math3d.h"
 #include "shaders.h"
@@ -49,14 +51,14 @@ gameInit() {
 	game.debug_mode = false;
 
 	struct controls_t default_controls = {
-		.left = SDL_SCANCODE_A,
-		.right = SDL_SCANCODE_D,
-		.forward = SDL_SCANCODE_W,
-		.backward = SDL_SCANCODE_S,
-		.jump = SDL_SCANCODE_SPACE,
-		.sprint = SDL_SCANCODE_LCTRL,
-		.crouch = SDL_SCANCODE_LSHIFT,
-		.interact = SDL_SCANCODE_E,
+		.left = SDLK_a,
+		.right = SDLK_d,
+		.forward = SDLK_w,
+		.backward = SDLK_s,
+		.jump = SDLK_SPACE,
+		.sprint = SDLK_LCTRL,
+		.crouch = SDLK_LSHIFT,
+		.interact = SDLK_e,
 		.primary_action = SDL_BUTTON_LEFT,
 		.secondary_action = SDL_BUTTON_RIGHT,
 		.wireframe = SDLK_o,
@@ -79,13 +81,17 @@ gameInit() {
 	gameUpdateTime(0);
 	gameInitMap();
 
-	while (blockType(game.camera.pos.x,
-	                 game.camera.pos.y-1,
-	                 game.camera.pos.z) != BLOCK_AIR &&
-	       blockType(game.camera.pos.x,
-	                 game.camera.pos.y,
-	                 game.camera.pos.z) != BLOCK_AIR)
-		game.camera.pos.y += 1.0;
+	{
+		ml_dvec3 p = game.camera.pos;
+		while (blockType(p.x, p.y-1, p.z) != BLOCK_AIR ||
+		       blockType(p.x, p.y, p.z) != BLOCK_AIR ||
+		       blockType(p.x + 1, p.y, p.z) != BLOCK_AIR ||
+		       blockType(p.x - 1, p.y, p.z) != BLOCK_AIR ||
+		       blockType(p.x, p.y, p.z + 1) != BLOCK_AIR ||
+		       blockType(p.x, p.y, p.z - 1) != BLOCK_AIR)
+			p.y += 1.0;
+		game.camera.pos = p;
+	}
 
 	skyInit();
 
@@ -244,33 +250,70 @@ gameExit() {
 static ml_ivec3 picked_block;
 static ml_ivec3 prepicked_block;
 static bool enable_ground = true;
+static bool move_sprinting = false;
+static bool move_left = false;
+static bool move_right = false;
+static bool move_forward = false;
+static bool move_backward = false;
+static bool move_jump = false;
+static bool move_crouch = false;
 
 static bool
 gameHandleEvent(SDL_Event* event) {
+	if (uiConsoleHandleEvent(event))
+		return true;
+
 	switch (event->type) {
 	case SDL_QUIT:
 		return false;
-	case SDL_KEYDOWN:
-		if (event->key.keysym.sym == game.controls.exitgame)
+	case SDL_KEYDOWN: {
+		SDL_Keycode sym = event->key.keysym.sym;
+		if (sym == game.controls.exitgame)
 			return false;
-		//else if (event->key.keysym.sym == game.controls.debuginfo)
-		//	printf("(%d, %d) + (%f, %f, %f) p:%f, y:%f\n",
-		//	       game.camera.cx, game.camera.cz,
-		//	       game.camera.offset.x, game.camera.offset.y, game.camera.offset.z,
-		//	       game.camera.pitch, game.camera.yaw);
-		else if (event->key.keysym.sym == game.controls.wireframe)
+		else if (sym == game.controls.wireframe)
 			wireframe_mode = !wireframe_mode;
-		else if (event->key.keysym.sym == SDLK_F1)
+		else if (sym == SDLK_F1)
 			game.debug_mode = !game.debug_mode;
-		else if (event->key.keysym.sym == SDLK_F2)
-			game.fast_day_mode = true;
-		else if (event->key.keysym.sym == SDLK_F3)
+		else if (sym == SDLK_F3)
 			enable_ground = !enable_ground;
-		break;
-	case SDL_KEYUP:
-		if (event->key.keysym.sym == SDLK_F2)
+		else if (sym == SDLK_BACKQUOTE)
+			uiConsoleToggle(true);
+		else if (sym == SDLK_F2)
+			game.fast_day_mode = true;
+		else if (sym == game.controls.sprint)
+			move_sprinting = true;
+		else if (sym == game.controls.left)
+			move_left = true;
+		else if (sym == game.controls.right)
+			move_right = true;
+		else if (sym == game.controls.forward)
+			move_forward = true;
+		else if (sym == game.controls.backward)
+			move_backward = true;
+		else if (sym == game.controls.jump)
+			move_jump = true;
+		else if (sym == game.controls.crouch)
+			move_crouch = true;
+	} break;
+	case SDL_KEYUP: {
+		SDL_Keycode sym = event->key.keysym.sym;
+		if (sym == SDLK_F2)
 			game.fast_day_mode = false;
-		break;
+		else if (sym == game.controls.sprint)
+			move_sprinting = false;
+		else if (sym == game.controls.left)
+			move_left = false;
+		else if (sym == game.controls.right)
+			move_right = false;
+		else if (sym == game.controls.forward)
+			move_forward = false;
+		else if (sym == game.controls.backward)
+			move_backward = false;
+		else if (sym == game.controls.jump)
+			move_jump = false;
+		else if (sym == game.controls.crouch)
+			move_crouch = false;
+	} break;
 	case SDL_MOUSEBUTTONDOWN:
 		switch (event->button.button) {
 		case SDL_BUTTON_LEFT: {
@@ -330,25 +373,20 @@ gameUpdate(float dt) {
 	const float xsens = 1.f / ML_TWO_PI;
 	const float ysens = 1.f / ML_TWO_PI;
 	int mouse_dx, mouse_dy;
-	const Uint8* state;
-	float speed = 2.f * dt;
 
-	state = SDL_GetKeyboardState(NULL);
+	float speed = (move_sprinting ? 20.f : 2.f) * dt;
 
-	if (state[game.controls.sprint] || state[SDL_SCANCODE_CAPSLOCK])
-		speed *= 10.f;
-
-	if (state[game.controls.left])
+	if (move_left)
 		playerMove(-speed, 0.f);
-	if (state[game.controls.right])
+	if (move_right)
 		playerMove(speed, 0.f);
-	if (state[game.controls.forward])
+	if (move_forward)
 		playerMove(0.f, speed);
-	if (state[game.controls.backward])
-		playerMove(0.f, -speed);
-	if (state[game.controls.jump])
+	if (move_backward)
+			playerMove(0.f, -speed);
+	if (move_jump)
 		playerJump(speed);
-	if (state[game.controls.crouch])
+	if (move_crouch)
 		playerJump(-speed);
 
 	if (mouse_captured) {
@@ -359,6 +397,7 @@ gameUpdate(float dt) {
 			SDL_SetRelativeMouseMode(SDL_TRUE);
 	}
 
+	uiUpdate(dt);
 	gameUpdateMap();
 	// update player/input
 	// update blocks
@@ -407,7 +446,8 @@ gameRender(SDL_Point* viewport, float frametime) {
 	ml_frustum frustum;
 	mlGetFrustum(&frustum, mlGetMatrix(&game.projection), &view);
 
-	uiRect(viewport->x/2 - 1, viewport->y/2, 2, 2, 0x7fffffff);
+	uiRect(viewport->x/2 - 1, viewport->y/2 - 5, 2, 10, 0x7fffffff);
+	uiRect(viewport->x/2 - 5, viewport->y/2 - 1, 10, 2, 0x7fffffff);
 
 	// draw blocks (tesselate in parallel?)
 	// draw objects
@@ -455,29 +495,31 @@ gameRender(SDL_Point* viewport, float frametime) {
 		}
 	}
 
-	ml_vec3 origo = { 0.0f, -0.25f, -0.4f };
-	ml_vec3 xaxis = { 0.025, 0, 0 };
-	ml_vec3 yaxis = { 0, 0.025, 0 };
-	ml_vec3 zaxis = { 0, 0, 0.025 };
-	origo = mlMulMatVec3(&invview, &origo);
-	xaxis = mlVec3Add(origo, xaxis);
-	yaxis = mlVec3Add(origo, yaxis);
-	zaxis = mlVec3Add(origo, zaxis);
-	uiDebugLine(origo, xaxis, 0xff00ff00);
-	uiDebugLine(origo, yaxis, 0xffff0000);
-	uiDebugLine(origo, zaxis, 0xff0000ff);
+	if (uiConsoleEnabled()) {
+		ml_vec3 origo = { 0.0f, -0.25f, -0.4f };
+		ml_vec3 xaxis = { 0.025, 0, 0 };
+		ml_vec3 yaxis = { 0, 0.025, 0 };
+		ml_vec3 zaxis = { 0, 0, 0.025 };
+		origo = mlMulMatVec3(&invview, &origo);
+		xaxis = mlVec3Add(origo, xaxis);
+		yaxis = mlVec3Add(origo, yaxis);
+		zaxis = mlVec3Add(origo, zaxis);
+		uiDebugLine(origo, xaxis, 0xff00ff00);
+		uiDebugLine(origo, yaxis, 0xffff0000);
+		uiDebugLine(origo, zaxis, 0xff0000ff);
 
-	uiDrawDebug(&game.projection, &game.modelview);
+		uiDrawDebug(&game.projection, &game.modelview);
 
-	uiRect(2, 2, 320, 5 + 16 + 2, 0x66ffffff);
-	uiText(5, 5, 0xff000000, "%g, %g, %g (%d, %d)\nfps: %d, t: %f\nsun_color: (%f, %f, %f)",
-	       game.camera.pos.x,
-	       game.camera.pos.y,
-	       game.camera.pos.z,
-	       camera.x,
-	       camera.z,
-	       (int)(1.f / frametime), game.time_of_day,
-	       game.sun_color.x, game.sun_color.y, game.sun_color.z);
+		uiRect(2, 2, 400, 5 + 32 + 2, 0x66000000);
+		uiText(5, 5, 0xffffffff, "%g, %g, %g (%d, %d)\nfps: %d, t: %f\nsun_color: (%f, %f, %f)",
+		       game.camera.pos.x,
+		       game.camera.pos.y,
+		       game.camera.pos.z,
+		       camera.x,
+		       camera.z,
+		       (int)(1.f / frametime), game.time_of_day,
+		       game.sun_color.x, game.sun_color.y, game.sun_color.z);
+	}
 	uiDraw(viewport);
 
 	if (mouse_captured)
@@ -559,7 +601,8 @@ main(int argc, char* argv[]) {
 	float frametime;
 	startms = (int64_t)SDL_GetTicks();
 
-	for (;;) {
+	game.running = true;
+	while (game.running) {
 		while (SDL_PollEvent(&event)) {
 			if (event.type == SDL_WINDOWEVENT) {
 				if (event.window.event == SDL_WINDOWEVENT_RESIZED) {

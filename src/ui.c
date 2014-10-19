@@ -2,6 +2,8 @@
 #include "math3d.h"
 #include "ui.h"
 #include "game.h"
+#include "easing.h"
+#include "stb.h"
 
 // UI drawing
 static ml_material* ui_material = NULL;
@@ -24,6 +26,15 @@ static ml_vtx_pos_clr debug_lines[MAX_DEBUG_LINEVERTS];
 static size_t debug_linevertcount = 0;
 static GLuint debug_vao = -1;
 static GLuint debug_vbo = -1;
+
+static bool console_enabled = false;
+static bool console_first_char = true; // hack to discard toggle key
+static float console_fade = 0.0f;
+#define MAX_CONSOLE_INPUT 1024
+#define CONSOLE_SCROLLBACK 100
+static char console_cmdline[MAX_CONSOLE_INPUT];
+static char console_scrollback[CONSOLE_SCROLLBACK][MAX_CONSOLE_INPUT];
+static int console_scrollback_pos = 0;
 
 
 void uiInit(ml_material* uimat, ml_material* debugmat) {
@@ -71,7 +82,41 @@ void uiExit() {
 	glDeleteVertexArrays(1, &debug_vao);
 }
 
+void uiUpdate(float dt) {
+	if (console_enabled)
+		console_fade = mlClamp(console_fade + dt*2.f, 0, 1.f);
+	else
+		console_fade = mlClamp(console_fade - dt*2.f, 0, 1.f);
+}
+
+bool uiConsoleEnabled() {
+	return console_enabled;
+}
+
+
 void uiDraw(SDL_Point* viewport) {
+	if (console_enabled || console_fade > 0) {
+		float elastic_fade = enQuinticInOut(console_fade);
+		uint32_t alpha = (uint32_t)(elastic_fade*255.5f);
+		float yoffs = 245.f * elastic_fade;
+		uiRect(0, viewport->y - (int)yoffs, 640, 245, (alpha/2)<<24);
+		uiRect(0, viewport->y - (int)yoffs - 16, 640, 16, (alpha*3/4)<<24);
+		int sby = viewport->y - (int)yoffs + 1;
+		int sbpos = (console_scrollback_pos - 1) % CONSOLE_SCROLLBACK;
+		if (sbpos < 0)
+			sbpos = CONSOLE_SCROLLBACK - 1;
+		while (sbpos != console_scrollback_pos && sby < viewport->y) {
+			if (console_scrollback[sbpos] == '\0')
+				break;
+			uiText(2, sby, (alpha<<24)|0xeeeeec, "%s", console_scrollback[sbpos]);
+			sby += 9;
+			sbpos = (sbpos - 1) % CONSOLE_SCROLLBACK;
+			if (sbpos < 0)
+				sbpos = CONSOLE_SCROLLBACK - 1;
+		}
+		uiText(2, viewport->y - (int)yoffs - 15, (alpha<<24)|0xffffff, "#%s", console_cmdline);
+	}
+
 	if (ui_count > 0) {
 		ml_vec2 screensize = { (float)viewport->x, (float)viewport->y };
 		glEnable(GL_TEXTURE_2D);
@@ -302,5 +347,93 @@ void uiDrawDebug(ml_matrixstack* projection, ml_matrixstack* modelview) {
 		glDepthMask(GL_TRUE);
 		debug_linevertcount = 0;
 	}
+}
+
+void uiConsoleToggle(bool enable) {
+	console_enabled = enable;
+	if (console_enabled) {
+		SDL_StartTextInput();
+	} else {
+		SDL_StopTextInput();
+	}
+}
+
+void uiAddConsoleLine(const char* txt) {
+	strmcpy(console_scrollback[console_scrollback_pos], txt, MAX_CONSOLE_INPUT);
+	console_scrollback_pos = (console_scrollback_pos + 1) % CONSOLE_SCROLLBACK;
+}
+
+void uiExecuteConsoleCommand(char* cmd) {
+	int ntok;
+	char** tok = stb_tokens(cmd, " \t\r\n", &ntok);
+	if (ntok == 0)
+		return;
+	if (strcmp(tok[0], "/quit") == 0) {
+		game.running = false;
+	} else if (strcmp(tok[0], "/fastday") == 0) {
+		game.fast_day_mode = true;
+		uiAddConsoleLine("Fast day mode on.");
+	} else if (strcmp(tok[0], "/nofastday") == 0) {
+		game.fast_day_mode = false;
+		uiAddConsoleLine("Fast day mode off.");
+	} else if (strcmp(tok[0], "/time") == 0) {
+		if (ntok != 2) {
+			uiAddConsoleLine("Expected /time <0-1000>");
+		} else {
+			long int v = strtol(tok[1], NULL, 0);
+			game.time_of_day = (double)v/1000.0;
+			uiAddConsoleLine(stb_sprintf("Set time to %ld", v));
+		}
+	} else {
+		uiAddConsoleLine(stb_sprintf("Unknown command: %s", cmd));
+	}
+}
+
+bool uiConsoleHandleEvent(SDL_Event* event) {
+	if (!console_enabled)
+		return false;
+	switch (event->type) {
+	case SDL_KEYDOWN:
+		if (event->key.keysym.sym == SDLK_BACKQUOTE || event->key.keysym.sym == SDLK_ESCAPE) {
+			uiConsoleToggle(false);
+		} else if (event->key.keysym.sym == SDLK_RETURN) {
+			uiExecuteConsoleCommand(console_cmdline);
+			memset(console_cmdline, 0, MAX_CONSOLE_INPUT);
+		} else if (event->key.keysym.sym == SDLK_BACKSPACE) {
+			char* s = console_cmdline;
+			size_t len = strlen(s);
+			while (len > 0) {
+				if ((s[len-1] & 0x80) == 0) {
+					s[len-1] = 0;
+					break;
+				}
+				if ((s[len-1] & 0xc0) == 0x80) {
+					/* byte from a multibyte sequence */
+					s[len-1] = 0;
+					--len;
+				}
+				if ((s[len-1] & 0xc0) == 0xc0) {
+					/* first byte of a multibyte sequence */
+					s[len-1] = 0;
+					break;
+				}
+			}
+		}
+		return true;
+	case SDL_TEXTINPUT:
+		printf("%s (%c) (%d)\n", event->text.text, event->text.text[0], event->text.text[0]);
+		if (console_first_char) {
+			console_first_char = false;
+			printf("Discarding %s\n", event->text.text);
+			return true;
+		}
+		if (event->text.text[0] < 0) {
+			strmcat(console_cmdline, "?", MAX_CONSOLE_INPUT);
+		} else {
+			strmcat(console_cmdline, event->text.text, MAX_CONSOLE_INPUT);
+		}
+		return true;
+	}
+	return false;
 }
 

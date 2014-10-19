@@ -65,7 +65,7 @@ enCubicOut(EN_Scalar t) {
 
 static inline EN_Scalar
 enCubicInOut(EN_Scalar t) {
-	if (t < EN_Scalar(0.5)) {
+	if (t < (EN_Scalar)0.5) {
 		return 4. * t * t * t;
 	} else {
 		const EN_Scalar f = (2. * t) - 2.;
