@@ -72,6 +72,7 @@ void uiInit(ml_material* uimat, ml_material* debugmat) {
 	glEnableVertexAttribArray(1);
 	glBindVertexArray(0);
 	debug_linevertcount = 0;
+
 }
 
 void uiExit() {
@@ -99,8 +100,8 @@ void uiDraw(SDL_Point* viewport) {
 		float elastic_fade = enQuinticInOut(console_fade);
 		uint32_t alpha = (uint32_t)(elastic_fade*255.5f);
 		float yoffs = 245.f * elastic_fade;
-		uiRect(0, viewport->y - (int)yoffs, 640, 245, (alpha/2)<<24);
-		uiRect(0, viewport->y - (int)yoffs - 16, 640, 16, (alpha*3/4)<<24);
+		uiRect(0, viewport->y - (int)yoffs, 640, 245, (alpha<<24)|0x2c3e50);
+		uiRect(0, viewport->y - (int)yoffs - 16, 640, 16, (alpha<<24)|0x34495e);
 		int sby = viewport->y - (int)yoffs + 1;
 		int sbpos = (console_scrollback_pos - 1) % CONSOLE_SCROLLBACK;
 		if (sbpos < 0)
@@ -114,7 +115,7 @@ void uiDraw(SDL_Point* viewport) {
 			if (sbpos < 0)
 				sbpos = CONSOLE_SCROLLBACK - 1;
 		}
-		uiText(2, viewport->y - (int)yoffs - 15, (alpha<<24)|0xffffff, "#%s", console_cmdline);
+		uiText(2, viewport->y - (int)yoffs - 15, (alpha<<24)|0xbdc3c7, "#%s", console_cmdline);
 	}
 
 	if (ui_count > 0) {
@@ -149,12 +150,13 @@ void uiSetScale(float scale) {
 #define MAX_TEXT_LEN 256
 
 void uiTextMeasure(int* x, int* y, const char* str, ...) {
-	size_t len;
 	char buf[MAX_TEXT_LEN];
 	va_list va_args;
 	va_start(va_args, str);
 	vsnprintf(buf, MAX_TEXT_LEN, str, va_args);
 	va_end(va_args);
+
+	size_t len;
 	len = strlen(buf);
 	int cx = 0, cy = 0, mx = 0;
 	for (size_t i = 0; i < len; ++i) {

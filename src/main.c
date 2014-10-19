@@ -495,7 +495,7 @@ gameRender(SDL_Point* viewport, float frametime) {
 		}
 	}
 
-	if (uiConsoleEnabled()) {
+	if (game.debug_mode) {
 		ml_vec3 origo = { 0.0f, -0.25f, -0.4f };
 		ml_vec3 xaxis = { 0.025, 0, 0 };
 		ml_vec3 yaxis = { 0, 0.025, 0 };
