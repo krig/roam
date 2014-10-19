@@ -96,7 +96,7 @@ gameInit() {
 }
 
 static ml_vec3
-sun_mix(ml_vec3* colors, double day_amt, double dusk_amt, double night_amt, double dawn_amt) {
+sun_mix(const ml_vec3* colors, double day_amt, double dusk_amt, double night_amt, double dawn_amt) {
 	ml_vec3 c;
 	c.x = colors[0].x*day_amt + colors[1].x*dusk_amt + colors[2].x*night_amt + colors[3].x*dawn_amt;
 	c.y = colors[0].y*day_amt + colors[1].y*dusk_amt + colors[2].y*night_amt + colors[3].y*dawn_amt;
@@ -127,25 +127,46 @@ gameUpdateTime(float dt) {
 	double t = game.time_of_day;
 	double day_amt, night_amt, dawn_amt, dusk_amt;
 
-	if (t >= 0 && t < 0.5) {
+	const double day_length = 0.5;
+	const double dawn_length = 0.15;
+	const double dusk_length = 0.1;
+	const double night_length = 0.25;
+
+	if (t >= 0 && t < day_length) {
 		day_amt = 1.0;
 		night_amt = dawn_amt = dusk_amt = 0;
-	} else if (t >= 0.5 && t < 0.6) {
-		double f = (t - 0.5) * 10.0; // 0-1
+	} else if (t >= day_length && t < (day_length + dusk_length)) {
+		double f = (t - day_length) * (1.0 / dusk_length); // 0-1
 		dusk_amt = sin(f * ML_PI);
-		day_amt = mlClampd(1.0 - f*2.0, 0.0, 1.0);
-		night_amt = mlClampd((f - 0.5)*2.0, 0.0, 1.0);
+		if (f < 0.5) {
+			day_amt = 1.0 - dusk_amt;
+			night_amt = 0.0;
+		} else {
+			day_amt = 0.0;
+			night_amt = 1.0 - dusk_amt;
+		}
 		dawn_amt = 0;
-	} else if (t >= 0.6 && t < 0.9) {
+	} else if (t >= (day_length + dusk_length) && t < (day_length + dusk_length + night_length)) {
 		night_amt = 1.0;
 		dawn_amt = dusk_amt = day_amt = 0;
 	} else {
-		double f = (t - 0.9) * 10.0; // 0-1
+		double f = (t - (day_length + dusk_length + night_length)) * (1.0 / dawn_length); // 0-1
 		dawn_amt = sin(f * ML_PI);
-		night_amt = mlClampd(1.0 - f*2.0, 0.0, 1.0);
-		day_amt = mlClampd((f - 0.5)*2.0, 0.0, 1.0);
+		if (f < 0.5) {
+			night_amt = 1.0 - dawn_amt;
+			day_amt = 0.0;
+		} else {
+			night_amt = 0.0;
+			day_amt = 1.0 - dawn_amt;
+		}
 		dusk_amt = 0;
 	}
+
+	//double mag = 1.0 / sqrt(day_amt*day_amt + night_amt*night_amt + dawn_amt*dawn_amt + dusk_amt*dusk_amt);
+	//day_amt *= mag;
+	//night_amt *= mag;
+	//dawn_amt *= mag;
+	//dusk_amt *= mag;
 
 	double low_light = 0.1;
 	double lightlevel = mlMax(day_amt, low_light);
@@ -154,35 +175,46 @@ gameUpdateTime(float dt) {
 #define MKRGB(rgb) mkrgb(0x##rgb)
 
 	// day, dusk, night, dawn
-	ml_vec3 ambient[4] = {
+	const ml_vec3 ambient[4] = {
 		MKRGB(ffffff),
 		MKRGB(544769),
 		MKRGB(101010),
 		MKRGB(6f2168),
 	};
-	ml_vec3 sky_dark[4] = {
+	const ml_vec3 sky_dark[4] = {
 		MKRGB(3F6CB4),
 		MKRGB(40538e),
 		MKRGB(030710),
 		MKRGB(3d2163),
 	};
-	ml_vec3 sky_light[4] = {
+	const ml_vec3 sky_light[4] = {
 		MKRGB(A6BEDB),
 		MKRGB(6a6ca5),
 		MKRGB(272e58),
 		MKRGB(e16e7a),
 	};
-	ml_vec3 sun_color[4] = {
-		MKRGB(E8EAE7),
-		MKRGB(fdf2c9),
-		MKRGB(e2f3fa),
-		MKRGB(fefebb),
+	const ml_vec3 sun_color[4] = {
+		MKRGB(ffffff),
+		MKRGB(ffffff),
+		MKRGB(ffffff),
+		MKRGB(ffffff),
+		//MKRGB(E8EAE7),
+		//MKRGB(fdf2c9),
+		//MKRGB(e2f3fa),
+		//MKRGB(fefebb),
 	};
-	ml_vec3 fog[4] = {
+	const ml_vec3 fog[4] = {
 		MKRGB(B5D2E2),
 		MKRGB(ad6369),
 		MKRGB(666666),
 		MKRGB(f7847a),
+	};
+
+	const float density[4] = {
+		0.004,
+		0.004,
+		0.002,
+		0.006
 	};
 
 	game.amb_light = sun_mix(ambient, day_amt, dusk_amt, night_amt, dawn_amt);
@@ -190,7 +222,7 @@ gameUpdateTime(float dt) {
 	game.sky_light = sun_mix(sky_light, day_amt, dusk_amt, night_amt, dawn_amt);
 	game.sun_color = sun_mix(sun_color, day_amt, dusk_amt, night_amt, dawn_amt);
 	ml_vec3 fog_color = sun_mix(fog, day_amt, dusk_amt, night_amt, dawn_amt);
-	double fog_density = (night_amt * 0.002) + (dawn_amt * 0.005) + (day_amt * 0.004) + (dusk_amt * 0.004);
+	double fog_density = density[0]*day_amt + density[1]*dusk_amt + density[2]*night_amt + density[3]*dawn_amt;
 
 	mlVec4Assign(game.fog_color, fog_color.x, fog_color.y, fog_color.z, fog_density);
 	mlVec3Assign(game.light_dir, cos(t * ML_TWO_PI), -sin(t * ML_TWO_PI), 0);
@@ -211,7 +243,7 @@ gameExit() {
 
 static ml_ivec3 picked_block;
 static ml_ivec3 prepicked_block;
-
+static bool enable_ground = true;
 
 static bool
 gameHandleEvent(SDL_Event* event) {
@@ -232,6 +264,8 @@ gameHandleEvent(SDL_Event* event) {
 			game.debug_mode = !game.debug_mode;
 		else if (event->key.keysym.sym == SDLK_F2)
 			game.fast_day_mode = true;
+		else if (event->key.keysym.sym == SDLK_F3)
+			enable_ground = !enable_ground;
 		break;
 	case SDL_KEYUP:
 		if (event->key.keysym.sym == SDLK_F2)
@@ -384,7 +418,8 @@ gameRender(SDL_Point* viewport, float frametime) {
 	// fbo effects?
 	// draw ui
 
-	gameDrawMap(&frustum);
+	if (enable_ground)
+		gameDrawMap(&frustum);
 
 	skyDraw();
 
@@ -434,14 +469,15 @@ gameRender(SDL_Point* viewport, float frametime) {
 
 	uiDrawDebug(&game.projection, &game.modelview);
 
-	uiRect(2, 2, 320, 5 + 16 + 2, 0x66000000);
-	uiText(5, 5, 0xffffffff, "%g, %g, %g (%d, %d)\nfps: %d, t: %f",
+	uiRect(2, 2, 320, 5 + 16 + 2, 0x66ffffff);
+	uiText(5, 5, 0xff000000, "%g, %g, %g (%d, %d)\nfps: %d, t: %f\nsun_color: (%f, %f, %f)",
 	       game.camera.pos.x,
 	       game.camera.pos.y,
 	       game.camera.pos.z,
 	       camera.x,
 	       camera.z,
-	       (int)(1.f / frametime), game.time_of_day);
+	       (int)(1.f / frametime), game.time_of_day,
+	       game.sun_color.x, game.sun_color.y, game.sun_color.z);
 	uiDraw(viewport);
 
 	if (mouse_captured)
