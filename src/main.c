@@ -1,7 +1,5 @@
 #include <time.h>
 #include <pthread.h>
-#define STB_DEFINE
-#include "stb.h"
 #include "common.h"
 #include "math3d.h"
 #include "shaders.h"

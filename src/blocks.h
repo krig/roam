@@ -9,11 +9,26 @@ enum blocktexidx_t {
 	BLOCK_TEX_BACK
 };
 
+enum blockflags_t {
+	BLOCK_SOLID = 1,
+	BLOCK_ALPHA = 2, // draw in alpha pass
+	BLOCK_MESH = 4, // custom mesh shape
+	BLOCK_TWOSIDED = 4 // render without backface culling
+};
+
 struct blockinfo_t {
 	const char* name; // short description
 	// image atlas index
 	// 0 = fill with previous
 	int img[6];
+
+	int density; // used for collisions and water physics: 0 = no collision, 100 = solid
+
+	bool alpha; // render in alpha pass
+	bool backfaces; // render in backface pass
+
+	// todo: custom shape?
+	// maybe this has to be hardcoded in the tesselator for each blocktype
 };
 
 extern struct blockinfo_t blockinfo[];
@@ -43,6 +58,7 @@ enum block_types {
 	BLOCK_TESTCUBE,
 	BLOCK_BLACKROCK,
 	BLOCK_OCEAN,
+	BLOCK_MUSHROOM,
 	NUM_BLOCKTYPES
 };
 
