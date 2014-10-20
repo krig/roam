@@ -54,7 +54,7 @@ static const char* ui_vshader = "#version 130\n"
 	"    vec2 eyepos = (position - offset) / offset;\n"
 	"    out_texcoord = texcoord;\n"
 	"    out_color = color;\n"
-	"    gl_Position = vec4(eyepos.x, eyepos.y, 0, 1);\n"
+	"    gl_Position = vec4(eyepos, 0, 1);\n"
 	"}\n";
 
 static const char* ui_fshader = "#version 130\n"
@@ -64,8 +64,7 @@ static const char* ui_fshader = "#version 130\n"
 	"out vec4 fragment;\n"
 	"uniform sampler2D tex0;\n"
 	"void main() {\n"
-	"    float a = texture(tex0, out_texcoord).r;\n"
-	"    fragment = out_color * vec4(1, 1, 1, a);\n"
+	"    fragment = texture(tex0, out_texcoord) * out_color;\n"
 	"}\n";
 
 

@@ -19,10 +19,18 @@ enum E_Materials {
 	MAX_MATERIALS
 };
 
+typedef enum cameramode_t {
+	CAMERA_FPS,
+	CAMERA_3RDPERSON,
+	CAMERA_FLIGHT,
+	NUM_CAMERA_MODES
+} cameramode_t;
+
 struct camera_t {
 	ml_dvec3 pos;
 	float pitch;
 	float yaw;
+	cameramode_t mode;
 };
 
 struct player_t {
@@ -73,7 +81,6 @@ struct game_t {
 	bool fast_day_mode;
 	bool debug_mode;
 	bool game_active;
-	bool flight_mode; // controls mode
 };
 
 extern struct game_t game;
@@ -91,12 +98,25 @@ static inline ml_ivec3 cameraBlock() {
 	return b;
 }
 
+static inline ml_chunk playerChunk() {
+	ml_chunk c = { floor(round(game.player.pos.x) / CHUNK_SIZE),
+	               floor(round(game.player.pos.z) / CHUNK_SIZE) };
+	return c;
+}
+
+static inline ml_ivec3 playerBlock() {
+	ml_ivec3 b = { round(game.player.pos.x),
+	               round(game.player.pos.y),
+	               round(game.player.pos.z) };
+	return b;
+}
+
 static inline bool blockCompare(ml_ivec3 a, ml_ivec3 b) {
 	return (a.x == b.x && a.y == b.y && a.z == b.z);
 }
 
-static inline ml_vec3 cameraChunkOffset() {
-	ml_chunk c = cameraChunk();
+static inline ml_vec3 playerChunkCameraOffset() {
+	ml_chunk c = playerChunk();
 	ml_vec3 ret = {
 		game.camera.pos.x - (double)(c.x * CHUNK_SIZE),
 		game.camera.pos.y,

@@ -25,7 +25,15 @@ void skyDraw() {
 	glDepthRange(1, 1);
 	ml_matrix skyview;
 	ml_vec3 origo = {0, 0, 0};
-	mlFPSMatrix(&skyview, origo, game.camera.pitch, game.camera.yaw);
+	if (game.camera.mode != CAMERA_3RDPERSON) {
+		mlFPSMatrix(&skyview, origo, game.camera.pitch, game.camera.yaw);
+	} else {
+		mlLookAt(&skyview, 0, 0, 0,
+		         game.player.pos.x - game.camera.pos.x,
+		         game.player.pos.y - game.camera.pos.y,
+		         game.player.pos.z - game.camera.pos.z,
+		         0, 1.f, 0);
+	}
 	mlDrawBegin(&sky_renderable);
 	mlUniformMatrix(material->projmat, mlGetMatrix(&game.projection));
 	mlUniformMatrix(material->modelview, &skyview);

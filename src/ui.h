@@ -4,7 +4,7 @@ void uiInit(ml_material* ui, ml_material* debug);
 void uiExit(void);
 
 void uiSetScale(float scale);
-void uiTextMeasure(int* x, int* y, const char* str, ...);
+void uiTextMeasure(int* w, int* h, const char* str, ...);
 void uiText(float x, float y, uint32_t clr, const char* str, ...);
 void uiRect(float x, float y, float w, float h, uint32_t clr);
 void uiUpdate(float dt);

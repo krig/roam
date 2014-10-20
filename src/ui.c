@@ -36,6 +36,11 @@ static char console_cmdline[MAX_CONSOLE_INPUT];
 static char console_scrollback[CONSOLE_SCROLLBACK][MAX_CONSOLE_INPUT];
 static int console_scrollback_pos = 0;
 
+#define UI_CHAR_W (9)
+#define UI_CHAR_H (9)
+#define UI_FONT_W (1024)
+#define UI_FONT_H (16)
+
 
 void uiInit(ml_material* uimat, ml_material* debugmat) {
 	ui_material = uimat;
@@ -47,7 +52,7 @@ void uiInit(ml_material* uimat, ml_material* debugmat) {
 	debug_modelview_index = glGetUniformLocation(debugmat->program, "modelview");
 	printf("projmat: %d, modelview: %d\n", debug_projmat_index, debug_modelview_index);
 
-	mlLoadTexture2D(&ui_8x8font, "data/8x8font.png");
+	mlLoadTexture2D(&ui_8x8font, "data/VictoriaBold.png");
 
 	glGenBuffers(1, &ui_vbo);
 	glGenVertexArrays(1, &ui_vao);
@@ -85,9 +90,9 @@ void uiExit() {
 
 void uiUpdate(float dt) {
 	if (console_enabled)
-		console_fade = mlClamp(console_fade + dt*2.f, 0, 1.f);
+		console_fade = mlClamp(console_fade + dt*2.5f, 0, 1.f);
 	else
-		console_fade = mlClamp(console_fade - dt*2.f, 0, 1.f);
+		console_fade = mlClamp(console_fade - dt*2.5f, 0, 1.f);
 }
 
 bool uiConsoleEnabled() {
@@ -97,25 +102,33 @@ bool uiConsoleEnabled() {
 
 void uiDraw(SDL_Point* viewport) {
 	if (console_enabled || console_fade > 0) {
+		int console_width = (640 > viewport->x) ? viewport->x : 640;
+		int max_display = console_width/UI_CHAR_W - 1;
+		size_t len, offset;
 		float elastic_fade = enQuinticInOut(console_fade);
-		uint32_t alpha = (uint32_t)(elastic_fade*255.5f);
-		float yoffs = 245.f * elastic_fade;
-		uiRect(0, viewport->y - (int)yoffs, 640, 245, (alpha<<24)|0x2c3e50);
-		uiRect(0, viewport->y - (int)yoffs - 16, 640, 16, (alpha<<24)|0x34495e);
-		int sby = viewport->y - (int)yoffs + 1;
+		uint32_t alpha = (uint32_t)(mlMax(elastic_fade, 0.1f)*255.5f);
+		float yoffs = (float)(12*UI_FONT_H) * elastic_fade;
+		float xoffs = (float)(console_width) * elastic_fade;
+		uiRect(0, viewport->y - (int)yoffs, console_width, 12*UI_FONT_H, ((alpha * 5 / 6)<<24)|0x2c3e50);
+		uiRect(0, viewport->y - (int)yoffs - UI_FONT_H - 4, (int)xoffs, UI_FONT_H + 4, (alpha<<24)|0x34495e);
+		int sby = viewport->y - (int)yoffs + 2;
 		int sbpos = (console_scrollback_pos - 1) % CONSOLE_SCROLLBACK;
 		if (sbpos < 0)
 			sbpos = CONSOLE_SCROLLBACK - 1;
 		while (sbpos != console_scrollback_pos && sby < viewport->y) {
 			if (console_scrollback[sbpos] == '\0')
 				break;
-			uiText(2, sby, (alpha<<24)|0xeeeeec, "%s", console_scrollback[sbpos]);
-			sby += 9;
+			len = strlen(console_scrollback[sbpos]);
+			offset = (len > max_display) ? (len - max_display) : 0;
+			uiText(2, sby, (alpha<<24)|0xbdc3c7, "%s", console_scrollback[sbpos] + offset);
+			sby += UI_FONT_H;
 			sbpos = (sbpos - 1) % CONSOLE_SCROLLBACK;
 			if (sbpos < 0)
 				sbpos = CONSOLE_SCROLLBACK - 1;
 		}
-		uiText(2, viewport->y - (int)yoffs - 15, (alpha<<24)|0xbdc3c7, "#%s", console_cmdline);
+		len = strlen(console_cmdline);
+		offset = (len > (max_display - 1)) ? (len - (max_display - 1)) : 0;
+		uiText(2, viewport->y - (int)yoffs - UI_FONT_H, (alpha<<24)|0xeeeeec, "#%s", console_cmdline + offset);
 	}
 
 	if (ui_count > 0) {
@@ -149,34 +162,35 @@ void uiSetScale(float scale) {
 
 #define MAX_TEXT_LEN 256
 
-void uiTextMeasure(int* x, int* y, const char* str, ...) {
+void uiTextMeasure(int* w, int* h, const char* str, ...) {
 	char buf[MAX_TEXT_LEN];
 	va_list va_args;
 	va_start(va_args, str);
 	vsnprintf(buf, MAX_TEXT_LEN, str, va_args);
 	va_end(va_args);
+	int scale = ui_scale * UI_CHAR_H;
 
 	size_t len;
 	len = strlen(buf);
-	int cx = 0, cy = 0, mx = 0;
+	int cx = 0, cy = scale, mx = 0;
 	for (size_t i = 0; i < len; ++i) {
 		if (buf[i] == '\n') {
 			mx = (cx > mx) ? cx : mx;
 			cx = 0;
-			cy += 8;
+			cy += scale;
 		}
-		cx += 8;
+		cx += scale;
 	}
-	*x = mx;
-	*y = cy;
+	*w = mx;
+	*h = cy;
 }
 
 
 void uiText(float x, float y, uint32_t clr, const char* str, ...) {
 	char buf[MAX_TEXT_LEN];
 	size_t len;
-	float scale;
-	float d;
+	int scale;
+	float d, v;
 	ml_vtx_ui* ptr = ui_vertices + ui_count;
 	va_list va_args;
 	va_start(va_args, str);
@@ -186,23 +200,38 @@ void uiText(float x, float y, uint32_t clr, const char* str, ...) {
 	if (ui_count + len*6 > MAX_UI_VERTICES)
 		return;
 
-	scale = ui_scale * 8.f;
-	d = 8.f / 1024.f;
+	scale = ui_scale * UI_CHAR_H;
 
-	ml_vec2 rpos = { x, y };
+	int cx = 0, w = 0, h = scale;
+	for (size_t i = 0; i < len; ++i) {
+		if (buf[i] == '\n') {
+			w = (cx > w) ? cx : w;
+			cx = 0;
+			h += scale;
+		}
+		cx += scale;
+	}
+
+	d = (float)UI_CHAR_W / (float)UI_FONT_W;
+	v = (float)UI_CHAR_H / (float)UI_FONT_H;
+
+	ml_vec2 rpos = { x, y - (h - 8) };
 	for (size_t i = 0; i < len; ++i) {
 		if (buf[i] < 0 || buf[i] > 127)
 			continue;
 		if (buf[i] == '\n') {
 			rpos.x = x;
-			rpos.y += scale;
+			rpos.y -= scale;
+			continue;
+		} else if (buf[i] == ' ') {
+			rpos.x += scale;
 			continue;
 		}
-		ml_vec2 tc = { buf[i] * d, 0.f };
+		ml_vec2 tc = { (buf[i] - ' ') * d, 0.f };
 		ml_vec2 p1 = { rpos.x, rpos.y };
 		ml_vec2 p2 = { rpos.x + scale, rpos.y + scale };
 		ml_vec2 t1 = { tc.x, 0.f };
-		ml_vec2 t2 = { tc.x + d, 1.f };
+		ml_vec2 t2 = { tc.x + d, v };
 		ml_vtx_ui quad[6] = {
 			{ p1, { t1.x, t2.y }, clr },
 			{ p2, { t2.x, t1.y }, clr },
@@ -220,17 +249,18 @@ void uiText(float x, float y, uint32_t clr, const char* str, ...) {
 }
 
 void uiRect(float x, float y, float w, float h, uint32_t clr) {
-	float tl = 0.5f / 1024.f;
-	float br = 7.5f / 1024.f;
+	float tl = 0.5f / (float)UI_FONT_W;
+	float br = 7.5f / (float)UI_FONT_W;
+	float v = 2.f / (float)UI_FONT_H;
 	if (ui_count + 6 > MAX_UI_VERTICES)
 		return;
 	ml_vtx_ui quad[6] = {
-		{ { x, y }, { tl, 1.f }, clr },
-		{ { x + w, y }, { br, 1.f }, clr },
-		{ { x, y + h }, { tl, 0.f }, clr },
-		{ { x, y + h }, { tl, 0.f }, clr },
-		{ { x + w, y }, { br, 1.f }, clr },
-		{ { x + w, y + h }, { br, 0.f }, clr },
+		{ { x, y }, { tl, v }, clr },
+		{ { x + w, y }, { br, v }, clr },
+		{ { x, y + h }, { tl, 0 }, clr },
+		{ { x, y + h }, { tl, 0 }, clr },
+		{ { x + w, y }, { br, v }, clr },
+		{ { x + w, y + h }, { br, 0 }, clr },
 	};
 	memcpy(ui_vertices + ui_count, quad, sizeof(quad));
 	ui_count += 6;
@@ -283,7 +313,7 @@ void uiDebugAABB(ml_vec3 center, ml_vec3 extent, uint32_t clr) {
 void uiDebugBlock(ml_ivec3 block, uint32_t clr) {
 	ml_vec3 pos;
 	ml_vec3 ext;
-	ml_chunk camera = cameraChunk();
+	ml_chunk camera = playerChunk();
 	mlVec3Assign(pos,
 	             block.x - camera.x*CHUNK_SIZE,
 	             block.y,

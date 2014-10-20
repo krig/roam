@@ -55,7 +55,7 @@ gameInit() {
 	game.player.crouching = false;
 	game.fast_day_mode = false;
 	game.debug_mode = false;
-	game.flight_mode = false;
+	game.camera.mode = CAMERA_FPS;
 
 	struct controls_t default_controls = {
 		.left = SDLK_a,
@@ -281,7 +281,7 @@ gameHandleEvent(SDL_Event* event) {
 		else if (sym == SDLK_F3)
 			enable_ground = !enable_ground;
 		else if (sym == SDLK_F4)
-			game.flight_mode = !game.flight_mode;
+			game.camera.mode = (game.camera.mode + 1) % NUM_CAMERA_MODES;
 		else if (sym == SDLK_BACKQUOTE)
 			uiConsoleToggle(true);
 		else if (sym == SDLK_F2)
@@ -367,29 +367,31 @@ playerMove(float right, float forward) {
 	mlSetIdentity(&m);
 	mlRotate(&m, game.camera.yaw, 0, 1.f, 0);
 	dmove = mlMulMatVec3(&m, &move);
-
-	if (game.flight_mode) {
+	if (game.camera.mode == CAMERA_FLIGHT) {
 		game.player.velocity.x += dmove.x;
 		game.player.velocity.z += dmove.z;
 	} else if (game.player.onground) {
 		game.player.velocity.x += dmove.x;
-		game.player.velocity.y += dmove.y;
 		game.player.velocity.z += dmove.z;
 	}
 }
 
 static void
 playerJump(float speed) {
-	if (game.flight_mode) {
+	switch (game.camera.mode) {
+	case CAMERA_FLIGHT:
 		game.player.jumpcount = 0.2f;
 		game.player.velocity.y = 10.f;
-	} else if (game.player.onground && game.player.jumpcount <= 0.f) {
-		float vel = mlVec3Length(game.player.velocity);
-		game.player.jumpcount = 0.2f;
-		game.player.velocity.y += 8.f + 2.f * mlMin(1.f, vel);
-		game.player.onground = false;
+		break;
+	default:
+		if (game.player.onground && game.player.jumpcount <= 0.f) {
+			//float vel = mlVec3Length(game.player.velocity);
+			game.player.jumpcount = 0.2f;
+			game.player.velocity.y += 10.f;// + 2.f * mlMin(1.f, vel);
+			game.player.onground = false;
+		}
+		break;
 	}
-	//game.camera.pos.y += speed;
 }
 
 static void
@@ -404,9 +406,9 @@ static void
 gameUpdatePlayer(float dt) {
 	game.player.jumpcount = mlMax(0.f, game.player.jumpcount - dt);
 	float MAX_VEL = 54.f;
-	mlClamp(game.player.velocity.x, -MAX_VEL, MAX_VEL);
-	mlClamp(game.player.velocity.y, -MAX_VEL, MAX_VEL);
-	mlClamp(game.player.velocity.z, -MAX_VEL, MAX_VEL);
+	game.player.velocity.x = mlClamp(game.player.velocity.x, -MAX_VEL, MAX_VEL);
+	game.player.velocity.y = mlClamp(game.player.velocity.y, -MAX_VEL, MAX_VEL);
+	game.player.velocity.z = mlClamp(game.player.velocity.z, -MAX_VEL, MAX_VEL);
 
 	ml_dvec3 newpos = game.player.pos;
 	newpos.x += game.player.velocity.x * dt;
@@ -414,61 +416,45 @@ gameUpdatePlayer(float dt) {
 	newpos.z += game.player.velocity.z * dt;
 
 	ml_ivec3 preblock = { round(game.player.pos.x), round(game.player.pos.y), round(game.player.pos.z) };
-	//ml_ivec3 newblock = { round(newpos.x), round(newpos.y), round(newpos.z) };
 
-		int groundblock = preblock.y;
-		while (blockType(preblock.x, groundblock, preblock.z) != BLOCK_AIR)
-			++groundblock;
-		while (blockType(preblock.x, groundblock, preblock.z) == BLOCK_AIR && groundblock > 0)
-			--groundblock;
-		float groundlevel = (float)groundblock + 0.5f;
-		if (newpos.y < groundlevel) {
-			newpos.y += (groundlevel - newpos.y) * 10.f * dt;
-			game.player.velocity.y = 0.f;
-			game.player.onground = true;
-		}
-
-		/*
-	if (blockType(newblock.x, newblock.y, newblock.z) != BLOCK_AIR) {
-		// calculate collision point and slide vector
-		ml_vec3 pos = { game.player.pos.x, game.player.pos.y + 0.75f, game.player.pos.z };
-		ml_vec3 center = { newblock.x, newblock.y, newblock.z };
-		ml_vec3 extent = { 0.5f, 0.5f, 0.5f };
-		float radius = 0.5f;
-		ml_vec3 hit;
-		if (mlTestSphereAABB_Hit(pos, radius, center, extent, &hit)) {
-			ml_chunk camera = cameraChunk();
-			ml_vec3 pos2;
-			mlVec3Assign(pos2,
-			             pos.x - camera.x*CHUNK_SIZE,
-			             pos.y,
-			             pos.z - camera.z*CHUNK_SIZE);
-			uiDebugSphere(pos2, radius, 0xffff0000);
-			uiDebugBlock(newblock, 0xff007fff);
-			newpos.x = hit.x - game.player.velocity.x * dt;
-			newpos.y = hit.y - game.player.velocity.y * dt;
-			newpos.z = hit.z - game.player.velocity.z * dt;
-		}
-		}*/
+	int groundblock = preblock.y;
+	while (blockType(preblock.x, groundblock, preblock.z) != BLOCK_AIR)
+		++groundblock;
+	while (blockType(preblock.x, groundblock, preblock.z) == BLOCK_AIR && groundblock > 0)
+		--groundblock;
+	float groundlevel = (float)groundblock + 0.5f;
+	if (newpos.y < groundlevel) {
+		newpos.y += (groundlevel - newpos.y) * 10.f * dt;
+		game.player.velocity.y = 0.f;
+		game.player.onground = true;
+	}
 
 	game.player.pos = newpos;
 
-	if (game.flight_mode) {
+	if (game.camera.mode == CAMERA_FLIGHT) {
 		if (game.player.crouching)
 			game.player.velocity.y = -10.f;
 		game.player.velocity = mlVec3Scalef(game.player.velocity, 0.8f);
+		game.camera.pos = game.player.pos;
 	} else {
 		if (game.player.onground) {
 			game.player.velocity.x *= 0.8f;
 			game.player.velocity.z *= 0.8f;
 		}
 		game.player.velocity.y -= 9.8f * 3.33f * dt;
-	}
-	if (game.flight_mode) {
 		game.camera.pos = game.player.pos;
-	} else {
-		game.camera.pos = game.player.pos;
-		game.camera.pos.y += game.player.camoffset.y * 0.5f + (game.player.camoffset.y * 0.5f * (1.f - enCubicInOut(crouch_fade)));
+
+		ml_vec3 offset = {0, 0, 0};
+		if (game.camera.mode == CAMERA_FPS) {
+			offset.y = game.player.camoffset.y * 0.5f + (game.player.camoffset.y * 0.5f * (1.f - enCubicInOut(crouch_fade)));
+		} else {
+			ml_vec3 x, y, z;
+			mlFPSRotation(game.camera.pitch, game.camera.yaw, &x, &y, &z);
+			offset = mlVec3Scalef(z, 6.f);
+		}
+		game.camera.pos.x = game.player.pos.x + offset.x;
+		game.camera.pos.y = game.player.pos.y + offset.y;
+		game.camera.pos.z = game.player.pos.z + offset.z;
 	}
 }
 
@@ -479,7 +465,9 @@ gameUpdate(float dt) {
 	int mouse_dx, mouse_dy;
 
 	float speed = (move_sprinting ? 3.f : 1.5f);
-	if (game.flight_mode)
+	if (game.player.crouching)
+		speed *= 0.5f;
+	if (game.camera.mode == CAMERA_FLIGHT)
 		speed *= 10.f;
 
 	if (move_left)
@@ -543,11 +531,21 @@ gameRender(SDL_Point* viewport, float frametime) {
 	if (wireframe_mode)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-	ml_chunk camera = cameraChunk();
-	ml_vec3 viewcenter = cameraChunkOffset();
+	ml_chunk camera = playerChunk();
+	ml_vec3 viewcenter = playerChunkCameraOffset();
 
 	ml_matrix view;
-	mlFPSMatrix(&view, viewcenter, game.camera.pitch, game.camera.yaw);
+	if (game.camera.mode != CAMERA_3RDPERSON) {
+		mlFPSMatrix(&view, viewcenter, game.camera.pitch, game.camera.yaw);
+	}
+	else {
+		mlLookAt(&view,
+		         viewcenter.x, viewcenter.y, viewcenter.z,
+		         game.player.pos.x - camera.x*CHUNK_SIZE,
+		         game.player.pos.y,
+		         game.player.pos.z - camera.z*CHUNK_SIZE,
+		         0, 1.f, 0);
+	}
 	//mlLookAt(&view, game.camera.offset.x, game.camera.offset.y, game.camera.offset.z,
 	//         2.f, OCEAN_LEVEL, -2.f,
 	//         0.f, 1.f, 0.f);
@@ -607,6 +605,16 @@ gameRender(SDL_Point* viewport, float frametime) {
 		}
 	}
 
+	if (game.camera.mode == CAMERA_3RDPERSON) {
+		ml_vec3 center = { game.player.pos.x - camera.x*CHUNK_SIZE,
+		                   game.player.pos.y + 0.9f,
+		                   game.player.pos.z - camera.z*CHUNK_SIZE };
+		ml_vec3 extent = { 0.5f, 0.9f, 0.5f };
+		uiDebugAABB(center, extent, 0xff7f7f7f);
+		if (game.debug_mode)
+			uiDebugBlock(playerBlock(), 0xff00ffff);
+	}
+
 	if (game.debug_mode) {
 		ml_vec3 origo = { 0.0f, -0.25f, -0.4f };
 		ml_vec3 xaxis = { 0.025, 0, 0 };
@@ -622,14 +630,12 @@ gameRender(SDL_Point* viewport, float frametime) {
 
 
 		uiRect(2, 2, 400, 5 + 32 + 2, 0x66000000);
-		uiText(5, 5, 0xffffffff, "%g, %g, %g (%d, %d)\nfps: %d, t: %f\nsun_color: (%f, %f, %f)",
-		       game.camera.pos.x,
-		       game.camera.pos.y,
-		       game.camera.pos.z,
-		       camera.x,
-		       camera.z,
-		       (int)(1.f / frametime), game.time_of_day,
-		       game.sun_color.x, game.sun_color.y, game.sun_color.z);
+		uiText(5, 5 + 32, 0xffffffff, "(%2.2f, %2.2f, %2.2f) %d %2.1f %d\n%2.2g, %2.2g, %2.2g (%d, %d) %d\nfps: %d, t: %1.3f",
+		       game.player.velocity.x, game.player.velocity.y, game.player.velocity.z,
+		       game.player.onground, game.player.jumpcount, game.player.crouching,
+		       game.player.pos.x, game.player.pos.y, game.player.pos.z,
+		       camera.x, camera.z, game.camera.mode,
+		       (int)(1.f / frametime), game.time_of_day);
 	}
 	uiDrawDebug(&game.projection, &game.modelview);
 	uiDraw(viewport);

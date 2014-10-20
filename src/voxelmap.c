@@ -89,7 +89,7 @@ void gameInitMap() {
 	simplexInit(game.map.seed);
 	osnInit(game.map.seed);
 
-	ml_chunk camera = cameraChunk();
+	ml_chunk camera = playerChunk();
 	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
 		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x)
 			gameLoadChunk(camera.x + x, camera.z + z);
@@ -114,7 +114,7 @@ void gameFreeMap() {
 }
 
 void gameUpdateMap() {
-	ml_chunk nc = cameraChunk();
+	ml_chunk nc = playerChunk();
 	if (nc.x != map_chunk.x || nc.z != map_chunk.z) {
 		game_chunk* chunks = game.map.chunks;
 		int cx = nc.x;
@@ -182,7 +182,7 @@ void gameDrawMap(ml_frustum* frustum) {
 	float chunk_radius = (float)CHUNK_SIZE*0.5f;
 	ml_vec3 offset, center, extent;
 	game_chunk* chunks = game.map.chunks;
-	ml_chunk camera = cameraChunk();
+	ml_chunk camera = playerChunk();
 
 	int dx, dz, bx, bz, x, z, ndrawn, j;
 	game_chunk* chunk;
@@ -202,7 +202,7 @@ void gameDrawMap(ml_frustum* frustum) {
 			if (mlTestFrustumAABB_XZ(frustum, center, extent) == ML_OUTSIDE)
 				continue;
 
-			if (chunk->dirty) {
+			if (game.debug_mode && chunk->dirty) {
 				uiDebugAABB(center, extent, 0x44ff2222);
 				continue;
 			}
