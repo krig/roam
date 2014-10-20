@@ -51,6 +51,29 @@ static void initBlockTexcoords() {
 
 static ml_chunk map_chunk;
 
+#define TESSELATION_QUEUE_SIZE (MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH)
+static ml_chunk tesselation_queue[TESSELATION_QUEUE_SIZE];
+static size_t tesselation_queue_head = 0;
+static size_t tesselation_queue_len = 0;
+
+static bool pushChunkTesselation(int x, int z) {
+	ml_chunk chunk = { x, z };
+	if (tesselation_queue_len >= TESSELATION_QUEUE_SIZE)
+		return false;
+	size_t pos = (tesselation_queue_head + tesselation_queue_len) % TESSELATION_QUEUE_SIZE;
+	tesselation_queue[pos] = chunk;
+	++tesselation_queue_len;
+	return true;
+}
+
+static bool popChunkTesselation(ml_chunk* chunk) {
+	if (tesselation_queue_len == 0)
+		return false;
+	*chunk = tesselation_queue[tesselation_queue_head];
+	tesselation_queue_head = (tesselation_queue_head + 1) % TESSELATION_QUEUE_SIZE;
+	return true;
+}
+
 void gameInitMap() {
 	printf("* Allocate and build initial map...\n");
 
@@ -70,9 +93,13 @@ void gameInitMap() {
 
 
 	// tesselate column
-	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
-		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x)
-			gameTesselateChunk(camera.x + x, camera.z + z);
+	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z) {
+		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x) {
+			if (!pushChunkTesselation(camera.x + x, camera.z + z)) {
+				gameTesselateChunk(camera.x + x, camera.z + z);
+			}
+		}
+	}
 	map_chunk = camera;
 
 	gameUpdateMap();
@@ -104,14 +131,26 @@ void gameUpdateMap() {
 					gameLoadChunk(cx + dx, cz + dz);
 					chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
 					assert(chunk->x == (cx + dx) && chunk->z == (cz + dz));
+					if (!pushChunkTesselation(cx + dx, cz + dz)) {
+						ml_chunk tchunk;
+						if (popChunkTesselation(&tchunk)) {
+							gameTesselateChunk(tchunk.x, tchunk.z);
+						}
+					}
 				}
 			}
 		}
 		for (int dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
 			for (int dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
-				gameTesselateChunk(cx + dx, cz + dz);
+				if (!pushChunkTesselation(cx + dx, cz + dz)) {
+					gameTesselateChunk(cx + dx, cz + dz);
+				}
 			}
 		}
+	}
+	ml_chunk chunk;
+	if (popChunkTesselation(&chunk)) {
+		gameTesselateChunk(chunk.x, chunk.z);
 	}
 }
 
@@ -335,6 +374,9 @@ void gameUnloadChunk(int x, int z) {
 //  2: allocate mesh
 //   3: fill vertices
 //   returns num verts in chunk
+
+#define ALPHA_BUFFER_SIZE (CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE*36)
+static game_block_vtx alpha_buffer[ALPHA_BUFFER_SIZE];
 
 #define TESSELATION_BUFFER_SIZE (CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE*36)
 static game_block_vtx tesselation_buffer[TESSELATION_BUFFER_SIZE];

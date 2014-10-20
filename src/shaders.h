@@ -156,6 +156,6 @@ static const char* sky_fshader = "#version 130\n"
 	"out vec4 fragment;\n"
 	"void main() {\n"
 	"	float sunamt = pow(max(0.0, dot(out_normal, sun_dir)), 5.0);\n"
-	"	vec3 skybase = mix(sky_light, sky_dark, smoothstep(0, 5.f, gradient));\n"
+	"	vec3 skybase = mix(sky_light, sky_dark, smoothstep(0, 1.f, gradient));\n"
 	"	fragment = vec4(mix(skybase, sun_color, sunamt), 1);\n"
 	"}\n";

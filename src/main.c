@@ -196,12 +196,15 @@ gameUpdateTime(float dt) {
 	};
 	const ml_vec3 sky_dark[4] = {
 		MKRGB(3F6CB4),
+		//MKRGB(000000),
 		MKRGB(40538e),
 		MKRGB(030710),
 		MKRGB(3d2163),
 	};
 	const ml_vec3 sky_light[4] = {
-		MKRGB(A6BEDB),
+		//MKRGB(A6BEDB),
+		MKRGB(00AAFF),
+		//MKRGB(FFFFFF),
 		MKRGB(6a6ca5),
 		MKRGB(272e58),
 		MKRGB(e16e7a),
