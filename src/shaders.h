@@ -91,8 +91,6 @@ static const char* debug_fshader = "#version 130\n"
 	"}\n";
 
 static const char* chunk_vshader = "#version 130\n"
-//	"#define CHUNK_SIZE " CHUNK_SIZE_STR(CHUNK_SIZE) ".0\n"
-//	"#define DIVISOR (CHUNK_SIZE/(((floor(1023.0/CHUNK_SIZE)*CHUNK_SIZE)/1024.0)))\n"
 	"uniform mat4 projmat;\n"
 	"uniform mat4 modelview;\n"
 	"uniform vec3 chunk_offset;\n"
@@ -103,11 +101,12 @@ static const char* chunk_vshader = "#version 130\n"
 	"out vec4 out_color;\n"
 	"out float out_depth;\n"
 	"void main() {\n"
-	"    vec3 pos = chunk_offset.xyz + position.xyz;\n"// * DIVISOR;\n"
+	"    vec3 pos = chunk_offset.xyz + position.xyz;\n"
+	"    vec4 tpos = modelview * vec4(pos.xyz, 1);\n"
 	"    out_color = color;\n"
-	"    out_depth = length((modelview * vec4(pos.xyz, 1)).xyz);\n"
+	"    out_depth = length(tpos.xyz);\n"
 	"    out_texcoord = texcoord;\n"
-	"    gl_Position = projmat * modelview * vec4(pos.xyz, 1);\n"
+	"    gl_Position = projmat * tpos;\n"
 	"}\n";
 
 // amb_light = color and intensity of skylight
