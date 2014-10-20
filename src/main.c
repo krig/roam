@@ -11,6 +11,7 @@
 #include "geometry.h"
 #include "u8.h"
 #include "sky.h"
+#include "easing.h"
 
 static SDL_Window* window;
 static SDL_GLContext context;
@@ -263,6 +264,7 @@ static bool move_forward = false;
 static bool move_backward = false;
 static bool move_jump = false;
 static bool move_crouch = false;
+static float crouch_fade = 0.f;
 
 static bool
 gameHandleEvent(SDL_Event* event) {
@@ -395,8 +397,11 @@ playerJump(float speed) {
 }
 
 static void
-playerCrouch(bool t) {
+playerCrouch(bool t, float dt) {
 	game.player.crouching = t;
+	if (!t)
+		dt = -dt;
+	crouch_fade = mlClamp(crouch_fade + dt*5.f, 0.f, 1.f);
 }
 
 static void
@@ -412,21 +417,44 @@ gameUpdatePlayer(float dt) {
 	newpos.y += game.player.velocity.y * dt;
 	newpos.z += game.player.velocity.z * dt;
 
-	{
-		ml_ivec3 bp = { round(newpos.x), round(newpos.y), round(newpos.z) };
-		while (blockType(bp.x, bp.y, bp.z) != BLOCK_AIR)
-			++bp.y;
-		while (blockType(bp.x, bp.y, bp.z) == BLOCK_AIR && bp.y > 0)
-			--bp.y;
-		float groundlevel = (float)bp.y + 0.5f;
+	ml_ivec3 preblock = { round(game.player.pos.x), round(game.player.pos.y), round(game.player.pos.z) };
+	ml_ivec3 newblock = { round(newpos.x), round(newpos.y), round(newpos.z) };
 
+		int groundblock = preblock.y;
+		while (blockType(preblock.x, groundblock, preblock.z) != BLOCK_AIR)
+			++groundblock;
+		while (blockType(preblock.x, groundblock, preblock.z) == BLOCK_AIR && groundblock > 0)
+			--groundblock;
+		float groundlevel = (float)groundblock + 0.5f;
 		if (newpos.y < groundlevel) {
-			game.player.velocity.y = 0.f;
 			newpos.y = groundlevel;
+			game.player.velocity.y = 0.f;
 			game.player.onground = true;
 		}
-		game.player.pos = newpos;
+
+	if (blockType(newblock.x, newblock.y, newblock.z) != BLOCK_AIR) {
+		// calculate collision point and slide vector
+		ml_vec3 pos = { game.player.pos.x, game.player.pos.y + 0.75f, game.player.pos.z };
+		ml_vec3 center = { newblock.x, newblock.y, newblock.z };
+		ml_vec3 extent = { 0.5f, 0.5f, 0.5f };
+		float radius = 0.5f;
+		ml_vec3 hit;
+		if (mlTestSphereAABB_Hit(pos, radius, center, extent, &hit)) {
+			ml_chunk camera = cameraChunk();
+			ml_vec3 pos2;
+			mlVec3Assign(pos2,
+			             pos.x - camera.x*CHUNK_SIZE,
+			             pos.y,
+			             pos.z - camera.z*CHUNK_SIZE);
+			uiDebugSphere(pos2, radius, 0xffff0000);
+			uiDebugBlock(newblock, 0xff007fff);
+			newpos.x = hit.x - game.player.velocity.x * dt;
+			newpos.y = hit.y - game.player.velocity.y * dt;
+			newpos.z = hit.z - game.player.velocity.z * dt;
+		}
 	}
+
+	game.player.pos = newpos;
 
 	if (game.flight_mode) {
 		if (game.player.crouching)
@@ -443,11 +471,7 @@ gameUpdatePlayer(float dt) {
 		game.camera.pos = game.player.pos;
 	} else {
 		game.camera.pos = game.player.pos;
-		if (game.player.crouching) {
-			game.camera.pos.y += game.player.camoffset.y * 0.5f;
-		} else {
-			game.camera.pos.y += game.player.camoffset.y;
-		}
+		game.camera.pos.y += game.player.camoffset.y * 0.5f + (game.player.camoffset.y * 0.5f * (1.f - enCubicInOut(crouch_fade)));
 	}
 }
 
@@ -472,9 +496,9 @@ gameUpdate(float dt) {
 	if (move_jump)
 		playerJump(speed);
 	if (move_crouch)
-		playerCrouch(true);
+		playerCrouch(true, dt);
 	else
-		playerCrouch(false);
+		playerCrouch(false, dt);
 		//playerJump(-speed);
 
 	if (mouse_captured) {
@@ -653,7 +677,7 @@ main(int argc, char* argv[]) {
 		roamError(SDL_GetError());
 
 	SDL_GL_MakeCurrent(window, context);
-	SDL_GL_SetSwapInterval(1);
+	//SDL_GL_SetSwapInterval(1);
 
 	glewExperimental = GL_TRUE;
 	if ((rc = glewInit()) != GLEW_OK)
@@ -673,7 +697,8 @@ main(int argc, char* argv[]) {
 	       glGetString(GL_RENDERER),
 	       glGetString(GL_SHADING_LANGUAGE_VERSION));
 
-	SDL_GetWindowSize(window, &sz.x, &sz.y);
+	//SDL_GetWindowSize(window, &sz.x, &sz.y);
+	SDL_GL_GetDrawableSize(window, &sz.x, &sz.y);
 	glViewport(0, 0, sz.x, sz.y);
 
 	mlInitMatrixStack(&game.projection, 3);
@@ -695,11 +720,13 @@ main(int argc, char* argv[]) {
 		while (SDL_PollEvent(&event)) {
 			if (event.type == SDL_WINDOWEVENT) {
 				if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-					glViewport(0, 0, event.window.data1, event.window.data2);
-					sz.x = event.window.data1;
-					sz.y = event.window.data2;
+					SDL_GL_GetDrawableSize(window, &sz.x, &sz.y);
+					glViewport(0, 0, sz.x, sz.y);
+					//sz.x = event.window.data1;
+					//sz.y = event.window.data2;
 				} else if (event.window.event == SDL_WINDOWEVENT_MAXIMIZED) {
-					SDL_GetWindowSize(window, &sz.x, &sz.y);
+					SDL_GL_GetDrawableSize(window, &sz.x, &sz.y);
+					//SDL_GetWindowSize(window, &sz.x, &sz.y);
 					glViewport(0, 0, sz.x, sz.y);
 					mlPerspective(mlGetMatrix(&game.projection), mlDeg2Rad(70.f),
 					              (float)sz.x / (float)sz.y,

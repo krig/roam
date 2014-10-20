@@ -594,5 +594,43 @@ static inline bool mlTestSphereAABB(ml_vec3 pos, float radius, ml_vec3 center, m
 	return false;
 }
 
+static inline bool mlTestSphereAABB_Hit(ml_vec3 pos, float radius, ml_vec3 center, ml_vec3 extent, ml_vec3* hit) {
+	ml_vec3 sphereCenterRelBox;
+	sphereCenterRelBox = mlVec3Sub(pos, center);
+	// Point on surface of box that is closest to the center of the sphere
+	ml_vec3 boxPoint;
+
+	// Check sphere center against box along the X axis alone.
+	// If the sphere is off past the left edge of the box,
+	// then the left edge is closest to the sphere.
+	// Similar if it's past the right edge. If it's between
+	// the left and right edges, then the sphere's own X
+	// is closest, because that makes the X distance 0,
+	// and you can't get much closer than that :)
+
+	if (sphereCenterRelBox.x < -extent.x) boxPoint.x = -extent.x;
+	else if (sphereCenterRelBox.x > extent.x) boxPoint.x = extent.x;
+	else boxPoint.x = sphereCenterRelBox.x;
+
+	if (sphereCenterRelBox.y < -extent.y) boxPoint.y = -extent.y;
+	else if (sphereCenterRelBox.y > extent.y) boxPoint.y = extent.y;
+	else boxPoint.y = sphereCenterRelBox.y;
+
+	if (sphereCenterRelBox.z < -extent.z) boxPoint.z = -extent.z;
+	else if (sphereCenterRelBox.x > extent.z) boxPoint.z = extent.z;
+	else boxPoint.z = sphereCenterRelBox.z;
+
+	// Now we have the closest point on the box, so get the distance from
+	// that to the sphere center, and see if it's less than the radius
+
+	ml_vec3 dist = mlVec3Sub(sphereCenterRelBox, boxPoint);
+
+	if (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z < radius*radius) {
+		*hit = boxPoint;
+		return true;
+	}
+	return false;
+}
+
 
 // TODO: GL state stack - track state as a stack of uint64_ts...
