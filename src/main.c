@@ -414,7 +414,7 @@ gameUpdatePlayer(float dt) {
 	newpos.z += game.player.velocity.z * dt;
 
 	ml_ivec3 preblock = { round(game.player.pos.x), round(game.player.pos.y), round(game.player.pos.z) };
-	ml_ivec3 newblock = { round(newpos.x), round(newpos.y), round(newpos.z) };
+	//ml_ivec3 newblock = { round(newpos.x), round(newpos.y), round(newpos.z) };
 
 		int groundblock = preblock.y;
 		while (blockType(preblock.x, groundblock, preblock.z) != BLOCK_AIR)
@@ -517,6 +517,7 @@ gameUpdate(float dt) {
 	gameUpdateTime(dt);
 }
 
+/*
 static void
 printMatrix(ml_matrix* m) {
 	printf("%.1f %.1f %.1f %.1f ", m->m[0], m->m[1], m->m[2], m->m[3]);
@@ -524,6 +525,7 @@ printMatrix(ml_matrix* m) {
 	printf("%.1f %.1f %.1f %.1f ", m->m[8], m->m[9], m->m[10], m->m[11]);
 	printf("%.1f %.1f %.1f %.1f\n", m->m[12], m->m[13], m->m[14], m->m[15]);
 }
+*/
 
 static void
 gameRender(SDL_Point* viewport, float frametime) {

@@ -11,10 +11,10 @@
 #define CHUNK_SIZE 32
 #define CHUNK_SIZE_STR(s) CHUNK_SIZE_STR_2(s)
 #define CHUNK_SIZE_STR_2(s) #s
-#define VIEW_DISTANCE 16
+#define VIEW_DISTANCE 24
 #define OCEAN_LEVEL 32
 #define MAP_CHUNK_WIDTH (VIEW_DISTANCE*2)
-#define MAP_CHUNK_HEIGHT 16
+#define MAP_CHUNK_HEIGHT 8
 #define MAP_BLOCK_WIDTH (MAP_CHUNK_WIDTH*CHUNK_SIZE)
 #define MAP_BLOCK_HEIGHT (MAP_CHUNK_HEIGHT*CHUNK_SIZE)
 #define MAP_BUFFER_SIZE (MAP_BLOCK_WIDTH*MAP_BLOCK_WIDTH*MAP_BLOCK_HEIGHT)
@@ -54,14 +54,10 @@ typedef struct game_chunk {
 } game_chunk;
 
 typedef struct game_map {
-	// caches the block data for the area around the player
-	// blocks = block id for each block
-	// meta = light levels + flags?
-	// as the player moves, blocks should be swapped in/out
-	// (load or generate asynchronously, then copy over in update?)
-	uint8_t blocks[MAP_BUFFER_SIZE]; // 64MB
-	uint16_t light[MAP_BUFFER_SIZE]; // 128MB
 	game_chunk chunks[MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH];
+	// caches the block data for the area around the player
+	// blocks = [blockid | meta | sunlightlevel | torchlightlevel ]
+	uint32_t *blocks;
 	unsigned long seed;
 } game_map;
 
@@ -105,9 +101,9 @@ static inline size_t blockByCoord(ml_ivec3 xyz) {
 	return blockIndex(xyz.x, xyz.y, xyz.z);
 }
 
-uint8_t blockType(int x, int y, int z);
+uint32_t blockType(int x, int y, int z);
 
-static inline uint8_t blockTypeByCoord(ml_ivec3 xyz) {
+static inline uint32_t blockTypeByCoord(ml_ivec3 xyz) {
 	return blockType(xyz.x, xyz.y, xyz.z);
 }
 
