@@ -427,11 +427,12 @@ gameUpdatePlayer(float dt) {
 			--groundblock;
 		float groundlevel = (float)groundblock + 0.5f;
 		if (newpos.y < groundlevel) {
-			newpos.y = groundlevel;
+			newpos.y += (groundlevel - newpos.y) * 10.f * dt;
 			game.player.velocity.y = 0.f;
 			game.player.onground = true;
 		}
 
+		/*
 	if (blockType(newblock.x, newblock.y, newblock.z) != BLOCK_AIR) {
 		// calculate collision point and slide vector
 		ml_vec3 pos = { game.player.pos.x, game.player.pos.y + 0.75f, game.player.pos.z };
@@ -452,7 +453,7 @@ gameUpdatePlayer(float dt) {
 			newpos.y = hit.y - game.player.velocity.y * dt;
 			newpos.z = hit.z - game.player.velocity.z * dt;
 		}
-	}
+		}*/
 
 	game.player.pos = newpos;
 
@@ -697,8 +698,8 @@ main(int argc, char* argv[]) {
 	       glGetString(GL_RENDERER),
 	       glGetString(GL_SHADING_LANGUAGE_VERSION));
 
-	//SDL_GetWindowSize(window, &sz.x, &sz.y);
-	SDL_GL_GetDrawableSize(window, &sz.x, &sz.y);
+	SDL_GetWindowSize(window, &sz.x, &sz.y);
+	//SDL_GL_GetDrawableSize(window, &sz.x, &sz.y);
 	glViewport(0, 0, sz.x, sz.y);
 
 	mlInitMatrixStack(&game.projection, 3);
@@ -720,13 +721,14 @@ main(int argc, char* argv[]) {
 		while (SDL_PollEvent(&event)) {
 			if (event.type == SDL_WINDOWEVENT) {
 				if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-					SDL_GL_GetDrawableSize(window, &sz.x, &sz.y);
+					//SDL_GL_GetDrawableSize(window, &sz.x, &sz.y);
+					SDL_GetWindowSize(window, &sz.x, &sz.y);
 					glViewport(0, 0, sz.x, sz.y);
 					//sz.x = event.window.data1;
 					//sz.y = event.window.data2;
 				} else if (event.window.event == SDL_WINDOWEVENT_MAXIMIZED) {
-					SDL_GL_GetDrawableSize(window, &sz.x, &sz.y);
-					//SDL_GetWindowSize(window, &sz.x, &sz.y);
+					//SDL_GL_GetDrawableSize(window, &sz.x, &sz.y);
+					SDL_GetWindowSize(window, &sz.x, &sz.y);
 					glViewport(0, 0, sz.x, sz.y);
 					mlPerspective(mlGetMatrix(&game.projection), mlDeg2Rad(70.f),
 					              (float)sz.x / (float)sz.y,

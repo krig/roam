@@ -2,6 +2,8 @@
  * To be included only in main.c
  */
 
+#include "voxelmap.h"
+
 static const char* basic_vshader = "#version 130\n"
 	"uniform mat4 projmat;\n"
 	"uniform mat4 modelview;\n"
@@ -87,7 +89,7 @@ static const char* debug_fshader = "#version 130\n"
 	"}\n";
 
 static const char* chunk_vshader = "#version 130\n"
-	"#define CHUNK_SIZE 16.0\n"
+	"#define CHUNK_SIZE " CHUNK_SIZE_STR(CHUNK_SIZE) ".0\n"
 	"#define DIVISOR (CHUNK_SIZE/(((floor(1023.0/CHUNK_SIZE)*CHUNK_SIZE)/1024.0)))\n"
 	"uniform mat4 projmat;\n"
 	"uniform mat4 modelview;\n"

@@ -8,7 +8,9 @@
 
 #include "blocks.h"
 
-#define CHUNK_SIZE 16
+#define CHUNK_SIZE 32
+#define CHUNK_SIZE_STR(s) CHUNK_SIZE_STR_2(s)
+#define CHUNK_SIZE_STR_2(s) #s
 #define VIEW_DISTANCE 16
 #define OCEAN_LEVEL 32
 #define MAP_CHUNK_WIDTH (VIEW_DISTANCE*2)
