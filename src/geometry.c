@@ -104,6 +104,53 @@ static void initial_icosahedron(ml_vec3* faceverts) {
 #undef FACE
 }
 
+static void initial_hemi_icosahedron(ml_vec3* faceverts) {
+	int i;
+	ml_vec3 verts[12];
+
+	double theta = 26.56505117707799 * ML_PI / 180.0; // refer paper for theta value
+	double stheta = sin(theta);
+	double ctheta = cos(theta);
+	double phi = ML_PI / 5.0;
+
+	// lower pentagon
+	for (i = 1; i < 6; ++i) {
+		mlVec3Assign(verts[i], ctheta * cos(phi), -stheta, ctheta * sin(phi));
+		phi += 2.0 * ML_PI / 5.0;
+	}
+
+	// upper pentagon
+	phi = 0.0;
+	for (i = 6; i < 11; ++i) {
+		mlVec3Assign(verts[i], ctheta * cos(phi), stheta, ctheta * sin(phi));
+		phi += 2.0 * ML_PI / 5.0;
+	}
+
+	// upper vertex
+	mlVec3Assign(verts[11], 0, 1.f, 0.f);
+
+	i = 0;
+#undef FACE
+#define FACE(v0, v1, v2) { faceverts[i++] = verts[v0]; faceverts[i++] = verts[v1]; faceverts[i++] = verts[v2]; }
+	FACE(2, 1, 7);
+	FACE(3, 2, 8);
+	FACE(4, 3, 9);
+	FACE(5, 4, 10);
+	FACE(1, 5, 6);
+	FACE(7, 1, 6);
+	FACE(8, 2, 7);
+	FACE(9, 3, 8);
+	FACE(10, 4, 9);
+	FACE(6, 5, 10);
+	FACE(7, 6, 11);
+	FACE(8, 7, 11);
+	FACE(9, 8, 11);
+	FACE(10, 9, 11);
+	FACE(6, 10, 11);
+#undef FACE
+}
+
+
 static size_t subdivide_sphere(ml_vec3* to, ml_vec3* from, size_t nverts) {
 	// for each subdivision pass, pop N/3 verts
 	// off, push the subdivided verts back
@@ -145,6 +192,27 @@ void makeSphere(ml_mesh* mesh, float radius, int subdivisions) {
 	verts[1] = malloc(nverts * sizeof(ml_vec3));
 	initial_icosahedron(verts[0]);
 	currverts = 60;
+	v = 0;
+	for (i = 0; i < subdivisions; ++i) {
+		currverts = subdivide_sphere(verts[(v + 1) % 2], verts[v], currverts);
+		v = (v + 1) % 2;
+	}
+	mlCreateMesh(mesh, currverts, verts[subdivisions % 2], ML_POS_3F);
+}
+
+
+void makeHemisphere(ml_mesh* mesh, float radius, int subdivisions) {
+	int i, v;
+	size_t nverts, currverts;
+	ml_vec3* verts[2];
+	// 0 = 45 * 1
+	// 1 = 45 * 4
+	// 2 = 45 * 4 * 4
+	nverts = 45 * pow(4, subdivisions);
+	verts[0] = malloc(nverts * sizeof(ml_vec3));
+	verts[1] = malloc(nverts * sizeof(ml_vec3));
+	initial_hemi_icosahedron(verts[0]);
+	currverts = 45;
 	v = 0;
 	for (i = 0; i < subdivisions; ++i) {
 		currverts = subdivide_sphere(verts[(v + 1) % 2], verts[v], currverts);

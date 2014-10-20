@@ -9,7 +9,7 @@ static ml_renderable sky_renderable;
 
 void skyInit() {
 	ml_material* material = game.materials + MAT_SKY;
-	makeSphere(&sky_mesh, 5.f, 2);
+	makeHemisphere(&sky_mesh, 5.f, 4);
 	mlCreateRenderable(&sky_renderable, material, &sky_mesh);
 }
 
