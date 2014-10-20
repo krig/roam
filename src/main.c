@@ -597,10 +597,10 @@ gameRender(SDL_Point* viewport, float frametime) {
 
 
 	{
-		ml_ivec3 pp = {
-			round(game.camera.pos.x),
-			round(game.camera.pos.y),
-			round(game.camera.pos.z)
+		ml_dvec3 pp = {
+			game.camera.pos.x,
+			game.camera.pos.y,
+			game.camera.pos.z
 		};
 		ml_vec3 v = {
 			frustum.planes[5].x,
@@ -608,7 +608,7 @@ gameRender(SDL_Point* viewport, float frametime) {
 			frustum.planes[5].z
 		};
 		if (gameRayTest(pp, v, 16, &picked_block, &prepicked_block)) {
-			uiDebugBlock(picked_block, 0xff00ff00);
+			uiDebugBlock(picked_block, 0xcff1c40f);
 		}
 	}
 
@@ -625,7 +625,6 @@ gameRender(SDL_Point* viewport, float frametime) {
 		uiDebugLine(origo, yaxis, 0xffff0000);
 		uiDebugLine(origo, zaxis, 0xff0000ff);
 
-		uiDrawDebug(&game.projection, &game.modelview);
 
 		uiRect(2, 2, 400, 5 + 32 + 2, 0x66000000);
 		uiText(5, 5, 0xffffffff, "%g, %g, %g (%d, %d)\nfps: %d, t: %f\nsun_color: (%f, %f, %f)",
@@ -637,6 +636,7 @@ gameRender(SDL_Point* viewport, float frametime) {
 		       (int)(1.f / frametime), game.time_of_day,
 		       game.sun_color.x, game.sun_color.y, game.sun_color.z);
 	}
+	uiDrawDebug(&game.projection, &game.modelview);
 	uiDraw(viewport);
 
 	if (mouse_captured)

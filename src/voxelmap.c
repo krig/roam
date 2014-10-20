@@ -149,8 +149,10 @@ void gameUpdateMap() {
 		}
 	}
 	ml_chunk chunk;
-	if (popChunkTesselation(&chunk)) {
-		gameTesselateChunk(chunk.x, chunk.z);
+	for (int i = 0; i < 5; ++i) {
+		if (popChunkTesselation(&chunk)) {
+			gameTesselateChunk(chunk.x, chunk.z);
+		}
 	}
 }
 
@@ -380,7 +382,7 @@ static game_block_vtx alpha_buffer[ALPHA_BUFFER_SIZE];
 
 #define TESSELATION_BUFFER_SIZE (CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE*36)
 static game_block_vtx tesselation_buffer[TESSELATION_BUFFER_SIZE];
-#define POS(x, y, z) mapPackVectorChunkCoord((unsigned int)(x), (unsigned int)(y), (unsigned int)(z), 0)
+#define POS(x, y, z) mlMakeVec3(x, y, z)//mapPackVectorChunkCoord((unsigned int)(x), (unsigned int)(y), (unsigned int)(z), 0)
 
 bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy);
 
@@ -527,13 +529,13 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 	}
 
 	if (vi > 0)
-		mlCreateMesh(mesh, vi, verts, ML_POS_10_2 | ML_TC_2US | ML_CLR_4UB);
+		mlCreateMesh(mesh, vi, verts, ML_POS_3F | ML_TC_2US | ML_CLR_4UB);
 	return (vi > 0);
 }
 
-bool gameRayTest(ml_ivec3 origin, ml_vec3 dir, int len, ml_ivec3* hit, ml_ivec3* prehit) {
+bool gameRayTest(ml_dvec3 origin, ml_vec3 dir, int len, ml_ivec3* hit, ml_ivec3* prehit) {
 	ml_dvec3 blockf = { origin.x, origin.y, origin.z };
-	ml_ivec3 block = origin;
+	ml_ivec3 block = { round(origin.x), round(origin.y), round(origin.z) };
 	ml_ivec3 prev = {0, 0, 0};
 	int step = 32;
 	for (int i = 0; i < len*step; ++i) {

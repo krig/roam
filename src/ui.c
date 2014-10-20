@@ -288,7 +288,7 @@ void uiDebugBlock(ml_ivec3 block, uint32_t clr) {
 	             block.x - camera.x*CHUNK_SIZE,
 	             block.y,
 	             block.z - camera.z*CHUNK_SIZE);
-	mlVec3Assign(ext, 0.52f, 0.52f, 0.52f);
+	mlVec3Assign(ext, 0.5f, 0.5f, 0.5f);
 	uiDebugAABB(pos, ext, clr);
 }
 
@@ -333,6 +333,7 @@ void uiDrawDebug(ml_matrixstack* projection, ml_matrixstack* modelview) {
 	if (debug_linevertcount > 0) {
 		glEnable(GL_BLEND);
 		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LEQUAL);
 		glDepthMask(GL_FALSE);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glUseProgram(debug_material->program);
@@ -346,6 +347,7 @@ void uiDrawDebug(ml_matrixstack* projection, ml_matrixstack* modelview) {
 		glUseProgram(0);
 		glDisable(GL_BLEND);
 		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LESS);
 		glDepthMask(GL_TRUE);
 		debug_linevertcount = 0;
 	}

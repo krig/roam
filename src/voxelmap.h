@@ -27,7 +27,7 @@ typedef struct tc2us_t {
 } tc2us_t;
 
 typedef struct game_block_vtx {
-	uint32_t pos; // 10_10_10_2
+	ml_vec3 pos;
 	tc2us_t tc;
 	uint32_t clr;
 } game_block_vtx;
@@ -93,7 +93,7 @@ mapPackVectorChunkCoord(unsigned int x, unsigned int y, unsigned int z, unsigned
 // origin block
 // direction vector
 // length in blocks
-bool gameRayTest(ml_ivec3 origin, ml_vec3 dir, int len, ml_ivec3* hit, ml_ivec3* prehit);
+bool gameRayTest(ml_dvec3 origin, ml_vec3 dir, int len, ml_ivec3* hit, ml_ivec3* prehit);
 
 static inline size_t blockIndex(int x, int y, int z) {
 	return mod(z, MAP_BLOCK_WIDTH) * (MAP_BLOCK_WIDTH * MAP_BLOCK_HEIGHT) +
