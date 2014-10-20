@@ -9,7 +9,7 @@
 #include "blocks.h"
 
 #define CHUNK_SIZE 16
-#define VIEW_DISTANCE 32
+#define VIEW_DISTANCE 16
 #define OCEAN_LEVEL 80
 #define MAP_CHUNK_WIDTH (VIEW_DISTANCE*2)
 #define MAP_CHUNK_HEIGHT 16
