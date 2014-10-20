@@ -220,7 +220,8 @@ gameUpdateTime(float dt) {
 		//MKRGB(fefebb),
 	};
 	const ml_vec3 fog[4] = {
-		MKRGB(B5D2E2),
+		//MKRGB(B5D2E2),
+		MKRGB(7ed4ff),
 		MKRGB(ad6369),
 		MKRGB(666666),
 		MKRGB(f7847a),
