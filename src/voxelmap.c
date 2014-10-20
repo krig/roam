@@ -274,7 +274,7 @@ void gameLoadChunk(int x, int z) {
 	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
 		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
 			double height = fBmSimplex(fillx, fillz, 0.5, NOISE_SCALE, 2.1117, 5);
-			height = 100.0 + height * 40.0;
+			height = 32.0 + height * 24.0;
 			b = BLOCK_AIR;
 			p = BLOCK_AIR;
 			for (filly = MAP_BLOCK_HEIGHT; filly >= 0; --filly) {
@@ -295,6 +295,13 @@ void gameLoadChunk(int x, int z) {
 					b = BLOCK_OCEAN;
 				} else {
 					b = BLOCK_AIR;
+				}
+				if (b == BLOCK_AIR) {
+					// in sunlight
+				} else if (p == BLOCK_AIR && b != BLOCK_AIR) {
+					// in sunlight
+				} else {
+					// not in sunlight
 				}
 				blocks[blockIndex(fillx, filly, fillz)] = b;
 				p = b;
