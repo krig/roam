@@ -42,11 +42,19 @@ gameInit() {
 	mlLoadTexture2D(&blocks_texture, "data/blocks8-v1.png");
 
 	ml_dvec3 offs = { 2.537648, OCEAN_LEVEL + 1.336000, 0.514751 };
-	game.camera.pos = offs;
 	game.camera.pitch = -0.544628;
 	game.camera.yaw = 1.056371;
+	game.player.pos = offs;
+	mlVec3Assign(game.player.camoffset, 0, 1.8, 0);
+	game.camera.pos = game.player.pos;
+	game.camera.pos.y += game.player.camoffset.y;
+	mlVec3Assign(game.player.velocity, 0, 0, 0);
+	game.player.jumpcount = 0;
+	game.player.onground = false;
+	game.player.crouching = false;
 	game.fast_day_mode = false;
 	game.debug_mode = false;
+	game.flight_mode = false;
 
 	struct controls_t default_controls = {
 		.left = SDLK_a,
@@ -80,7 +88,7 @@ gameInit() {
 	gameInitMap();
 
 	{
-		ml_dvec3 p = game.camera.pos;
+		ml_dvec3 p = game.player.pos;
 		while (blockType(p.x, p.y-1, p.z) != BLOCK_AIR ||
 		       blockType(p.x, p.y, p.z) != BLOCK_AIR ||
 		       blockType(p.x + 1, p.y, p.z) != BLOCK_AIR ||
@@ -88,7 +96,7 @@ gameInit() {
 		       blockType(p.x, p.y, p.z + 1) != BLOCK_AIR ||
 		       blockType(p.x, p.y, p.z - 1) != BLOCK_AIR)
 			p.y += 1.0;
-		game.camera.pos = p;
+		game.player.pos = p;
 	}
 
 	skyInit();
@@ -274,6 +282,8 @@ gameHandleEvent(SDL_Event* event) {
 			game.debug_mode = !game.debug_mode;
 		else if (sym == SDLK_F3)
 			enable_ground = !enable_ground;
+		else if (sym == SDLK_F4)
+			game.flight_mode = !game.flight_mode;
 		else if (sym == SDLK_BACKQUOTE)
 			uiConsoleToggle(true);
 		else if (sym == SDLK_F2)
@@ -353,17 +363,92 @@ playerLook(float dyaw, float dpitch) {
 
 static void
 playerMove(float right, float forward) {
-	ml_vec3 xaxis, yaxis, zaxis;
-	mlFPSRotation(0, game.camera.yaw, &xaxis, &yaxis, &zaxis);
-	game.camera.pos.x += xaxis.x * right;
-	game.camera.pos.z += xaxis.z * right;
-	game.camera.pos.x += zaxis.x * -forward;
-	game.camera.pos.z += zaxis.z * -forward;
+	ml_matrix m;
+	ml_vec3 move = { right, 0, -forward };
+	ml_vec3 dmove;
+	mlSetIdentity(&m);
+	mlRotate(&m, game.camera.yaw, 0, 1.f, 0);
+	dmove = mlMulMatVec3(&m, &move);
+
+	if (game.flight_mode) {
+		game.player.velocity.x += dmove.x;
+		game.player.velocity.z += dmove.z;
+	} else if (game.player.onground) {
+		game.player.velocity.x += dmove.x;
+		game.player.velocity.y += dmove.y;
+		game.player.velocity.z += dmove.z;
+	}
 }
 
 static void
 playerJump(float speed) {
-	game.camera.pos.y += speed;
+	if (game.flight_mode) {
+		game.player.jumpcount = 0.2f;
+		game.player.velocity.y = 10.f;
+	} else if (game.player.onground && game.player.jumpcount <= 0.f) {
+		float vel = mlVec3Length(game.player.velocity);
+		game.player.jumpcount = 0.2f;
+		game.player.velocity.y += 8.f + 2.f * mlMin(1.f, vel);
+		game.player.onground = false;
+	}
+	//game.camera.pos.y += speed;
+}
+
+static void
+playerCrouch(bool t) {
+	game.player.crouching = t;
+}
+
+static void
+gameUpdatePlayer(float dt) {
+	game.player.jumpcount = mlMax(0.f, game.player.jumpcount - dt);
+	float MAX_VEL = 54.f;
+	mlClamp(game.player.velocity.x, -MAX_VEL, MAX_VEL);
+	mlClamp(game.player.velocity.y, -MAX_VEL, MAX_VEL);
+	mlClamp(game.player.velocity.z, -MAX_VEL, MAX_VEL);
+
+	ml_dvec3 newpos = game.player.pos;
+	newpos.x += game.player.velocity.x * dt;
+	newpos.y += game.player.velocity.y * dt;
+	newpos.z += game.player.velocity.z * dt;
+
+	{
+		ml_ivec3 bp = { round(newpos.x), round(newpos.y), round(newpos.z) };
+		while (blockType(bp.x, bp.y, bp.z) != BLOCK_AIR)
+			++bp.y;
+		while (blockType(bp.x, bp.y, bp.z) == BLOCK_AIR && bp.y > 0)
+			--bp.y;
+		float groundlevel = (float)bp.y + 0.5f;
+
+		if (newpos.y < groundlevel) {
+			game.player.velocity.y = 0.f;
+			newpos.y = groundlevel;
+			game.player.onground = true;
+		}
+		game.player.pos = newpos;
+	}
+
+	if (game.flight_mode) {
+		if (game.player.crouching)
+			game.player.velocity.y = -10.f;
+		game.player.velocity = mlVec3Scalef(game.player.velocity, 0.8f);
+	} else {
+		if (game.player.onground) {
+			game.player.velocity.x *= 0.8f;
+			game.player.velocity.z *= 0.8f;
+		}
+		game.player.velocity.y -= 9.8f * 3.33f * dt;
+	}
+	if (game.flight_mode) {
+		game.camera.pos = game.player.pos;
+	} else {
+		game.camera.pos = game.player.pos;
+		if (game.player.crouching) {
+			game.camera.pos.y += game.player.camoffset.y * 0.5f;
+		} else {
+			game.camera.pos.y += game.player.camoffset.y;
+		}
+	}
 }
 
 static void
@@ -372,7 +457,9 @@ gameUpdate(float dt) {
 	const float ysens = 1.f / ML_TWO_PI;
 	int mouse_dx, mouse_dy;
 
-	float speed = (move_sprinting ? 20.f : 2.f) * dt;
+	float speed = (move_sprinting ? 3.f : 1.5f);
+	if (game.flight_mode)
+		speed *= 10.f;
 
 	if (move_left)
 		playerMove(-speed, 0.f);
@@ -381,11 +468,14 @@ gameUpdate(float dt) {
 	if (move_forward)
 		playerMove(0.f, speed);
 	if (move_backward)
-			playerMove(0.f, -speed);
+		playerMove(0.f, -speed);
 	if (move_jump)
 		playerJump(speed);
 	if (move_crouch)
-		playerJump(-speed);
+		playerCrouch(true);
+	else
+		playerCrouch(false);
+		//playerJump(-speed);
 
 	if (mouse_captured) {
 		SDL_GetRelativeMouseState(&mouse_dx, &mouse_dy);
@@ -395,6 +485,7 @@ gameUpdate(float dt) {
 			SDL_SetRelativeMouseMode(SDL_TRUE);
 	}
 
+	gameUpdatePlayer(dt);
 	uiUpdate(dt);
 	gameUpdateMap();
 	// update player/input
@@ -599,8 +690,8 @@ main(int argc, char* argv[]) {
 	float frametime;
 	startms = (int64_t)SDL_GetTicks();
 
-	game.running = true;
-	while (game.running) {
+	game.game_active = true;
+	while (game.game_active) {
 		while (SDL_PollEvent(&event)) {
 			if (event.type == SDL_WINDOWEVENT) {
 				if (event.window.event == SDL_WINDOWEVENT_RESIZED) {

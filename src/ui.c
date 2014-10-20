@@ -371,7 +371,7 @@ void uiExecuteConsoleCommand(char* cmd) {
 	if (ntok == 0)
 		return;
 	if (strcmp(tok[0], "/quit") == 0) {
-		game.running = false;
+		game.game_active = false;
 	} else if (strcmp(tok[0], "/fastday") == 0) {
 		game.fast_day_mode = true;
 		uiAddConsoleLine("Fast day mode on.");

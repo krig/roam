@@ -25,6 +25,16 @@ struct camera_t {
 	float yaw;
 };
 
+struct player_t {
+	ml_dvec3 pos;
+	ml_vec3 velocity;
+	ml_vec3 camoffset; // camera offset from player position
+	float jumpcount;
+	bool onground;
+	bool crouching;
+};
+
+
 struct controls_t {
 	int left;
 	int right;
@@ -43,6 +53,7 @@ struct controls_t {
 
 struct game_t {
 	struct camera_t camera;
+	struct player_t player;
 	struct controls_t controls;
 	ml_material materials[MAX_MATERIALS];
 	ml_matrixstack projection;
@@ -61,7 +72,8 @@ struct game_t {
 
 	bool fast_day_mode;
 	bool debug_mode;
-	bool running;
+	bool game_active;
+	bool flight_mode; // controls mode
 };
 
 extern struct game_t game;
