@@ -523,6 +523,8 @@ enum ml_CollisionResult {
 };
 
 int mlTestFrustumAABB(ml_frustum* frustum, ml_vec3 center, ml_vec3 extent);
+int mlTestFrustumAABB_XZ(ml_frustum* frustum, ml_vec3 center, ml_vec3 extent);
+int mlTestFrustumAABB_Y(ml_frustum* frustum, ml_vec3 center, ml_vec3 extent);
 
 static inline int mlTestPlaneAABB(ml_vec4 plane, ml_vec3 center, ml_vec3 extent) {
 	ml_vec4 absplane = { fabs(plane.x), fabs(plane.y), fabs(plane.z), fabs(plane.w) };

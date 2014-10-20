@@ -196,34 +196,26 @@ gameUpdateTime(float dt) {
 	};
 	const ml_vec3 sky_dark[4] = {
 		MKRGB(3F6CB4),
-		//MKRGB(000000),
 		MKRGB(40538e),
-		MKRGB(030710),
+		MKRGB(000000),
 		MKRGB(3d2163),
 	};
 	const ml_vec3 sky_light[4] = {
-		//MKRGB(A6BEDB),
 		MKRGB(00AAFF),
-		//MKRGB(FFFFFF),
 		MKRGB(6a6ca5),
-		MKRGB(272e58),
+		MKRGB(171b33),
 		MKRGB(e16e7a),
 	};
 	const ml_vec3 sun_color[4] = {
-		MKRGB(ffffff),
-		MKRGB(ffffff),
-		MKRGB(ffffff),
-		MKRGB(ffffff),
-		//MKRGB(E8EAE7),
-		//MKRGB(fdf2c9),
-		//MKRGB(e2f3fa),
-		//MKRGB(fefebb),
+		MKRGB(E8EAE7),
+		MKRGB(fdf2c9),
+		MKRGB(e2f3fa),
+		MKRGB(fefebb),
 	};
 	const ml_vec3 fog[4] = {
-		//MKRGB(B5D2E2),
 		MKRGB(7ed4ff),
 		MKRGB(ad6369),
-		MKRGB(666666),
+		MKRGB(383e60),
 		MKRGB(f7847a),
 	};
 

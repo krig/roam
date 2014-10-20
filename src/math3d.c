@@ -160,6 +160,39 @@ int mlTestFrustumAABB(ml_frustum* frustum, ml_vec3 center, ml_vec3 extent) {
 	return result;
 }
 
+// these are very voxelgame-specific
+int mlTestFrustumAABB_XZ(ml_frustum* frustum, ml_vec3 center, ml_vec3 extent) {
+	int result, i;
+	ml_vec4 p, a;
+	result = ML_INSIDE;
+	for (i = 0; i < 6; ++i) {
+		if (i == 2 || i == 3) continue;
+		p = frustum->planes[i];
+		a = frustum->absplanes[i];
+		float d = center.x * p.x + center.y * p.y + center.z * p.z + p.w;
+		float r = extent.x * a.x + extent.y * a.y + extent.z * a.z + a.w;
+		if (d + r <= 0) return ML_OUTSIDE;
+		if (d - r < 0) result = ML_INTERSECT;
+	}
+	return result;
+}
+
+int mlTestFrustumAABB_Y(ml_frustum* frustum, ml_vec3 center, ml_vec3 extent) {
+	int result, i;
+	ml_vec4 p, a;
+	result = ML_INSIDE;
+	for (i = 2; i < 4; ++i) {
+		p = frustum->planes[i];
+		a = frustum->absplanes[i];
+		float d = center.x * p.x + center.y * p.y + center.z * p.z + p.w;
+		float r = extent.x * a.x + extent.y * a.y + extent.z * a.z + a.w;
+		if (d + r <= 0) return ML_OUTSIDE;
+		if (d - r < 0) result = ML_INTERSECT;
+	}
+	return result;
+}
+
+
 ml_vec3 mlVec3RotateBy(const ml_matrix* m, const ml_vec3 *v) {
 	ml_vec3 ret;
 	ret.x = (v->x * m->m[0]) +

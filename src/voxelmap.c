@@ -180,18 +180,22 @@ void gameDrawMap(ml_frustum* frustum) {
 	game_chunk* chunks = game.map.chunks;
 	ml_chunk camera = cameraChunk();
 
-	for (int dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
-		for (int dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
-			int bx = mod(camera.x + dx, MAP_CHUNK_WIDTH);
-			int bz = mod(camera.z + dz, MAP_CHUNK_WIDTH);
-			game_chunk* chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
-			int x = chunk->x - camera.x;
-			int z = chunk->z - camera.z;
+	int dx, dz, bx, bz, x, z, ndrawn, j;
+	game_chunk* chunk;
+	ml_mesh* mesh;
+
+	for (dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
+		for (dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
+			bx = mod(camera.x + dx, MAP_CHUNK_WIDTH);
+			bz = mod(camera.z + dz, MAP_CHUNK_WIDTH);
+			chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
+			x = chunk->x - camera.x;
+			z = chunk->z - camera.z;
 
 			mlVec3Assign(offset, (float)(x*CHUNK_SIZE) - 0.5f, -0.5f, (float)(z*CHUNK_SIZE) - 0.5f);
 			mlVec3Assign(center, offset.x + chunk_radius, MAP_BLOCK_HEIGHT*0.5f, offset.z + chunk_radius);
 			mlVec3Assign(extent, chunk_radius, MAP_BLOCK_HEIGHT*0.5f, chunk_radius);
-			if (mlTestFrustumAABB(frustum, center, extent) == ML_OUTSIDE)
+			if (mlTestFrustumAABB_XZ(frustum, center, extent) == ML_OUTSIDE)
 				continue;
 
 			if (chunk->dirty) {
@@ -202,15 +206,15 @@ void gameDrawMap(ml_frustum* frustum) {
 			extent.y = chunk_radius;
 
 			// todo: figure out which meshes need to be drawn
-			int ndrawn = 0;
-			for (int j = 0; j < MAP_CHUNK_HEIGHT; ++j) {
-				ml_mesh* mesh = chunk->solid + j;
+			ndrawn = 0;
+			for (j = 0; j < MAP_CHUNK_HEIGHT; ++j) {
+				mesh = chunk->solid + j;
 				if (mesh->vbo == 0)
 					continue;
 
 				offset.y = (float)(CHUNK_SIZE*j) - 0.5f;
 				center.y = offset.y + chunk_radius;
-				if (mlTestFrustumAABB(frustum, center, extent) == ML_OUTSIDE)
+				if (mlTestFrustumAABB_Y(frustum, center, extent) == ML_OUTSIDE)
 					continue;
 
 				//uiDebugAABB(center, extent, 0x4422ff22);
