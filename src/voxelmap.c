@@ -158,18 +158,21 @@ void gameUpdateMap() {
 	}
 }
 
+#define MAX_ALPHAS ((VIEW_DISTANCE*2)*(VIEW_DISTANCE*2))
+static ml_mesh* alphas[MAX_ALPHAS];
+static ml_vec3 alphaoffsets[MAX_ALPHAS];
+static size_t nalphas;
+
 void gameDrawMap(ml_frustum* frustum) {
 	// for each visible chunk...
 	// set up material etc. once.
 	ml_material* material = game.materials + MAT_CHUNK;
 
-	glEnable(GL_TEXTURE_2D);
 	glDisable(GL_BLEND);
 	glEnable(GL_DEPTH_TEST);
-	glUseProgram(material->program);
+	glEnable(GL_TEXTURE_2D);
 	mlBindTexture2D(&blocks_texture, 0);
-
-	mlPushMatrix(&game.modelview);
+	glUseProgram(material->program);
 
 	glUniform1i(material->tex0, 0);
 	mlUniformMatrix(material->projmat, mlGetMatrix(&game.projection));
@@ -182,9 +185,11 @@ void gameDrawMap(ml_frustum* frustum) {
 	game_chunk* chunks = game.map.chunks;
 	ml_chunk camera = playerChunk();
 
-	int dx, dz, bx, bz, x, z, ndrawn, j;
+	int dx, dz, bx, bz, x, z, j;
 	game_chunk* chunk;
 	ml_mesh* mesh;
+
+	nalphas = 0;
 
 	for (dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
 		for (dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
@@ -207,49 +212,63 @@ void gameDrawMap(ml_frustum* frustum) {
 
 			extent.y = chunk_radius;
 
-			// todo: figure out which meshes need to be drawn
-			ndrawn = 0;
+			mlUniformVec3(material->chunk_offset, &offset);
+
+			if (chunk->alpha.vbo != 0 && nalphas < MAX_ALPHAS) {
+				alphas[nalphas] = &(chunk->alpha);
+				alphaoffsets[nalphas] = offset;
+				nalphas++;
+			}
+
 			for (j = 0; j < MAP_CHUNK_HEIGHT; ++j) {
 				mesh = chunk->solid + j;
 				if (mesh->vbo == 0)
 					continue;
-
-				offset.y = (float)(CHUNK_SIZE*j) - 0.5f;
-				center.y = offset.y + chunk_radius;
+				center.y = (float)(CHUNK_SIZE*j) - 0.5f + chunk_radius;
 				if (mlTestFrustumAABB_Y(frustum, center, extent) == ML_OUTSIDE)
 					continue;
-
-				//ui_debug_aabb(center, extent, 0x4422ff22);
-
-				// update the chunk offset uniform
-				// bind the VBO
-				// can this be done once? probably...
-				mlUniformVec3(material->chunk_offset, &offset);
 				mlMapMeshToMaterial(mesh, material);
 				glDrawArrays(mesh->mode, 0, mesh->count);
-				++ndrawn;
 			}
 		}
 	}
 
-	/*
-	for (int i = 0; i < MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH; ++i) {
-		ml_mesh* mesh = &(chunks[i].billboards);
-		if (mesh->vbo != 0) {
-			glDisable(GL_CULL_FACE);
-			mlUniformVec3(material->chunk_offset, &offset);
-			mlMapMeshToMaterial(mesh, material);
-			glDrawArrays(mesh->mode, 0, mesh->count);
-			glEnable(GL_CULL_FACE);
-		}
-	}
-	*/
-
-
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	mlPopMatrix(&game.modelview);
 	glUseProgram(0);
+	glDisable(GL_BLEND);
+	glDepthMask(GL_TRUE);
 	glDisable(GL_TEXTURE_2D);
+}
+
+void gameDrawAlphaPass() {
+	ml_material* material;
+	if (nalphas > 0) {
+		material = game.materials + MAT_CHUNK_ALPHA;
+		glEnable(GL_TEXTURE_2D);
+		mlBindTexture2D(&blocks_texture, 0);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glDepthMask(GL_FALSE);
+		glDepthFunc(GL_LEQUAL);
+		glUseProgram(material->program);
+		glUniform1i(material->tex0, 0);
+		mlUniformMatrix(material->projmat, mlGetMatrix(&game.projection));
+		mlUniformMatrix(material->modelview, mlGetMatrix(&game.modelview));
+		mlUniformVec3(material->amb_light, &game.amb_light);
+		mlUniformVec4(material->fog_color, &game.fog_color);
+
+		for (size_t i = 0; i < nalphas; ++i) {
+			mlUniformVec3(material->chunk_offset, alphaoffsets + i);
+			mlMapMeshToMaterial(alphas[i], material);
+			glDrawArrays(alphas[i]->mode, 0, alphas[i]->count);
+		}
+
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glUseProgram(0);
+		glDisable(GL_BLEND);
+		glDepthMask(GL_TRUE);
+		glDisable(GL_TEXTURE_2D);
+	}
 }
 
 void gameUpdateBlock(ml_ivec3 block) {
@@ -381,6 +400,7 @@ void gameUnloadChunk(int x, int z) {
 		return;
 	for (int i = 0; i < MAP_CHUNK_HEIGHT; ++i)
 		mlDestroyMesh(chunk->solid + i);
+	mlDestroyMesh(&chunk->alpha);
 	chunk->dirty = true;
 	//printf("unloaded chunk: [%d, %d] [%d, %d]\n", x, z, bufx, bufz);
 }
@@ -398,7 +418,7 @@ static game_block_vtx alpha_buffer[ALPHA_BUFFER_SIZE];
 static game_block_vtx tesselation_buffer[TESSELATION_BUFFER_SIZE];
 #define POS(x, y, z) mlMakeVec3(x, y, z)//mapPackVectorChunkCoord((unsigned int)(x), (unsigned int)(y), (unsigned int)(z), 0)
 
-bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy);
+bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* alphai);
 
 void gameTesselateChunk(int x, int z) {
 	int bufx = mod(x, MAP_CHUNK_WIDTH);
@@ -407,17 +427,22 @@ void gameTesselateChunk(int x, int z) {
 	if (chunk->x != x || chunk->z != z)
 		return;
 	if (chunk->dirty) {
+		size_t alphai = 0;
 		ml_mesh* mesh = chunk->solid;
 		for (int y = 0; y < MAP_CHUNK_HEIGHT; ++y)
-			gameTesselateSubChunk(mesh + y, bufx, bufz, y);
+			gameTesselateSubChunk(mesh + y, bufx, bufz, y, &alphai);
 		chunk->dirty = false;
 		//printf("tesselated chunk: [%d, %d] [%d, %d]\n", x, z, bufx, bufz);
+		if (alphai > 0) {
+			ml_mesh* alpha = &(chunk->alpha);
+			mlCreateMesh(alpha, alphai, alpha_buffer, ML_POS_3F | ML_TC_2US | ML_CLR_4UB);
+		}
 	}
 }
 
 #define BNONSOLID(x,y,z) (blockinfo[blockType(x,y,z)].density < density)
 
-bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
+bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* alphai) {
 	int ix, iy, iz;
 	int bx, by, bz;
 	size_t vi;
@@ -446,13 +471,20 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 					continue;
 				}
 
+				size_t save_vi;
+				if (blockinfo[t].alpha) {
+					save_vi = vi;
+					verts = alpha_buffer;
+					vi = *alphai;
+				}
+
 				if (BNONSOLID(bx+ix, by+iy+1, bz+iz)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_TOP, 0);
 					const game_block_vtx corners[4] = {
-						{POS(  ix, iy+1, iz+1), tc[0], 0xffffffff },
-						{POS(ix+1, iy+1, iz+1), tc[1], 0xffffffff },
-						{POS(ix+1, iy+1,   iz), tc[2], 0xffffffff },
-						{POS(  ix, iy+1,   iz), tc[3], 0xffffffff },
+						{POS(  ix, by+iy+1, iz+1), tc[0], 0xffffffff },
+						{POS(ix+1, by+iy+1, iz+1), tc[1], 0xffffffff },
+						{POS(ix+1, by+iy+1,   iz), tc[2], 0xffffffff },
+						{POS(  ix, by+iy+1,   iz), tc[3], 0xffffffff },
 					};
 					verts[vi++] = corners[0];
 					verts[vi++] = corners[1];
@@ -465,10 +497,10 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 				if (BNONSOLID(bx+ix, by+iy-1, bz+iz)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BOTTOM, 0);
 					const game_block_vtx corners[4] = {
-						{POS(  ix, iy,   iz), tc[0], 0xffffffff },
-						{POS(ix+1, iy,   iz), tc[1], 0xffffffff },
-						{POS(ix+1, iy, iz+1), tc[2], 0xffffffff },
-						{POS(  ix, iy, iz+1), tc[3], 0xffffffff },
+						{POS(  ix, by+iy,   iz), tc[0], 0xffffffff },
+						{POS(ix+1, by+iy,   iz), tc[1], 0xffffffff },
+						{POS(ix+1, by+iy, iz+1), tc[2], 0xffffffff },
+						{POS(  ix, by+iy, iz+1), tc[3], 0xffffffff },
 					};
 					verts[vi++] = corners[0];
 					verts[vi++] = corners[1];
@@ -480,10 +512,10 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 				if (BNONSOLID(bx+ix-1, by+iy, bz+iz)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_LEFT, 0);
 					const game_block_vtx corners[4] = {
-						{POS(ix,   iy,   iz), tc[0], 0xffffffff },
-						{POS(ix,   iy, iz+1), tc[1], 0xffffffff },
-						{POS(ix, iy+1, iz+1), tc[2], 0xffffffff },
-						{POS(ix, iy+1,   iz), tc[3], 0xffffffff },
+						{POS(ix,   by+iy,   iz), tc[0], 0xffffffff },
+						{POS(ix,   by+iy, iz+1), tc[1], 0xffffffff },
+						{POS(ix, by+iy+1, iz+1), tc[2], 0xffffffff },
+						{POS(ix, by+iy+1,   iz), tc[3], 0xffffffff },
 					};
 					verts[vi++] = corners[0];
 					verts[vi++] = corners[1];
@@ -495,10 +527,10 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 				if (BNONSOLID(bx+ix+1, by+iy, bz+iz)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_RIGHT, 0);
 					const game_block_vtx corners[4] = {
-						{POS(ix+1,   iy, iz+1), tc[0], 0xffffffff },
-						{POS(ix+1,   iy,   iz), tc[1], 0xffffffff },
-						{POS(ix+1, iy+1,   iz), tc[2], 0xffffffff },
-						{POS(ix+1, iy+1, iz+1), tc[3], 0xffffffff },
+						{POS(ix+1,   by+iy, iz+1), tc[0], 0xffffffff },
+						{POS(ix+1,   by+iy,   iz), tc[1], 0xffffffff },
+						{POS(ix+1, by+iy+1,   iz), tc[2], 0xffffffff },
+						{POS(ix+1, by+iy+1, iz+1), tc[3], 0xffffffff },
 					};
 					verts[vi++] = corners[0];
 					verts[vi++] = corners[1];
@@ -510,10 +542,10 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 				if (BNONSOLID(bx+ix, by+iy, bz+iz+1)) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_FRONT, 0);
 					game_block_vtx corners[4] = {
-						{POS(  ix,   iy, iz+1), tc[0], 0xffffffff },
-						{POS(ix+1,   iy, iz+1), tc[1], 0xffffffff },
-						{POS(ix+1, iy+1, iz+1), tc[2], 0xffffffff },
-						{POS(  ix, iy+1, iz+1), tc[3], 0xffffffff },
+						{POS(  ix,   by+iy, iz+1), tc[0], 0xffffffff },
+						{POS(ix+1,   by+iy, iz+1), tc[1], 0xffffffff },
+						{POS(ix+1, by+iy+1, iz+1), tc[2], 0xffffffff },
+						{POS(  ix, by+iy+1, iz+1), tc[3], 0xffffffff },
 					};
 					verts[vi++] = corners[0];
 					verts[vi++] = corners[1];
@@ -525,10 +557,10 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 				if (BNONSOLID(bx+ix, by+iy, bz+iz-1)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BACK, 0);
 					const game_block_vtx corners[4] = {
-						{POS(ix+1,   iy, iz), tc[0], 0xffffffff },
-						{POS(  ix,   iy, iz), tc[1], 0xffffffff },
-						{POS(  ix, iy+1, iz), tc[2], 0xffffffff },
-						{POS(ix+1, iy+1, iz), tc[3], 0xffffffff },
+						{POS(ix+1,   by+iy, iz), tc[0], 0xffffffff },
+						{POS(  ix,   by+iy, iz), tc[1], 0xffffffff },
+						{POS(  ix, by+iy+1, iz), tc[2], 0xffffffff },
+						{POS(ix+1, by+iy+1, iz), tc[3], 0xffffffff },
 					};
 					verts[vi++] = corners[0];
 					verts[vi++] = corners[1];
@@ -537,6 +569,15 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 					verts[vi++] = corners[1];
 					verts[vi++] = corners[2];
 				}
+
+				if (blockinfo[t].alpha) {
+					if (vi > ALPHA_BUFFER_SIZE)
+						fatal_error("Alpha buffer too small for chunk (%d, %d, %d): %zu verts, %zu blocks processed", bufx, cy, bufz, vi, nprocessed);
+					*alphai = vi;
+					vi = save_vi;
+					verts = tesselation_buffer;
+				}
+
 				++nprocessed;
 
 				if (vi > TESSELATION_BUFFER_SIZE)

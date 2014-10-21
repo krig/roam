@@ -131,7 +131,7 @@ void ui_draw(SDL_Point* viewport)
 		}
 		len = strlen(console_cmdline);
 		offset = (len > (max_display - 1)) ? (len - (max_display - 1)) : 0;
-		ui_text(2, viewport->y - (int)yoffs - UI_CHAR_H, (alpha<<24)|0xeeeeec, "#%s", console_cmdline + offset);
+		ui_text(2, viewport->y - (int)yoffs - UI_CHAR_H - 2, (alpha<<24)|0xeeeeec, "#%s", console_cmdline + offset);
 	}
 
 	if (ui_count > 0) {
@@ -221,7 +221,7 @@ void ui_text(float x, float y, uint32_t clr, const char* str, ...)
 	d = (float)UI_CHAR_W / (float)ui_font.w;
 	v = (float)UI_CHAR_H / (float)ui_font.h;
 
-	ml_vec2 rpos = { x, y - (h - 8) };
+	ml_vec2 rpos = { x, y };
 	for (size_t i = 0; i < len; ++i) {
 		if (buf[i] < 0 || buf[i] > 127)
 			continue;

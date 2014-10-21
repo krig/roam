@@ -39,6 +39,7 @@ void gameInit()
 	game.camera.pos = game.player.pos;
 	game.camera.pos.y += CAMOFFSET;
 	mlVec3Assign(game.player.vel, 0, 0, 0);
+	mlVec3Assign(game.player.acc, 0, 0, 0);
 	game.player.jumpcount = 0;
 	game.player.onground = false;
 	game.player.crouching = false;
@@ -69,6 +70,7 @@ void gameInit()
 	mlCreateMaterial(&game.materials[MAT_UI], ui_vshader, ui_fshader);
 	mlCreateMaterial(&game.materials[MAT_DEBUG], debug_vshader, debug_fshader);
 	mlCreateMaterial(&game.materials[MAT_CHUNK], chunk_vshader, chunk_fshader);
+	mlCreateMaterial(&game.materials[MAT_CHUNK_ALPHA], chunk_vshader, chunkalpha_fshader);
 	mlCreateMaterial(&game.materials[MAT_SKY], sky_vshader, sky_fshader);
 	ui_init(game.materials + MAT_UI, game.materials + MAT_DEBUG);
 
@@ -212,7 +214,7 @@ void gameUpdateTime(float dt)
 		MKRGB(f7847a),
 	};
 
-	const float density[4] = {
+	const float fogdensity[4] = {
 		0.004,
 		0.004,
 		0.002,
@@ -223,10 +225,10 @@ void gameUpdateTime(float dt)
 	game.sky_dark = sun_mix(sky_dark, day_amt, dusk_amt, night_amt, dawn_amt);
 	game.sky_light = sun_mix(sky_light, day_amt, dusk_amt, night_amt, dawn_amt);
 	game.sun_color = sun_mix(sun_color, day_amt, dusk_amt, night_amt, dawn_amt);
-	ml_vec3 fog_color = sun_mix(fog, day_amt, dusk_amt, night_amt, dawn_amt);
-	double fog_density = density[0]*day_amt + density[1]*dusk_amt + density[2]*night_amt + density[3]*dawn_amt;
+	ml_vec3 fogc = sun_mix(fog, day_amt, dusk_amt, night_amt, dawn_amt);
+	float fogd = fogdensity[0]*day_amt + fogdensity[1]*dusk_amt + fogdensity[2]*night_amt + fogdensity[3]*dawn_amt;
 
-	mlVec4Assign(game.fog_color, fog_color.x, fog_color.y, fog_color.z, fog_density);
+	mlVec4Assign(game.fog_color, fogc.x, fogc.y, fogc.z, fogd);
 	mlVec3Assign(game.light_dir, cos(t * ML_TWO_PI), -sin(t * ML_TWO_PI), 0);
 	game.light_dir = mlVec3Normalize(game.light_dir);
 }
@@ -365,11 +367,11 @@ void playerMove(float right, float forward)
 	mlRotate(&m, game.camera.yaw, 0, 1.f, 0);
 	dmove = mlMulMatVec3(&m, &move);
 	if (game.camera.mode == CAMERA_FLIGHT) {
-		game.player.vel.x += dmove.x;
-		game.player.vel.z += dmove.z;
+		game.player.acc.x += dmove.x;
+		game.player.acc.z += dmove.z;
 	} else if (game.player.onground) {
-		game.player.vel.x += dmove.x;
-		game.player.vel.z += dmove.z;
+		game.player.acc.x += dmove.x;
+		game.player.acc.z += dmove.z;
 	}
 }
 
@@ -379,13 +381,12 @@ void playerJump(float speed)
 	switch (game.camera.mode) {
 	case CAMERA_FLIGHT:
 		game.player.jumpcount = 0.2f;
-		game.player.vel.y = 10.f;
+		game.player.acc.y += 10.f;
 		break;
 	default:
 		if (game.player.onground && game.player.jumpcount <= 0.f) {
-			//float vel = mlVec3Length(game.player.vel);
 			game.player.jumpcount = 0.2f;
-			game.player.vel.y += 10.f;// + 2.f * mlMin(1.f, vel);
+			game.player.acc.y += 10.f;
 			game.player.onground = false;
 		}
 		break;
@@ -483,10 +484,8 @@ void gameUpdatePlayer(float dt)
 {
 	game.player.jumpcount = mlMax(0.f, game.player.jumpcount - dt);
 	float MAX_VEL = 54.f;
-	ml_vec3 vel = game.player.vel;
-	vel.x = mlClamp(vel.x, -MAX_VEL, MAX_VEL);
-	vel.y = mlClamp(vel.y, -MAX_VEL, MAX_VEL);
-	vel.z = mlClamp(vel.z, -MAX_VEL, MAX_VEL);
+	ml_vec3 vel = mlVec3Add(game.player.vel, mlVec3Scalef(game.player.acc, dt));
+	vel = mlClampVec3(vel, -MAX_VEL, MAX_VEL);
 
 	ml_dvec3 pos = game.player.pos;
 	ml_dvec3 newpos = pos;
@@ -552,10 +551,10 @@ void gameUpdatePlayer(float dt)
 		offset.y = CAMOFFSET * (1.f - d) + CROUCHOFFSET * d;
 	} else {
 		if (game.player.onground) {
-			vel.x *= 0.8f;
-			vel.z *= 0.8f;
+			//vel.x *= 0.8f;
+			//vel.z *= 0.8f;
 		} else {
-			vel.y -= 9.8f * 3.33f * dt;
+			//vel.y -= 9.8f * 3.33f * dt;
 		}
 
 		if (game.camera.mode == CAMERA_FPS) {
@@ -691,6 +690,9 @@ void gameRender(SDL_Point* viewport, float frametime)
 
 	skyDraw();
 
+	if (enable_ground)
+		gameDrawAlphaPass();
+
 	if (wireframe_mode)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
@@ -747,13 +749,20 @@ void gameRender(SDL_Point* viewport, float frametime)
 		ui_debug_line(origo, zaxis, 0xff0000ff);
 
 
-		ui_rect(2, 2, 400, 5 + 32 + 2, 0x66000000);
-		ui_text(5, 5 + 32, 0xffffffff, "(%2.2f, %2.2f, %2.2f) %d %2.1f %d\n%2.2g, %2.2g, %2.2g (%d, %d) %d\nfps: %d, t: %1.3f",
-			game.player.vel.x, game.player.vel.y, game.player.vel.z,
-			game.player.onground, game.player.jumpcount, game.player.crouching,
+		ui_rect(2, 2, 450, 60, 0x66000000);
+		ui_text(4, 60 - 9, 0xffffffff,
+			"pos: (%2.2g, %2.2g, %2.2g)\n"
+			"vel: (%2.2f, %2.2f, %2.2f)\n"
+			"acc: (%2.2f, %2.2f, %2.2f)\n"
+			"chunk: (%d, %d)\n"
+			"%d %d %2.1f\n"
+			"fps: %d, t: %1.3f",
 			game.player.pos.x, game.player.pos.y, game.player.pos.z,
-			camera.x, camera.z, game.camera.mode,
-			(int)(1.f / frametime), game.time_of_day);
+			game.player.vel.x, game.player.vel.y, game.player.vel.z,
+			game.player.acc.x, game.player.acc.y, game.player.acc.z,
+			camera.x, camera.z,
+			game.player.onground, game.player.crouching, game.player.jumpcount,
+			(int)roundf(1.f / frametime), game.time_of_day);
 	}
 	ui_draw_debug(&game.projection, &game.modelview);
 	ui_draw(viewport);

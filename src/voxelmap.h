@@ -74,6 +74,7 @@ void gameFreeMap(void);
 void gameInitMap(void);
 void gameUpdateMap(void);
 void gameDrawMap(ml_frustum* frustum);
+void gameDrawAlphaPass(void);
 
 // mod which handles negative numbers
 static inline int mod(int a, int b) {

@@ -134,6 +134,31 @@ static const char* chunk_fshader = "#version 130\n"
 	"    fragment = vec4(fogged.rgb, 1);\n"
 	"}\n";
 
+// TODO: color and alpha based on biome and depth
+static const char* chunkalpha_fshader = "#version 130\n"
+	"precision highp float;\n"
+	"uniform vec3 amb_light;\n"
+	"uniform vec4 fog_color;\n"
+	"uniform sampler2D tex0;\n"
+	"in vec2 out_texcoord;\n"
+	"in vec4 out_color;\n"
+	"in float out_depth;\n"
+	"out vec4 fragment;\n"
+	"vec3 fog(vec3 color, vec3 fcolor, float depth, float density){\n"
+	"    const float e = 2.71828182845904523536028747135266249;\n"
+	"    float f = pow(e, -pow(depth*density, 2));\n"
+	"    return mix(fcolor, color, f);\n"
+	"}\n"
+	"void main() {\n"
+	"    vec4 tex = texture(tex0, out_texcoord);\n"
+	"    if (tex.w == 0) discard;\n"
+	"    vec3 light = amb_light.xyz * out_color.w;\n"
+	"    vec3 base = tex.xyz * light.xyz;\n"
+	"    vec3 fogged = fog(base, fog_color.xyz, out_depth, fog_color.w);\n"
+	"    fragment = vec4(fogged.rgb, tex.w);\n"
+	"}\n";
+
+
 static const char* sky_vshader = "#version 130\n"
 	"uniform mat4 projmat;\n"
 	"uniform mat4 modelview;\n"

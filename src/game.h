@@ -15,6 +15,7 @@ enum E_Materials {
 	MAT_UI,
 	MAT_DEBUG,
 	MAT_CHUNK,
+	MAT_CHUNK_ALPHA,
 	MAT_SKY,
 	MAX_MATERIALS
 };

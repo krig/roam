@@ -191,6 +191,14 @@ mlClampd(double t, double lo, double hi) {
 	return (t < lo) ? lo : ((t > hi) ? hi : t);
 }
 
+static inline ml_vec3
+mlClampVec3(ml_vec3 t, float lo, float hi) {
+	ml_vec3 ret = { mlClamp(t.x, lo, hi),
+	                mlClamp(t.y, lo, hi),
+	                mlClamp(t.z, lo, hi) };
+	return ret;
+}
+
 static inline float
 mlWrap(float t, float lo, float hi) {
     while (t < lo)
