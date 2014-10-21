@@ -15,6 +15,12 @@
 #define ML_MIN(a, b) (((b) < (a)) ? (b) : (a))
 #define ML_MAX(a, b) (((b) > (a)) ? (b) : (a))
 
+#define mlDeg2Rad(d) (((d) * ML_PI) / 180.0)
+#define mlRad2Deg(r) (((r) * 180.0) / ML_PI)
+#define mlSwap(a, b) do { __typeof__ (a) _swap_##__LINE__ = (a); (a) = (b); (b) = _swap_##__LINE__; } while (0)
+#define mlMax(a, b) ((b) > (a) ? (b) : (a))
+#define mlMin(a, b) ((b) < (a) ? (b) : (a))
+
 typedef struct ml_vec2 {
 	float x, y;
 } ml_vec2;
@@ -149,12 +155,16 @@ typedef struct ml_matrixstack {
 	ml_matrix* stack;
 } ml_matrixstack;
 
+enum ml_CollisionResult {
+	ML_OUTSIDE,
+	ML_INSIDE,
+	ML_INTERSECT
+};
 
-#define mlDeg2Rad(d) (((d) * ML_PI) / 180.0)
-#define mlRad2Deg(r) (((r) * 180.0) / ML_PI)
-#define mlSwap(a, b) do { __typeof__ (a) _swap_##__LINE__ = (a); (a) = (b); (b) = _swap_##__LINE__; } while (0)
-#define mlMax(a, b) ((b) > (a) ? (b) : (a))
-#define mlMin(a, b) ((b) < (a) ? (b) : (a))
+typedef struct ml_frustum {
+	ml_vec4 planes[6];
+	ml_vec4 absplanes[6];
+} ml_frustum;
 
 static inline bool
 mlFIsValid(float f) {
@@ -489,44 +499,38 @@ void mlLoadTexture2D(ml_tex2d* tex, const char* filename);
 void mlDestroyTexture2D(ml_tex2d* tex);
 void mlBindTexture2D(ml_tex2d* tex, int index);
 
-
-static inline ml_clr
-mlRGB(uint8_t r, uint8_t g, uint8_t b) {
+static inline
+ml_clr mlRGB(uint8_t r, uint8_t g, uint8_t b)
+{
 	ml_clr c = { 0xff, r, g, b };
 	return c;
 }
 
-static inline ml_clr
-mlARGB(uint8_t a, uint8_t r, uint8_t g, uint8_t b) {
+static inline
+ml_clr mlARGB(uint8_t a, uint8_t r, uint8_t g, uint8_t b)
+{
 	ml_clr c = { a, r, g, b };
 	return c;
 }
 
-static inline ml_clr
-mlRGBA(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+static inline
+ml_clr mlRGBA(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
 	ml_clr c = { a, r, g, b };
 	return c;
 }
 
-typedef struct ml_frustum {
-	ml_vec4 planes[6];
-	ml_vec4 absplanes[6];
-} ml_frustum;
-
-void
-mlGetFrustum(ml_frustum* frustum, ml_matrix* projection, ml_matrix* view);
-
-enum ml_CollisionResult {
-	ML_OUTSIDE,
-	ML_INSIDE,
-	ML_INTERSECT
-};
+void mlGetFrustum(ml_frustum* frustum, ml_matrix* projection, ml_matrix* view);
 
 int mlTestFrustumAABB(ml_frustum* frustum, ml_vec3 center, ml_vec3 extent);
 int mlTestFrustumAABB_XZ(ml_frustum* frustum, ml_vec3 center, ml_vec3 extent);
 int mlTestFrustumAABB_Y(ml_frustum* frustum, ml_vec3 center, ml_vec3 extent);
+bool mlTestRayAABB(ml_vec3 origin, ml_vec3 dir, ml_vec3 center, ml_vec3 extent);
+bool mlTestSphereAABB(ml_vec3 pos, float radius, ml_vec3 center, ml_vec3 extent);
+bool mlTestSphereAABB_Hit(ml_vec3 pos, float radius, ml_vec3 center, ml_vec3 extent, ml_vec3* hit);
 
-static inline int mlTestPlaneAABB(ml_vec4 plane, ml_vec3 center, ml_vec3 extent) {
+static inline int mlTestPlaneAABB(ml_vec4 plane, ml_vec3 center, ml_vec3 extent)
+{
 	ml_vec4 absplane = { fabs(plane.x), fabs(plane.y), fabs(plane.z), fabs(plane.w) };
 	float d = center.x * plane.x + center.y * plane.y + center.z * plane.z + plane.w;
 	float r = extent.x * absplane.x + extent.y * absplane.y + extent.z * absplane.z + absplane.w;
@@ -535,104 +539,18 @@ static inline int mlTestPlaneAABB(ml_vec4 plane, ml_vec3 center, ml_vec3 extent)
 	return ML_INSIDE;
 }
 
-static inline bool mlTestAABBAABB(ml_vec3 center1, ml_vec3 extent1, ml_vec3 center2, ml_vec3 extent2) {
+static inline bool mlTestAABBAABB(ml_vec3 center1, ml_vec3 extent1, ml_vec3 center2, ml_vec3 extent2)
+{
 	return (fabs(center1.x - center2.x) < extent1.x + extent2.x) &&
 		(fabs(center1.y - center2.y) < extent1.y + extent2.y) &&
 		(fabs(center1.z - center2.z) < extent1.z + extent2.z);
 }
 
-static inline bool mlTestPointAABB(ml_vec3 point, ml_vec3 center, ml_vec3 extent) {
+static inline bool mlTestPointAABB(ml_vec3 point, ml_vec3 center, ml_vec3 extent)
+{
 	return (fabs(center.x - point.x) < extent.x) &&
 		(fabs(center.y - point.y) < extent.y) &&
 		(fabs(center.z - point.z) < extent.z);
 }
-
-/* based on code by Pierre Terdiman
-   http://www.codercorner.com/RayAABB.cpp
- */
-static inline bool mlTestRayAABB(ml_vec3 origin, ml_vec3 dir, ml_vec3 center, ml_vec3 extent) {
-	ml_vec3 diff;
-
-	diff.x = origin.x - center.x;
-	if (fabsf(diff.x) > extent.x && diff.x*dir.x >= 0.0f)
-		return false;
-
-	diff.y = origin.y - center.y;
-	if (fabsf(diff.y) > extent.y && diff.y*dir.y >= 0.0f)
-		return false;
-
-	diff.z = origin.z - center.z;
-	if (fabsf(diff.z) > extent.z && diff.z*dir.z >= 0.0f)
-		return false;
-
-	ml_vec3 absdir = { fabsf(dir.x), fabsf(dir.y), fabsf(dir.z) };
-	float f;
-	f = dir.y * diff.z - dir.z * diff.y;
-	if (fabsf(f) > extent.y*absdir.z + extent.z*absdir.y)
-		return false;
-	f = dir.z * diff.x - dir.x * diff.z;
-	if (fabsf(f) > extent.x*absdir.z + extent.z*absdir.x)
-		return false;
-	f = dir.x * diff.y - dir.y * diff.x;
-	if (fabsf(f) > extent.x*absdir.y + extent.y*absdir.x)
-		return false;
-	return true;
-}
-
-/* http://tog.acm.org/resources/GraphicsGems/gems/BoxSphere.c */
-static inline bool mlTestSphereAABB(ml_vec3 pos, float radius, ml_vec3 center, ml_vec3 extent) {
-	float dmin = 0;
-	ml_vec3 bmin = { center.x - extent.x, center.y - extent.y, center.z - extent.z };
-	ml_vec3 bmax = { center.x + extent.x, center.y + extent.y, center.z + extent.z };
-	if (pos.x < bmin.x) dmin = pos.x - bmin.x;
-	else if (pos.x > bmax.x) dmin = pos.x - bmax.x;
-	if (dmin <= radius) return true;
-	if (pos.y < bmin.y) dmin = pos.y - bmin.y;
-	else if (pos.y > bmax.y) dmin = pos.y - bmax.y;
-	if (dmin <= radius) return true;
-	if (pos.z < bmin.z) dmin = pos.z - bmin.z;
-	else if (pos.z > bmax.z) dmin = pos.z - bmax.z;
-	if (dmin <= radius) return true;
-	return false;
-}
-
-static inline bool mlTestSphereAABB_Hit(ml_vec3 pos, float radius, ml_vec3 center, ml_vec3 extent, ml_vec3* hit) {
-	ml_vec3 sphereCenterRelBox;
-	sphereCenterRelBox = mlVec3Sub(pos, center);
-	// Point on surface of box that is closest to the center of the sphere
-	ml_vec3 boxPoint;
-
-	// Check sphere center against box along the X axis alone.
-	// If the sphere is off past the left edge of the box,
-	// then the left edge is closest to the sphere.
-	// Similar if it's past the right edge. If it's between
-	// the left and right edges, then the sphere's own X
-	// is closest, because that makes the X distance 0,
-	// and you can't get much closer than that :)
-
-	if (sphereCenterRelBox.x < -extent.x) boxPoint.x = -extent.x;
-	else if (sphereCenterRelBox.x > extent.x) boxPoint.x = extent.x;
-	else boxPoint.x = sphereCenterRelBox.x;
-
-	if (sphereCenterRelBox.y < -extent.y) boxPoint.y = -extent.y;
-	else if (sphereCenterRelBox.y > extent.y) boxPoint.y = extent.y;
-	else boxPoint.y = sphereCenterRelBox.y;
-
-	if (sphereCenterRelBox.z < -extent.z) boxPoint.z = -extent.z;
-	else if (sphereCenterRelBox.x > extent.z) boxPoint.z = extent.z;
-	else boxPoint.z = sphereCenterRelBox.z;
-
-	// Now we have the closest point on the box, so get the distance from
-	// that to the sphere center, and see if it's less than the radius
-
-	ml_vec3 dist = mlVec3Sub(sphereCenterRelBox, boxPoint);
-
-	if (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z < radius*radius) {
-		*hit = boxPoint;
-		return true;
-	}
-	return false;
-}
-
 
 // TODO: GL state stack - track state as a stack of uint64_ts...

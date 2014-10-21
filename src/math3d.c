@@ -549,9 +549,9 @@ void mlCreateMaterial(ml_material* material, const char* vsource, const char* fs
 	vshader = mlCompileShader(GL_VERTEX_SHADER, vsource);
 	fshader = mlCompileShader(GL_FRAGMENT_SHADER, fsource);
 	if (vshader == 0)
-		roamError("vshader source: %s", vsource);
+		fatal_error("vshader source: %s", vsource);
 	if (fshader == 0)
-		roamError("fshader source: %s", fsource);
+		fatal_error("fshader source: %s", fsource);
 	program = mlLinkProgram(vshader, fshader);
 	glDeleteShader(vshader);
 	glDeleteShader(fshader);
@@ -634,7 +634,7 @@ void mlCreateIndexedMesh(ml_mesh* mesh, size_t n, void* data, size_t ilen, GLenu
 	case GL_UNSIGNED_INT:
 		isize = 4; break;
 	default:
-		roamError("indextype must be one of GL_UNSIGNED_[BYTE|SHORT|INT]");
+		fatal_error("indextype must be one of GL_UNSIGNED_[BYTE|SHORT|INT]");
 	}
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ibo);
@@ -725,7 +725,7 @@ void mlDestroyRenderable(ml_renderable* renderable) {
 
 void mlInitMatrixStack(ml_matrixstack* stack, size_t size) {
 	if (size == 0)
-		roamError("Matrix stack too small");
+		fatal_error("Matrix stack too small");
 	stack->top = 0;
 	stack->stack = malloc(sizeof(ml_matrix) * size);
 	for (size_t i = 0; i < size; ++i)
@@ -758,13 +758,13 @@ void mlPushIdentity(ml_matrixstack* stack) {
 
 void mlPopMatrix(ml_matrixstack* stack) {
 	if (stack->top < 0)
-		roamError("Matrix stack underflow");
+		fatal_error("Matrix stack underflow");
 	--stack->top;
 }
 
 ml_matrix* mlGetMatrix(ml_matrixstack* stack) {
 	if (stack->top < 0)
-		roamError("Matrix stack underflow");
+		fatal_error("Matrix stack underflow");
 	return stack->stack + stack->top;
 }
 
@@ -775,7 +775,7 @@ void mlLoadTexture2D(ml_tex2d* tex, const char* filename) {
 	memset(tex, 0, sizeof(ml_tex2d));
 	data = stbi_load(filename, &x, &y, &n, 0);
 	if (data == NULL) {
-		roamError("Failed to load image %s", filename);
+		fatal_error("Failed to load image %s", filename);
 	}
 
 	glActiveTexture(GL_TEXTURE0);
@@ -799,7 +799,7 @@ void mlLoadTexture2D(ml_tex2d* tex, const char* filename) {
 	    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, x, y, 0, GL_RED, GL_UNSIGNED_BYTE, data);
 	    break;
     default:
-	    roamError("bad pixel depth %d for %s", n, filename);
+	    fatal_error("bad pixel depth %d for %s", n, filename);
     }
 
     glGenerateMipmap(GL_TEXTURE_2D);
@@ -817,4 +817,95 @@ void mlDestroyTexture2D(ml_tex2d* tex) {
 void mlBindTexture2D(ml_tex2d* tex, int index) {
 	glActiveTexture(GL_TEXTURE0 + index);
 	glBindTexture(GL_TEXTURE_2D, tex->id);
+}
+
+/* based on code by Pierre Terdiman
+   http://www.codercorner.com/RayAABB.cpp
+ */
+bool mlTestRayAABB(ml_vec3 origin, ml_vec3 dir, ml_vec3 center, ml_vec3 extent)
+{
+	ml_vec3 diff;
+
+	diff.x = origin.x - center.x;
+	if (fabsf(diff.x) > extent.x && diff.x*dir.x >= 0.0f)
+		return false;
+
+	diff.y = origin.y - center.y;
+	if (fabsf(diff.y) > extent.y && diff.y*dir.y >= 0.0f)
+		return false;
+
+	diff.z = origin.z - center.z;
+	if (fabsf(diff.z) > extent.z && diff.z*dir.z >= 0.0f)
+		return false;
+
+	ml_vec3 absdir = { fabsf(dir.x), fabsf(dir.y), fabsf(dir.z) };
+	float f;
+	f = dir.y * diff.z - dir.z * diff.y;
+	if (fabsf(f) > extent.y*absdir.z + extent.z*absdir.y)
+		return false;
+	f = dir.z * diff.x - dir.x * diff.z;
+	if (fabsf(f) > extent.x*absdir.z + extent.z*absdir.x)
+		return false;
+	f = dir.x * diff.y - dir.y * diff.x;
+	if (fabsf(f) > extent.x*absdir.y + extent.y*absdir.x)
+		return false;
+	return true;
+}
+
+
+/* http://tog.acm.org/resources/GraphicsGems/gems/BoxSphere.c */
+bool mlTestSphereAABB(ml_vec3 pos, float radius, ml_vec3 center, ml_vec3 extent)
+{
+	float dmin = 0;
+	ml_vec3 bmin = { center.x - extent.x, center.y - extent.y, center.z - extent.z };
+	ml_vec3 bmax = { center.x + extent.x, center.y + extent.y, center.z + extent.z };
+	if (pos.x < bmin.x) dmin = pos.x - bmin.x;
+	else if (pos.x > bmax.x) dmin = pos.x - bmax.x;
+	if (dmin <= radius) return true;
+	if (pos.y < bmin.y) dmin = pos.y - bmin.y;
+	else if (pos.y > bmax.y) dmin = pos.y - bmax.y;
+	if (dmin <= radius) return true;
+	if (pos.z < bmin.z) dmin = pos.z - bmin.z;
+	else if (pos.z > bmax.z) dmin = pos.z - bmax.z;
+	if (dmin <= radius) return true;
+	return false;
+}
+
+bool mlTestSphereAABB_Hit(ml_vec3 pos, float radius, ml_vec3 center, ml_vec3 extent, ml_vec3* hit)
+{
+	ml_vec3 sphereCenterRelBox;
+	sphereCenterRelBox = mlVec3Sub(pos, center);
+	// Point on surface of box that is closest to the center of the sphere
+	ml_vec3 boxPoint;
+
+	// Check sphere center against box along the X axis alone.
+	// If the sphere is off past the left edge of the box,
+	// then the left edge is closest to the sphere.
+	// Similar if it's past the right edge. If it's between
+	// the left and right edges, then the sphere's own X
+	// is closest, because that makes the X distance 0,
+	// and you can't get much closer than that :)
+
+	if (sphereCenterRelBox.x < -extent.x) boxPoint.x = -extent.x;
+	else if (sphereCenterRelBox.x > extent.x) boxPoint.x = extent.x;
+	else boxPoint.x = sphereCenterRelBox.x;
+
+	if (sphereCenterRelBox.y < -extent.y) boxPoint.y = -extent.y;
+	else if (sphereCenterRelBox.y > extent.y) boxPoint.y = extent.y;
+	else boxPoint.y = sphereCenterRelBox.y;
+
+	if (sphereCenterRelBox.z < -extent.z) boxPoint.z = -extent.z;
+	else if (sphereCenterRelBox.x > extent.z) boxPoint.z = extent.z;
+	else boxPoint.z = sphereCenterRelBox.z;
+
+	// Now we have the closest point on the box, so get the distance from
+	// that to the sphere center, and see if it's less than the radius
+
+	ml_vec3 dist = mlVec3Sub(sphereCenterRelBox, boxPoint);
+
+	if (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z < radius*radius) {
+		*hit = boxPoint;
+		return true;
+	}
+	return false;
 }

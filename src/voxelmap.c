@@ -84,7 +84,7 @@ void gameInitMap() {
 	memset(game.map.blocks, 0, sizeof(uint32_t)*MAP_BUFFER_SIZE);
 	printf("blocks: %p\n", game.map.blocks);
 
-	game.map.seed = good_seed();
+	game.map.seed = sys_urandom();
 	printf("* Seed: %lx\n", game.map.seed);
 	simplexInit(game.map.seed);
 	osnInit(game.map.seed);
@@ -203,7 +203,7 @@ void gameDrawMap(ml_frustum* frustum) {
 				continue;
 
 			if (game.debug_mode && chunk->dirty) {
-				uiDebugAABB(center, extent, 0x44ff2222);
+				ui_debug_aabb(center, extent, 0x44ff2222);
 				continue;
 			}
 
@@ -221,7 +221,7 @@ void gameDrawMap(ml_frustum* frustum) {
 				if (mlTestFrustumAABB_Y(frustum, center, extent) == ML_OUTSIDE)
 					continue;
 
-				//uiDebugAABB(center, extent, 0x4422ff22);
+				//ui_debug_aabb(center, extent, 0x4422ff22);
 
 				// update the chunk offset uniform
 				// bind the VBO
@@ -542,7 +542,7 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 				++nprocessed;
 
 				if (vi > TESSELATION_BUFFER_SIZE)
-					roamError("Tesselation buffer too small for chunk (%d, %d, %d): %zu verts, %zu blocks processed", bufx, cy, bufz, vi, nprocessed);
+					fatal_error("Tesselation buffer too small for chunk (%d, %d, %d): %zu verts, %zu blocks processed", bufx, cy, bufz, vi, nprocessed);
 			}
 		}
 	}
@@ -565,8 +565,8 @@ bool gameRayTest(ml_dvec3 origin, ml_vec3 dir, int len, ml_ivec3* hit, ml_ivec3*
 			uint8_t t = blockTypeByCoord(block);
 			if (t != BLOCK_AIR) {
 				if (game.debug_mode) {
-					uiDebugBlock(prev, 0xff0000ff);
-					uiDebugBlock(block, 0xff00ff00);
+					ui_debug_block(prev, 0xff0000ff);
+					ui_debug_block(block, 0xff00ff00);
 				}
 				if (hit != NULL)
 					*hit = block;

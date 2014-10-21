@@ -24,7 +24,7 @@ readLine(char* to, const char** data) {
 		while (*buf && *buf != '\n') {
 			*wp++ = *buf++;
 			if (wp - to >= LINEBUF_SIZE)
-				roamError("objLoad: Line too long");
+				fatal_error("objLoad: Line too long");
 		}
 	}
 	*data = buf;
@@ -50,7 +50,7 @@ strtok_x(char* output, char* tokens, const char* delim) {
 static void
 pushVertex(obj_mesh* m, float* v, size_t n) {
 	if (n != 3)
-		roamError("Only 3D vertices allowed in obj: n = %zu", n);
+		fatal_error("Only 3D vertices allowed in obj: n = %zu", n);
 	while (m->nverts + n > m->vcap) {
 		m->vcap *= 2;
 		m->verts = realloc(m->verts, m->vcap * sizeof(float));
@@ -62,7 +62,7 @@ pushVertex(obj_mesh* m, float* v, size_t n) {
 static void
 pushFace(obj_mesh* m, uint32_t* f, size_t n) {
 	if (n != 3)
-		roamError("Only triangles allowed in obj: n = %zu", n);
+		fatal_error("Only triangles allowed in obj: n = %zu", n);
 	while (m->nindices + n > m->fcap) {
 		m->fcap *= 2;
 		m->indices = realloc(m->indices, m->fcap * sizeof(uint32_t));
@@ -94,7 +94,7 @@ void objLoad(obj_mesh* mesh, const char* data, float vscale) {
 				tok = strtok_x(tokbuf, tok, delim);
 				tmpvert[i++] = atof(tokbuf) * vscale;
 				if (i > 4)
-					roamError("Too many dimensions (%d) in .obj vertex", i);
+					fatal_error("Too many dimensions (%d) in .obj vertex", i);
 			} while (*tok != '\0');
 			pushVertex(mesh, tmpvert, i);
 		} else if (strcmp(tokbuf, "f") == 0) {
@@ -104,12 +104,12 @@ void objLoad(obj_mesh* mesh, const char* data, float vscale) {
 				// - 1 because .obj indices are 1-based
 				tmpindex[i++] = (uint32_t)atol(tokbuf) - 1;
 				if (i > 3)
-					roamError("Too many vertices in face (%d)", i);
+					fatal_error("Too many vertices in face (%d)", i);
 			} while (*tok != '\0');
 			pushFace(mesh, tmpindex, i);
 		} else {
 			// TODO: vt, vn, f v/vt/vn
-			roamError("Unhandled token: '%s'", tokbuf);
+			fatal_error("Unhandled token: '%s'", tokbuf);
 		}
 	}
 }
@@ -124,11 +124,11 @@ void objGenNormalsFn(obj_mesh* obj, void** vertexdata, size_t* vertexsize, GLenu
 
 	for (i = 0; i < obj->nindices; i += 3) {
 		if (obj->indices[i + 0] > nvertices)
-			roamError("index out of bound: %u", obj->indices[i + 0]);
+			fatal_error("index out of bound: %u", obj->indices[i + 0]);
 		if (obj->indices[i + 1] > nvertices)
-			roamError("index out of bound: %u", obj->indices[i + 1]);
+			fatal_error("index out of bound: %u", obj->indices[i + 1]);
 		if (obj->indices[i + 2] > nvertices)
-			roamError("index out of bound: %u", obj->indices[i + 2]);
+			fatal_error("index out of bound: %u", obj->indices[i + 2]);
 		ml_vec3 t1 = verts[obj->indices[i + 0]].pos;
 		ml_vec3 t2 = verts[obj->indices[i + 1]].pos;
 		ml_vec3 t3 = verts[obj->indices[i + 2]].pos;

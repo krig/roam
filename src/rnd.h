@@ -27,8 +27,6 @@ static inline uint64_t osnRand(uint64_t seed) {
 		return seed * UINT64_C(6364136223846793005) + UINT64_C(1442695040888963407);
 }
 
-uint64_t good_seed();
-
 // spatially localized hash function for chunks
 static inline uint64_t chunk_hash(int x, int y, int z) {
 	uint64_t hash = 0;

@@ -1,5 +1,3 @@
-#include <time.h>
-#include <pthread.h>
 #include "common.h"
 #include "math3d.h"
 #include "shaders.h"
@@ -24,22 +22,9 @@ ml_tex2d blocks_texture;
 
 static void gameUpdateTime(float dt);
 
-
-uint64_t good_seed() {
-	FILE* f = fopen("/dev/urandom", "rb");
-	if (f == NULL)
-		f = fopen("/dev/random", "rb");
-	if (f == NULL)
-		return time(NULL);
-	uint64_t seed;
-	fread(&seed, sizeof(uint64_t), 1, f);
-	fclose(f);
-	return seed;
-}
-
-
-static void
-gameInit() {
+static
+void gameInit()
+{
 	mlLoadTexture2D(&blocks_texture, "data/blocks8-v1.png");
 
 	ml_dvec3 offs = { 2.537648, OCEAN_LEVEL + 1.336000, 0.514751 };
@@ -81,7 +66,7 @@ gameInit() {
 	mlCreateMaterial(&game.materials[MAT_DEBUG], debug_vshader, debug_fshader);
 	mlCreateMaterial(&game.materials[MAT_CHUNK], chunk_vshader, chunk_fshader);
 	mlCreateMaterial(&game.materials[MAT_SKY], sky_vshader, sky_fshader);
-	uiInit(game.materials + MAT_UI, game.materials + MAT_DEBUG);
+	ui_init(game.materials + MAT_UI, game.materials + MAT_DEBUG);
 
 	game.day = 0;
 	game.time_of_day = 0;
@@ -108,8 +93,9 @@ gameInit() {
 	SDL_SetRelativeMouseMode(SDL_TRUE);
 }
 
-static ml_vec3
-sun_mix(const ml_vec3* colors, double day_amt, double dusk_amt, double night_amt, double dawn_amt) {
+static
+ml_vec3 sun_mix(const ml_vec3* colors, double day_amt, double dusk_amt, double night_amt, double dawn_amt)
+{
 	ml_vec3 c;
 	c.x = colors[0].x*day_amt + colors[1].x*dusk_amt + colors[2].x*night_amt + colors[3].x*dawn_amt;
 	c.y = colors[0].y*day_amt + colors[1].y*dusk_amt + colors[2].y*night_amt + colors[3].y*dawn_amt;
@@ -117,16 +103,18 @@ sun_mix(const ml_vec3* colors, double day_amt, double dusk_amt, double night_amt
 	return c;
 }
 
-static inline ml_vec3
-mkrgb(uint32_t rgb) {
+static inline
+ml_vec3 mkrgb(uint32_t rgb)
+{
 	ml_vec3 c = {((float)((rgb>>16)&0xff)/255.f),
 	             ((float)((rgb>>8)&0xff)/255.f),
 	             ((float)((rgb)&0xff)/255.f) };
 	return c;
 }
 
-static void
-gameUpdateTime(float dt) {
+static
+void gameUpdateTime(float dt)
+{
 	double daylength = DAY_LENGTH;
 	if (game.fast_day_mode)
 		daylength = 10.0;
@@ -238,11 +226,12 @@ gameUpdateTime(float dt) {
 	game.light_dir = mlVec3Normalize(game.light_dir);
 }
 
-static void
-gameExit() {
+static
+void gameExit()
+{
 	gameFreeMap();
 	skyExit();
-	uiExit();
+	ui_exit();
 	for (int i = 0; i < MAX_MATERIALS; ++i)
 		mlDestroyMaterial(game.materials + i);
 	mlDestroyMatrixStack(&game.projection);
@@ -262,9 +251,10 @@ static bool move_jump = false;
 static bool move_crouch = false;
 static float crouch_fade = 0.f;
 
-static bool
-gameHandleEvent(SDL_Event* event) {
-	if (uiConsoleHandleEvent(event))
+static
+bool gameHandleEvent(SDL_Event* event)
+{
+	if (ui_console_handle_event(event))
 		return true;
 
 	switch (event->type) {
@@ -283,7 +273,7 @@ gameHandleEvent(SDL_Event* event) {
 		else if (sym == SDLK_F4)
 			game.camera.mode = (game.camera.mode + 1) % NUM_CAMERA_MODES;
 		else if (sym == SDLK_BACKQUOTE)
-			uiConsoleToggle(true);
+			ui_console_toggle(true);
 		else if (sym == SDLK_F2)
 			game.fast_day_mode = true;
 		else if (sym == game.controls.sprint)
@@ -353,14 +343,16 @@ gameHandleEvent(SDL_Event* event) {
 	return true;
 }
 
-static void
-playerLook(float dyaw, float dpitch) {
+static
+void playerLook(float dyaw, float dpitch)
+{
 	game.camera.yaw = mlWrap(game.camera.yaw - dyaw, 0.f, ML_TWO_PI);
 	game.camera.pitch = mlClamp(game.camera.pitch - dpitch, -ML_PI_2, ML_PI_2);
 }
 
-static void
-playerMove(float right, float forward) {
+static
+void playerMove(float right, float forward)
+{
 	ml_matrix m;
 	ml_vec3 move = { right, 0, -forward };
 	ml_vec3 dmove;
@@ -376,8 +368,9 @@ playerMove(float right, float forward) {
 	}
 }
 
-static void
-playerJump(float speed) {
+static
+void playerJump(float speed)
+{
 	switch (game.camera.mode) {
 	case CAMERA_FLIGHT:
 		game.player.jumpcount = 0.2f;
@@ -394,16 +387,18 @@ playerJump(float speed) {
 	}
 }
 
-static void
-playerCrouch(bool t, float dt) {
+static
+void playerCrouch(bool t, float dt)
+{
 	game.player.crouching = t;
 	if (!t)
 		dt = -dt;
 	crouch_fade = mlClamp(crouch_fade + dt*5.f, 0.f, 1.f);
 }
 
-static void
-gameUpdatePlayer(float dt) {
+static
+void gameUpdatePlayer(float dt)
+{
 	game.player.jumpcount = mlMax(0.f, game.player.jumpcount - dt);
 	float MAX_VEL = 54.f;
 	game.player.velocity.x = mlClamp(game.player.velocity.x, -MAX_VEL, MAX_VEL);
@@ -458,8 +453,9 @@ gameUpdatePlayer(float dt) {
 	}
 }
 
-static void
-gameUpdate(float dt) {
+static
+void gameUpdate(float dt)
+{
 	const float xsens = 1.f / ML_TWO_PI;
 	const float ysens = 1.f / ML_TWO_PI;
 	int mouse_dx, mouse_dy;
@@ -495,7 +491,7 @@ gameUpdate(float dt) {
 	}
 
 	gameUpdatePlayer(dt);
-	uiUpdate(dt);
+	ui_update(dt);
 	gameUpdateMap();
 	// update player/input
 	// update blocks
@@ -515,8 +511,9 @@ printMatrix(ml_matrix* m) {
 }
 */
 
-static void
-gameRender(SDL_Point* viewport, float frametime) {
+static
+void gameRender(SDL_Point* viewport, float frametime)
+{
 	glCheck(__LINE__);
 
 	glEnable(GL_DEPTH_TEST);
@@ -556,8 +553,8 @@ gameRender(SDL_Point* viewport, float frametime) {
 	ml_frustum frustum;
 	mlGetFrustum(&frustum, mlGetMatrix(&game.projection), &view);
 
-	uiRect(viewport->x/2 - 1, viewport->y/2 - 5, 2, 10, 0x7fffffff);
-	uiRect(viewport->x/2 - 5, viewport->y/2 - 1, 10, 2, 0x7fffffff);
+	ui_rect(viewport->x/2 - 1, viewport->y/2 - 5, 2, 10, 0x7fffffff);
+	ui_rect(viewport->x/2 - 5, viewport->y/2 - 1, 10, 2, 0x7fffffff);
 
 	// draw blocks (tesselate in parallel?)
 	// draw objects
@@ -601,7 +598,7 @@ gameRender(SDL_Point* viewport, float frametime) {
 			frustum.planes[5].z
 		};
 		if (gameRayTest(pp, v, 16, &picked_block, &prepicked_block)) {
-			uiDebugBlock(picked_block, 0xcff1c40f);
+			ui_debug_block(picked_block, 0xcff1c40f);
 		}
 	}
 
@@ -610,9 +607,9 @@ gameRender(SDL_Point* viewport, float frametime) {
 		                   game.player.pos.y + 0.9f,
 		                   game.player.pos.z - camera.z*CHUNK_SIZE };
 		ml_vec3 extent = { 0.5f, 0.9f, 0.5f };
-		uiDebugAABB(center, extent, 0xff7f7f7f);
+		ui_debug_aabb(center, extent, 0xff7f7f7f);
 		if (game.debug_mode)
-			uiDebugBlock(playerBlock(), 0xff00ffff);
+			ui_debug_block(playerBlock(), 0xff00ffff);
 	}
 
 	if (game.debug_mode) {
@@ -624,34 +621,34 @@ gameRender(SDL_Point* viewport, float frametime) {
 		xaxis = mlVec3Add(origo, xaxis);
 		yaxis = mlVec3Add(origo, yaxis);
 		zaxis = mlVec3Add(origo, zaxis);
-		uiDebugLine(origo, xaxis, 0xff00ff00);
-		uiDebugLine(origo, yaxis, 0xffff0000);
-		uiDebugLine(origo, zaxis, 0xff0000ff);
+		ui_debug_line(origo, xaxis, 0xff00ff00);
+		ui_debug_line(origo, yaxis, 0xffff0000);
+		ui_debug_line(origo, zaxis, 0xff0000ff);
 
 
-		uiRect(2, 2, 400, 5 + 32 + 2, 0x66000000);
-		uiText(5, 5 + 32, 0xffffffff, "(%2.2f, %2.2f, %2.2f) %d %2.1f %d\n%2.2g, %2.2g, %2.2g (%d, %d) %d\nfps: %d, t: %1.3f",
-		       game.player.velocity.x, game.player.velocity.y, game.player.velocity.z,
-		       game.player.onground, game.player.jumpcount, game.player.crouching,
-		       game.player.pos.x, game.player.pos.y, game.player.pos.z,
-		       camera.x, camera.z, game.camera.mode,
-		       (int)(1.f / frametime), game.time_of_day);
+		ui_rect(2, 2, 400, 5 + 32 + 2, 0x66000000);
+		ui_text(5, 5 + 32, 0xffffffff, "(%2.2f, %2.2f, %2.2f) %d %2.1f %d\n%2.2g, %2.2g, %2.2g (%d, %d) %d\nfps: %d, t: %1.3f",
+			game.player.velocity.x, game.player.velocity.y, game.player.velocity.z,
+			game.player.onground, game.player.jumpcount, game.player.crouching,
+			game.player.pos.x, game.player.pos.y, game.player.pos.z,
+			camera.x, camera.z, game.camera.mode,
+			(int)(1.f / frametime), game.time_of_day);
 	}
-	uiDrawDebug(&game.projection, &game.modelview);
-	uiDraw(viewport);
+	ui_draw_debug(&game.projection, &game.modelview);
+	ui_draw(viewport);
 
 	if (mouse_captured)
 		SDL_WarpMouseInWindow(window, viewport->x >> 1, viewport->y >> 1);
 }
 
-int
-main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
 	SDL_Event event;
 	SDL_Point sz;
 	GLenum rc;
 
 	if (argc == 3 && strcmp(argv[1], "objtest") == 0) {
-		char* fdata = osReadWholeFile(argv[2]);
+		char* fdata = sys_readfile(argv[2]);
 		obj_mesh obj;
 		objLoad(&obj, fdata, 0.1f);
 		printf("loaded %s: %zu verts, %zu faces\n", argv[2], obj.nverts / 3, obj.nindices / 3);
@@ -675,18 +672,18 @@ main(int argc, char* argv[]) {
 	                               1100, 550,
 	                               SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 	if (window == NULL)
-		roamError(SDL_GetError());
+		fatal_error(SDL_GetError());
 
 	context = SDL_GL_CreateContext(window);
 	if (context == NULL)
-		roamError(SDL_GetError());
+		fatal_error(SDL_GetError());
 
 	SDL_GL_MakeCurrent(window, context);
 	//SDL_GL_SetSwapInterval(1);
 
 	glewExperimental = GL_TRUE;
 	if ((rc = glewInit()) != GLEW_OK)
-		roamError((const char*)glewGetErrorString(rc));
+		fatal_error((const char*)glewGetErrorString(rc));
 
 	int major, minor;
 	glGetIntegerv(GL_MAJOR_VERSION, &major);

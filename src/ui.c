@@ -7,7 +7,7 @@
 
 // UI drawing
 static ml_material* ui_material = NULL;
-static ml_tex2d ui_8x8font;
+static ml_tex2d ui_font;
 static GLint ui_screensize_index = -1;
 static GLint ui_tex0_index = -1;
 static GLuint ui_vao = 0;
@@ -38,11 +38,10 @@ static int console_scrollback_pos = 0;
 
 #define UI_CHAR_W (9)
 #define UI_CHAR_H (9)
-#define UI_FONT_W (1024)
-#define UI_FONT_H (16)
 
 
-void uiInit(ml_material* uimat, ml_material* debugmat) {
+void ui_init(ml_material* uimat, ml_material* debugmat)
+{
 	ui_material = uimat;
 	ui_screensize_index = glGetUniformLocation(uimat->program, "screensize");
 	ui_tex0_index = glGetUniformLocation(uimat->program, "tex0");
@@ -52,7 +51,7 @@ void uiInit(ml_material* uimat, ml_material* debugmat) {
 	debug_modelview_index = glGetUniformLocation(debugmat->program, "modelview");
 	printf("projmat: %d, modelview: %d\n", debug_projmat_index, debug_modelview_index);
 
-	mlLoadTexture2D(&ui_8x8font, "data/VictoriaBold.png");
+	mlLoadTexture2D(&ui_font, "data/VictoriaBold.png");
 
 	glGenBuffers(1, &ui_vbo);
 	glGenVertexArrays(1, &ui_vao);
@@ -80,37 +79,41 @@ void uiInit(ml_material* uimat, ml_material* debugmat) {
 
 }
 
-void uiExit() {
-	mlDestroyTexture2D(&ui_8x8font);
+void ui_exit()
+{
+	mlDestroyTexture2D(&ui_font);
 	glDeleteBuffers(1, &ui_vbo);
 	glDeleteVertexArrays(1, &ui_vao);
 	glDeleteBuffers(1, &debug_vbo);
 	glDeleteVertexArrays(1, &debug_vao);
 }
 
-void uiUpdate(float dt) {
+void ui_update(float dt)
+{
 	if (console_enabled)
-		console_fade = mlClamp(console_fade + dt*2.5f, 0, 1.f);
+		console_fade = mlClamp(console_fade + dt*1.5f, 0, 1.f);
 	else
-		console_fade = mlClamp(console_fade - dt*2.5f, 0, 1.f);
+		console_fade = mlClamp(console_fade - dt*1.5f, 0, 1.f);
 }
 
-bool uiConsoleEnabled() {
+bool ui_console_enabled()
+{
 	return console_enabled;
 }
 
 
-void uiDraw(SDL_Point* viewport) {
+void ui_draw(SDL_Point* viewport)
+{
+	const int NLINES = 32;
 	if (console_enabled || console_fade > 0) {
 		int console_width = (640 > viewport->x) ? viewport->x : 640;
 		int max_display = console_width/UI_CHAR_W - 1;
 		size_t len, offset;
 		float elastic_fade = enQuinticInOut(console_fade);
 		uint32_t alpha = (uint32_t)(mlMax(elastic_fade, 0.1f)*255.5f);
-		float yoffs = (float)(12*UI_FONT_H) * elastic_fade;
-		float xoffs = (float)(console_width) * elastic_fade;
-		uiRect(0, viewport->y - (int)yoffs, console_width, 12*UI_FONT_H, ((alpha * 5 / 6)<<24)|0x2c3e50);
-		uiRect(0, viewport->y - (int)yoffs - UI_FONT_H - 4, (int)xoffs, UI_FONT_H + 4, (alpha<<24)|0x34495e);
+		float yoffs = (float)(NLINES*UI_CHAR_H) * elastic_fade;
+		ui_rect(0, viewport->y - (int)yoffs, console_width, NLINES*UI_CHAR_H, ((alpha * 5 / 6)<<24)|0x2c3e50);
+		ui_rect(0, viewport->y - (int)yoffs - UI_CHAR_H - 4, console_width, UI_CHAR_H + 4, (alpha<<24)|0x34495e);
 		int sby = viewport->y - (int)yoffs + 2;
 		int sbpos = (console_scrollback_pos - 1) % CONSOLE_SCROLLBACK;
 		if (sbpos < 0)
@@ -120,15 +123,15 @@ void uiDraw(SDL_Point* viewport) {
 				break;
 			len = strlen(console_scrollback[sbpos]);
 			offset = (len > max_display) ? (len - max_display) : 0;
-			uiText(2, sby, (alpha<<24)|0xbdc3c7, "%s", console_scrollback[sbpos] + offset);
-			sby += UI_FONT_H;
+			ui_text(2, sby, (alpha<<24)|0xbdc3c7, "%s", console_scrollback[sbpos] + offset);
+			sby += UI_CHAR_H;
 			sbpos = (sbpos - 1) % CONSOLE_SCROLLBACK;
 			if (sbpos < 0)
 				sbpos = CONSOLE_SCROLLBACK - 1;
 		}
 		len = strlen(console_cmdline);
 		offset = (len > (max_display - 1)) ? (len - (max_display - 1)) : 0;
-		uiText(2, viewport->y - (int)yoffs - UI_FONT_H, (alpha<<24)|0xeeeeec, "#%s", console_cmdline + offset);
+		ui_text(2, viewport->y - (int)yoffs - UI_CHAR_H, (alpha<<24)|0xeeeeec, "#%s", console_cmdline + offset);
 	}
 
 	if (ui_count > 0) {
@@ -139,7 +142,7 @@ void uiDraw(SDL_Point* viewport) {
 		glDisable(GL_DEPTH_TEST);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glUseProgram(ui_material->program);
-		mlBindTexture2D(&ui_8x8font, 0);
+		mlBindTexture2D(&ui_font, 0);
 		glUniform2fv(ui_screensize_index, 1, (float*)&screensize);
 		glUniform1i(ui_tex0_index, 0);
 		glBindVertexArray(ui_vao);
@@ -156,13 +159,15 @@ void uiDraw(SDL_Point* viewport) {
 	}
 }
 
-void uiSetScale(float scale) {
+void ui_set_scale(float scale)
+{
 	ui_scale = scale;
 }
 
 #define MAX_TEXT_LEN 256
 
-void uiTextMeasure(int* w, int* h, const char* str, ...) {
+void ui_text_measure(int* w, int* h, const char* str, ...)
+{
 	char buf[MAX_TEXT_LEN];
 	va_list va_args;
 	va_start(va_args, str);
@@ -186,7 +191,8 @@ void uiTextMeasure(int* w, int* h, const char* str, ...) {
 }
 
 
-void uiText(float x, float y, uint32_t clr, const char* str, ...) {
+void ui_text(float x, float y, uint32_t clr, const char* str, ...)
+{
 	char buf[MAX_TEXT_LEN];
 	size_t len;
 	int scale;
@@ -212,8 +218,8 @@ void uiText(float x, float y, uint32_t clr, const char* str, ...) {
 		cx += scale;
 	}
 
-	d = (float)UI_CHAR_W / (float)UI_FONT_W;
-	v = (float)UI_CHAR_H / (float)UI_FONT_H;
+	d = (float)UI_CHAR_W / (float)ui_font.w;
+	v = (float)UI_CHAR_H / (float)ui_font.h;
 
 	ml_vec2 rpos = { x, y - (h - 8) };
 	for (size_t i = 0; i < len; ++i) {
@@ -248,10 +254,11 @@ void uiText(float x, float y, uint32_t clr, const char* str, ...) {
 	}
 }
 
-void uiRect(float x, float y, float w, float h, uint32_t clr) {
-	float tl = 0.5f / (float)UI_FONT_W;
-	float br = 7.5f / (float)UI_FONT_W;
-	float v = 2.f / (float)UI_FONT_H;
+void ui_rect(float x, float y, float w, float h, uint32_t clr)
+{
+	float tl = 0.5f / (float)ui_font.w;
+	float br = 7.5f / (float)ui_font.w;
+	float v = 2.f / (float)ui_font.h;
 	if (ui_count + 6 > MAX_UI_VERTICES)
 		return;
 	ml_vtx_ui quad[6] = {
@@ -267,7 +274,8 @@ void uiRect(float x, float y, float w, float h, uint32_t clr) {
 }
 
 
-void uiDebugLine(ml_vec3 p1, ml_vec3 p2, uint32_t clr) {
+void ui_debug_line(ml_vec3 p1, ml_vec3 p2, uint32_t clr)
+{
 	if (debug_linevertcount + 2 > MAX_DEBUG_LINEVERTS)
 		return;
 	debug_lines[debug_linevertcount + 0].pos = p1;
@@ -280,7 +288,8 @@ void uiDebugLine(ml_vec3 p1, ml_vec3 p2, uint32_t clr) {
 	//       p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
 }
 
-void uiDebugAABB(ml_vec3 center, ml_vec3 extent, uint32_t clr) {
+void ui_debug_aabb(ml_vec3 center, ml_vec3 extent, uint32_t clr)
+{
 	ml_vec3 maxp = mlVec3Add(center, extent);
 	ml_vec3 minp = mlVec3Sub(center, extent);
 	ml_vec3 corners[8] = {
@@ -294,23 +303,24 @@ void uiDebugAABB(ml_vec3 center, ml_vec3 extent, uint32_t clr) {
 		{ maxp.x, maxp.y, maxp.z },
 		{ minp.x, maxp.y, maxp.z },
 	};
-	uiDebugLine(corners[0], corners[1], clr);
-	uiDebugLine(corners[1], corners[2], clr);
-	uiDebugLine(corners[2], corners[3], clr);
-	uiDebugLine(corners[3], corners[0], clr);
+	ui_debug_line(corners[0], corners[1], clr);
+	ui_debug_line(corners[1], corners[2], clr);
+	ui_debug_line(corners[2], corners[3], clr);
+	ui_debug_line(corners[3], corners[0], clr);
 
-	uiDebugLine(corners[4], corners[5], clr);
-	uiDebugLine(corners[5], corners[6], clr);
-	uiDebugLine(corners[6], corners[7], clr);
-	uiDebugLine(corners[7], corners[4], clr);
+	ui_debug_line(corners[4], corners[5], clr);
+	ui_debug_line(corners[5], corners[6], clr);
+	ui_debug_line(corners[6], corners[7], clr);
+	ui_debug_line(corners[7], corners[4], clr);
 
-	uiDebugLine(corners[0], corners[4], clr);
-	uiDebugLine(corners[1], corners[5], clr);
-	uiDebugLine(corners[2], corners[6], clr);
-	uiDebugLine(corners[3], corners[7], clr);
+	ui_debug_line(corners[0], corners[4], clr);
+	ui_debug_line(corners[1], corners[5], clr);
+	ui_debug_line(corners[2], corners[6], clr);
+	ui_debug_line(corners[3], corners[7], clr);
 }
 
-void uiDebugBlock(ml_ivec3 block, uint32_t clr) {
+void ui_debug_block(ml_ivec3 block, uint32_t clr)
+{
 	ml_vec3 pos;
 	ml_vec3 ext;
 	ml_chunk camera = playerChunk();
@@ -319,11 +329,12 @@ void uiDebugBlock(ml_ivec3 block, uint32_t clr) {
 	             block.y,
 	             block.z - camera.z*CHUNK_SIZE);
 	mlVec3Assign(ext, 0.5f, 0.5f, 0.5f);
-	uiDebugAABB(pos, ext, clr);
+	ui_debug_aabb(pos, ext, clr);
 }
 
 
-void uiDebugPoint(ml_vec3 p, uint32_t clr) {
+void ui_debug_point(ml_vec3 p, uint32_t clr)
+{
 	ml_vec3 p0, p1, p2, p3, p4, p5;
 	p0 = p1 = p2 = p3 = p4 = p5 = p;
 	p0.x -= 0.05f;
@@ -332,15 +343,16 @@ void uiDebugPoint(ml_vec3 p, uint32_t clr) {
 	p3.y += 0.05f;
 	p4.z -= 0.05f;
 	p5.z += 0.05f;
-	uiDebugLine(p0, p1, clr);
-	uiDebugLine(p2, p3, clr);
-	uiDebugLine(p4, p5, clr);
+	ui_debug_line(p0, p1, clr);
+	ui_debug_line(p2, p3, clr);
+	ui_debug_line(p4, p5, clr);
 }
 
-void uiDebugSphere(ml_vec3 p, float r, uint32_t clr) {
+void ui_debug_sphere(ml_vec3 p, float r, uint32_t clr)
+{
 	#define SPHERE_NDIV 7
 
-	uiDebugPoint(p, clr);
+	ui_debug_point(p, clr);
 
 	for (int i = 0; i < SPHERE_NDIV; ++i) {
 		float st = sin(((float)i / SPHERE_NDIV) * ML_TWO_PI);
@@ -354,12 +366,13 @@ void uiDebugSphere(ml_vec3 p, float r, uint32_t clr) {
 		ml_vec3 p2 = { p.x + r * st1, p.y, p.z + r * ct1 };
 		ml_vec3 p3 = { p.x + r * st, p.y + r * ct, p.z };
 		ml_vec3 p4 = { p.x + r * st1, p.y + r * ct1, p.z };
-		uiDebugLine(p1, p2, clr);
-		uiDebugLine(p3, p4, clr);
+		ui_debug_line(p1, p2, clr);
+		ui_debug_line(p3, p4, clr);
 	}
 }
 
-void uiDrawDebug(ml_matrixstack* projection, ml_matrixstack* modelview) {
+void ui_draw_debug(ml_matrixstack* projection, ml_matrixstack* modelview)
+{
 	if (debug_linevertcount > 0) {
 		glEnable(GL_BLEND);
 		glEnable(GL_DEPTH_TEST);
@@ -383,7 +396,8 @@ void uiDrawDebug(ml_matrixstack* projection, ml_matrixstack* modelview) {
 	}
 }
 
-void uiConsoleToggle(bool enable) {
+void ui_console_toggle(bool enable)
+{
 	console_enabled = enable;
 	if (console_enabled) {
 		SDL_StartTextInput();
@@ -392,12 +406,14 @@ void uiConsoleToggle(bool enable) {
 	}
 }
 
-void uiAddConsoleLine(const char* txt) {
+void ui_add_console_line(const char* txt)
+{
 	strmcpy(console_scrollback[console_scrollback_pos], txt, MAX_CONSOLE_INPUT);
 	console_scrollback_pos = (console_scrollback_pos + 1) % CONSOLE_SCROLLBACK;
 }
 
-void uiExecuteConsoleCommand(char* cmd) {
+void ui_execute_console_command(char* cmd)
+{
 	int ntok;
 	char** tok = stb_tokens(cmd, " \t\r\n", &ntok);
 	if (ntok == 0)
@@ -406,32 +422,33 @@ void uiExecuteConsoleCommand(char* cmd) {
 		game.game_active = false;
 	} else if (strcmp(tok[0], "/fastday") == 0) {
 		game.fast_day_mode = true;
-		uiAddConsoleLine("Fast day mode on.");
+		ui_add_console_line("Fast day mode on.");
 	} else if (strcmp(tok[0], "/nofastday") == 0) {
 		game.fast_day_mode = false;
-		uiAddConsoleLine("Fast day mode off.");
+		ui_add_console_line("Fast day mode off.");
 	} else if (strcmp(tok[0], "/time") == 0) {
 		if (ntok != 2) {
-			uiAddConsoleLine("Expected /time <0-1000>");
+			ui_add_console_line("Expected /time <0-1000>");
 		} else {
 			long int v = strtol(tok[1], NULL, 0);
 			game.time_of_day = (double)v/1000.0;
-			uiAddConsoleLine(stb_sprintf("Set time to %ld", v));
+			ui_add_console_line(stb_sprintf("Set time to %ld", v));
 		}
 	} else {
-		uiAddConsoleLine(stb_sprintf("Unknown command: %s", cmd));
+		ui_add_console_line(stb_sprintf("Unknown command: %s", cmd));
 	}
 }
 
-bool uiConsoleHandleEvent(SDL_Event* event) {
+bool ui_console_handle_event(SDL_Event* event)
+{
 	if (!console_enabled)
 		return false;
 	switch (event->type) {
 	case SDL_KEYDOWN:
 		if (event->key.keysym.sym == SDLK_BACKQUOTE || event->key.keysym.sym == SDLK_ESCAPE) {
-			uiConsoleToggle(false);
+			ui_console_toggle(false);
 		} else if (event->key.keysym.sym == SDLK_RETURN) {
-			uiExecuteConsoleCommand(console_cmdline);
+			ui_execute_console_command(console_cmdline);
 			memset(console_cmdline, 0, MAX_CONSOLE_INPUT);
 		} else if (event->key.keysym.sym == SDLK_BACKSPACE) {
 			char* s = console_cmdline;
