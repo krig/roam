@@ -376,12 +376,15 @@ bool gameHandleEvent(SDL_Event* event)
 
 // TODO: make these tweakable from console
 #define FLYSPEED 20.f
-#define RUNSPEED 5.f
+#define RUNSPEED 10.f
 #define SPRINTSPEED 2.f
 #define CROUCHSPEED 0.5f
 #define JUMPCOUNT 0.2f
-#define JUMPSPEED 20.f
+#define CROUCHJUMP 0.8f
+#define JUMPFORCE 900.f
+#define FLYUPDOWN 20.f
 #define MAX_VELOCITY 54.f
+#define GRAVITY -20.f
 
 static
 void player_look(float dt)
@@ -440,14 +443,17 @@ void player_jump(float dt)
 
 	switch (game.camera.mode) {
 	case CAMERA_FLIGHT:
-		game.player.jumpcount = 0.2f;
-		game.player.acc.y = 20.f;
+		game.player.jumpcount = JUMPCOUNT;
+		game.player.acc.y = FLYUPDOWN;
 		break;
 	default:
 		if (game.player.onground && game.player.jumpcount <= 0.f) {
-			game.player.jumpcount = 0.2f;
-			game.player.acc.y = 20.f;
+			game.player.jumpcount = JUMPCOUNT;
 			game.player.onground = false;
+			float jf = JUMPFORCE;
+			if (move_crouch)
+				jf *= CROUCHJUMP;
+			game.player.acc.y += jf;
 		}
 		break;
 	}
@@ -457,7 +463,7 @@ static
 void player_crouch(float dt)
 {
 	if (move_crouch && game.camera.mode == CAMERA_FLIGHT)
-		game.player.acc.y = -20.f;
+		game.player.acc.y = -FLYUPDOWN;
 	if (!move_crouch)
 		dt = -dt;
 	crouch_fade = mlClamp(crouch_fade + dt*5.f, 0.f, 1.f);
@@ -541,7 +547,20 @@ static
 void player_dumb_collide(ml_dvec3* pos, ml_vec3* move, ml_vec3* vel)
 {
 	ml_ivec3 preblock = { round(pos->x), round(pos->y), round(pos->z) };
-	
+
+	int groundblock = preblock.y;
+        while (blockType(preblock.x, groundblock, preblock.z) != BLOCK_AIR)
+                ++groundblock;
+        while (blockType(preblock.x, groundblock, preblock.z) == BLOCK_AIR && groundblock > 0)
+                --groundblock;
+        float groundlevel = (float)groundblock + 0.5f;
+
+        float poy = PLAYEREXTENT - CAMOFFSET;
+        if (pos->y - poy + move->y < groundlevel) {
+	        pos->y = groundlevel + poy;
+	        move->y = 0.f;
+	        game.player.onground = true;
+        }
 }
 
 static
@@ -610,7 +629,7 @@ void player_update(float dt)
 	player_crouch(dt);
 	player_look(dt);
 	if (game.camera.mode != CAMERA_FLIGHT)
-		game.player.acc.y += -9.8f;
+		game.player.acc.y += GRAVITY;
 
 	ml_dvec3 pos = game.player.pos;
 	ml_vec3 vel = game.player.vel;
@@ -634,6 +653,10 @@ void player_update(float dt)
 
 	// collide
 	player_dumb_collide(&pos, &move, &vel);
+
+	pos.x += move.x;
+	pos.y += move.y;
+	pos.z += move.z;
 
 
 	// offset camera from position
