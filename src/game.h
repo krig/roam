@@ -40,6 +40,7 @@ struct player_t {
 	ml_vec3 acc;
 	float jumpcount;
 	bool onground;
+	bool sprinting;
 	bool crouching;
 };
 
@@ -57,7 +58,6 @@ struct controls_t {
 	int secondary_action;
 	int wireframe;
 	int debuginfo;
-	int exitgame;
 };
 
 struct game_t {

@@ -44,8 +44,8 @@ void gameInit()
 	game.player.onground = false;
 	game.player.crouching = false;
 	game.fast_day_mode = false;
-	game.debug_mode = false;
-	game.camera.mode = CAMERA_FPS;
+	game.debug_mode = true;
+	game.camera.mode = CAMERA_FLIGHT;
 
 	struct controls_t default_controls = {
 		.left = SDLK_a,
@@ -59,8 +59,7 @@ void gameInit()
 		.primary_action = SDL_BUTTON_LEFT,
 		.secondary_action = SDL_BUTTON_RIGHT,
 		.wireframe = SDLK_o,
-		.debuginfo = SDLK_p,
-		.exitgame = SDLK_ESCAPE
+		.debuginfo = SDLK_p
 	};
 	game.controls = default_controls;
 
@@ -96,8 +95,10 @@ void gameInit()
 
 	glCheck(__LINE__);
 
-	mouse_captured = true;
-	SDL_SetRelativeMouseMode(SDL_TRUE);
+	mouse_captured = false;
+	//SDL_SetRelativeMouseMode(SDL_TRUE);
+	//SDL_SetWindowGrab(window, SDL_TRUE);
+
 }
 
 static
@@ -246,10 +247,12 @@ void gameExit()
 	mlDestroyTexture2D(&blocks_texture);
 }
 
+
+// input state
 static ml_ivec3 picked_block;
 static ml_ivec3 prepicked_block;
 static bool enable_ground = true;
-static bool move_sprinting = false;
+static bool move_sprint = false;
 static bool move_left = false;
 static bool move_right = false;
 static bool move_forward = false;
@@ -257,6 +260,8 @@ static bool move_backward = false;
 static bool move_jump = false;
 static bool move_crouch = false;
 static float crouch_fade = 0.f;
+static int mouse_xrel = 0;
+static int mouse_yrel = 0;
 
 static
 bool gameHandleEvent(SDL_Event* event)
@@ -269,8 +274,15 @@ bool gameHandleEvent(SDL_Event* event)
 		return false;
 	case SDL_KEYDOWN: {
 		SDL_Keycode sym = event->key.keysym.sym;
-		if (sym == game.controls.exitgame)
-			return false;
+		if (sym == SDLK_ESCAPE) {
+			if (!mouse_captured)
+				return false;
+			else {
+				SDL_SetRelativeMouseMode(SDL_FALSE);
+				SDL_SetWindowGrab(window, SDL_FALSE);
+				mouse_captured = false;
+			}
+		}
 		else if (sym == game.controls.wireframe)
 			wireframe_mode = !wireframe_mode;
 		else if (sym == SDLK_F1)
@@ -284,7 +296,7 @@ bool gameHandleEvent(SDL_Event* event)
 		else if (sym == SDLK_F2)
 			game.fast_day_mode = true;
 		else if (sym == game.controls.sprint)
-			move_sprinting = true;
+			move_sprint = true;
 		else if (sym == game.controls.left)
 			move_left = true;
 		else if (sym == game.controls.right)
@@ -303,7 +315,7 @@ bool gameHandleEvent(SDL_Event* event)
 		if (sym == SDLK_F2)
 			game.fast_day_mode = false;
 		else if (sym == game.controls.sprint)
-			move_sprinting = false;
+			move_sprint = false;
 		else if (sym == game.controls.left)
 			move_left = false;
 		else if (sym == game.controls.right)
@@ -322,10 +334,16 @@ bool gameHandleEvent(SDL_Event* event)
 		case SDL_BUTTON_LEFT: {
 			printf("deleting picked block (%d, %d, %d)\n",
 			       picked_block.x, picked_block.y, picked_block.z);
-			if (blockTypeByCoord(picked_block) != BLOCK_AIR) {
-				printf("can delete.\n");
-				map_blocks[blockByCoord(picked_block)] = BLOCK_AIR;
-				gameUpdateBlock(picked_block);
+			if (!mouse_captured) {
+				mouse_captured = true;
+				SDL_SetRelativeMouseMode(SDL_TRUE);
+				SDL_SetWindowGrab(window, SDL_TRUE);
+			} else {
+				if (blockTypeByCoord(picked_block) != BLOCK_AIR) {
+					printf("can delete.\n");
+					map_blocks[blockByCoord(picked_block)] = BLOCK_AIR;
+					gameUpdateBlock(picked_block);
+				}
 			}
 		} break;
 		case SDL_BUTTON_RIGHT: {
@@ -343,50 +361,92 @@ bool gameHandleEvent(SDL_Event* event)
 				gameUpdateBlock(prepicked_block);
 			}
 		} break;
+		} break;
+	case SDL_MOUSEMOTION: {
+		if (mouse_captured) {
+			mouse_xrel += event->motion.xrel;
+			mouse_yrel += event->motion.yrel;
 		}
+	} break;
 	default:
 		break;
 	}
 	return true;
 }
 
+// TODO: make these tweakable from console
+#define FLYSPEED 20.f
+#define RUNSPEED 5.f
+#define SPRINTSPEED 2.f
+#define CROUCHSPEED 0.5f
+#define JUMPCOUNT 0.2f
+#define JUMPSPEED 20.f
+#define MAX_VELOCITY 54.f
+
 static
-void playerLook(float dyaw, float dpitch)
+void player_look(float dt)
 {
+	const float xsens = 1.f / ML_TWO_PI;
+	const float ysens = 1.f / ML_TWO_PI;
+	float dyaw = mouse_xrel * dt * xsens;
+	float dpitch = mouse_yrel * dt * ysens;
 	game.camera.yaw = mlWrap(game.camera.yaw - dyaw, 0.f, ML_TWO_PI);
 	game.camera.pitch = mlClamp(game.camera.pitch - dpitch, -ML_PI_2, ML_PI_2);
+	mouse_xrel = 0;
+	mouse_yrel = 0;
 }
 
 static
-void playerMove(float right, float forward)
+void player_move(void)
 {
+	float right;
+	float forward;
+	float speed;
+
+	right = (move_left && !move_right) ? -1.f : 0.f;
+	right += (move_right && !move_left) ? 1.f : 0.f;
+	forward = (move_forward && !move_backward) ? -1.f : 0.f;
+	forward += (move_backward && !move_forward) ? 1.f : 0.f;
+
+	if (game.camera.mode == CAMERA_FLIGHT)
+		speed = FLYSPEED;
+	else
+		speed = RUNSPEED;
+
+	if (move_sprint)
+		speed *= SPRINTSPEED;
+	if (move_crouch)
+		speed *= CROUCHSPEED;
+
 	ml_matrix m;
-	ml_vec3 move = { right, 0, -forward };
+	ml_vec3 move = { right*speed, 0, forward*speed };
 	ml_vec3 dmove;
 	mlSetIdentity(&m);
 	mlRotate(&m, game.camera.yaw, 0, 1.f, 0);
 	dmove = mlMulMatVec3(&m, &move);
-	if (game.camera.mode == CAMERA_FLIGHT) {
-		game.player.acc.x += dmove.x;
-		game.player.acc.z += dmove.z;
-	} else if (game.player.onground) {
-		game.player.acc.x += dmove.x;
-		game.player.acc.z += dmove.z;
+
+	if ((game.camera.mode == CAMERA_FLIGHT) || game.player.onground) {
+		game.player.acc.x = dmove.x;
+		game.player.acc.z = dmove.z;
 	}
 }
 
 static
-void playerJump(float speed)
+void player_jump(float dt)
 {
+	game.player.jumpcount = mlMax(0.f, game.player.jumpcount - dt);
+	if (!move_jump)
+		return;
+
 	switch (game.camera.mode) {
 	case CAMERA_FLIGHT:
 		game.player.jumpcount = 0.2f;
-		game.player.acc.y += 10.f;
+		game.player.acc.y = 20.f;
 		break;
 	default:
 		if (game.player.onground && game.player.jumpcount <= 0.f) {
 			game.player.jumpcount = 0.2f;
-			game.player.acc.y += 10.f;
+			game.player.acc.y = 20.f;
 			game.player.onground = false;
 		}
 		break;
@@ -394,10 +454,11 @@ void playerJump(float speed)
 }
 
 static
-void playerCrouch(bool t, float dt)
+void player_crouch(float dt)
 {
-	game.player.crouching = t;
-	if (!t)
+	if (move_crouch && game.camera.mode == CAMERA_FLIGHT)
+		game.player.acc.y = -20.f;
+	if (!move_crouch)
 		dt = -dt;
 	crouch_fade = mlClamp(crouch_fade + dt*5.f, 0.f, 1.f);
 }
@@ -460,9 +521,6 @@ bool sweep_aabb_into_blocks(ml_vec3 center, ml_vec3 extent, ml_vec3 delta,
 	hit = false;
 	nearest_time = 1.f;
 	for (int i = 0; i < nblocks; ++i) {
-		//if (game.debug_mode)
-		//	ui_debug_block(blocks[i], 0xffff0000);
-
 		bcenter = ml_ivec3_to_vec3(blocks[i]);
 		if (sweep_aabb(bcenter, bextent, center, extent, delta,
 				&sweeppos, &time, &hitpoint, &hitdelta, &hitnormal)) {
@@ -480,24 +538,17 @@ bool sweep_aabb_into_blocks(ml_vec3 center, ml_vec3 extent, ml_vec3 delta,
 }
 
 static
-void gameUpdatePlayer(float dt)
+void player_dumb_collide(ml_dvec3* pos, ml_vec3* move, ml_vec3* vel)
 {
-	game.player.jumpcount = mlMax(0.f, game.player.jumpcount - dt);
-	float MAX_VEL = 54.f;
-	ml_vec3 vel = mlVec3Add(game.player.vel, mlVec3Scalef(game.player.acc, dt));
-	vel = mlClampVec3(vel, -MAX_VEL, MAX_VEL);
+	ml_ivec3 preblock = { round(pos->x), round(pos->y), round(pos->z) };
+	
+}
 
-	ml_dvec3 pos = game.player.pos;
-	ml_dvec3 newpos = pos;
-	newpos.x += vel.x * dt;
-	newpos.y += vel.y * dt;
-	newpos.z += vel.z * dt;
-
-	ml_ivec3 preblock = { round(pos.x), round(pos.y), round(pos.z) };
-
-	if (game.camera.mode == CAMERA_3RDPERSON) {
-		ui_debug_block(preblock, 0xffff7f7f);
-	}
+static
+void player_collide(ml_dvec3* pos, ml_vec3* move, ml_vec3* vel)
+{
+	/*
+	  	ml_ivec3 preblock = { round(pos.x), round(pos.y), round(pos.z) };
 
 	{
 		float offs = game.player.crouching ? CROUCHOFFSET : CAMOFFSET;
@@ -541,32 +592,73 @@ void gameUpdatePlayer(float dt)
 	}
 
 	pos = newpos;
+	*/
+}
 
-	ml_vec3 offset = {0, 0, 0};
+static
+void player_update(float dt)
+{
+	// update pos/vel/acc depending on input and control mode
+	// collide player against world
+
+	game.player.sprinting = move_sprint;
+	game.player.crouching = move_crouch;
+	// accumulate frame impulses from input, gravity
+	// and other physics events
+	player_move();
+	player_jump(dt);
+	player_crouch(dt);
+	player_look(dt);
+	if (game.camera.mode != CAMERA_FLIGHT)
+		game.player.acc.y += -9.8f;
+
+	ml_dvec3 pos = game.player.pos;
+	ml_vec3 vel = game.player.vel;
+	ml_vec3 acc = game.player.acc;
+
+	ml_vec3 move;
+
 	if (game.camera.mode == CAMERA_FLIGHT) {
-		if (game.player.crouching)
-			vel.y = -10.f;
-		vel = mlVec3Scalef(vel, 0.8f);
+		vel = mlVec3Add(vel, mlVec3Scalef(game.player.acc, dt));
+		vel = mlClampVec3(vel, -MAX_VELOCITY, MAX_VELOCITY);
+		move.x = vel.x * dt;
+		move.y = vel.y * dt;
+		move.z = vel.z * dt;
+	} else {
+		vel = mlVec3Add(vel, mlVec3Scalef(game.player.acc, dt));
+		vel = mlClampVec3(vel, -MAX_VELOCITY, MAX_VELOCITY);
+		move.x = vel.x * dt;
+		move.y = vel.y * dt;
+		move.z = vel.z * dt;
+	}
+
+	// collide
+	player_dumb_collide(&pos, &move, &vel);
+
+
+	// offset camera from position
+	ml_vec3 offset = {0, 0, 0};
+	switch (game.camera.mode) {
+	case CAMERA_FLIGHT:
+		offset.y = CAMOFFSET;
+		break;
+	case CAMERA_3RDPERSON: {
+		ml_vec3 x, y, z;
+		mlFPSRotation(game.camera.pitch, game.camera.yaw, &x, &y, &z);
+		offset = mlVec3Scalef(z, 6.f);
+	} break;
+	default: {
 		float d = enCubicInOut(crouch_fade);
 		offset.y = CAMOFFSET * (1.f - d) + CROUCHOFFSET * d;
-	} else {
-		if (game.player.onground) {
-			//vel.x *= 0.8f;
-			//vel.z *= 0.8f;
-		} else {
-			//vel.y -= 9.8f * 3.33f * dt;
-		}
-
-		if (game.camera.mode == CAMERA_FPS) {
-			float d = enCubicInOut(crouch_fade);
-			offset.y = CAMOFFSET * (1.f - d) + CROUCHOFFSET * d;
-		} else {
-			ml_vec3 x, y, z;
-			mlFPSRotation(game.camera.pitch, game.camera.yaw, &x, &y, &z);
-			offset = mlVec3Scalef(z, 6.f);
-		}
+	} break;
 	}
-	game.player.vel = vel;
+
+	// update player data
+	float friction = 0.014f;
+	if (game.player.onground)
+		friction += 0.03f;
+	mlVec3Assign(game.player.acc, 0, 0, 0);
+	game.player.vel = mlVec3Scalef(vel, 1.f - friction);
 	game.player.pos = pos;
 	game.camera.pos.x = pos.x + offset.x;
 	game.camera.pos.y = pos.y + offset.y;
@@ -576,41 +668,7 @@ void gameUpdatePlayer(float dt)
 static
 void gameUpdate(float dt)
 {
-	const float xsens = 1.f / ML_TWO_PI;
-	const float ysens = 1.f / ML_TWO_PI;
-	int mouse_dx, mouse_dy;
-
-	float speed = (move_sprinting ? 3.f : 1.5f);
-	if (game.player.crouching)
-		speed *= 0.5f;
-	if (game.camera.mode == CAMERA_FLIGHT)
-		speed *= 10.f;
-
-	if (move_left)
-		playerMove(-speed, 0.f);
-	if (move_right)
-		playerMove(speed, 0.f);
-	if (move_forward)
-		playerMove(0.f, speed);
-	if (move_backward)
-		playerMove(0.f, -speed);
-	if (move_jump)
-		playerJump(speed);
-	if (move_crouch)
-		playerCrouch(true, dt);
-	else
-		playerCrouch(false, dt);
-		//playerJump(-speed);
-
-	if (mouse_captured) {
-		SDL_GetRelativeMouseState(&mouse_dx, &mouse_dy);
-		playerLook(mouse_dx * dt * xsens, mouse_dy * dt * ysens);
-	} else if (SDL_GetMouseState(0, 0) & SDL_BUTTON(SDL_BUTTON_LEFT)) {
-			mouse_captured = true;
-			SDL_SetRelativeMouseMode(SDL_TRUE);
-	}
-
-	gameUpdatePlayer(dt);
+	player_update(dt);
 	ui_update(dt);
 	gameUpdateMap();
 	// update player/input
@@ -634,6 +692,8 @@ printMatrix(ml_matrix* m) {
 static
 void gameRender(SDL_Point* viewport, float frametime)
 {
+	ml_matrix view;
+	ml_frustum frustum;
 	glCheck(__LINE__);
 
 	glEnable(GL_DEPTH_TEST);
@@ -651,7 +711,6 @@ void gameRender(SDL_Point* viewport, float frametime)
 	ml_chunk camera = playerChunk();
 	ml_vec3 viewcenter = playerChunkCameraOffset();
 
-	ml_matrix view;
 	if (game.camera.mode != CAMERA_3RDPERSON) {
 		mlFPSMatrix(&view, viewcenter, game.camera.pitch, game.camera.yaw);
 	}
@@ -663,32 +722,24 @@ void gameRender(SDL_Point* viewport, float frametime)
 		         game.player.pos.z - camera.z*CHUNK_SIZE,
 		         0, 1.f, 0);
 	}
-	//mlLookAt(&view, game.camera.offset.x, game.camera.offset.y, game.camera.offset.z,
-	//         2.f, OCEAN_LEVEL, -2.f,
-	//         0.f, 1.f, 0.f);
 
 	mlCopyMatrix(mlGetMatrix(&game.modelview), &view);
-
-	// calculate view frustum
-	ml_frustum frustum;
 	mlGetFrustum(&frustum, mlGetMatrix(&game.projection), &view);
 
-	ui_rect(viewport->x/2 - 1, viewport->y/2 - 5, 2, 10, 0x7fffffff);
-	ui_rect(viewport->x/2 - 5, viewport->y/2 - 1, 10, 2, 0x7fffffff);
-
-	// draw blocks (tesselate in parallel?)
-	// draw objects
-	// draw creatures
-	// draw players
-	// draw effects
-	// draw alphablended (sort in parallel?)
-	// fbo effects?
-	// draw ui
+	// crosshair
+	ui_rect(viewport->x/2 - 1, viewport->y/2 - 5, 2, 10, 0x4fffffff);
+	ui_rect(viewport->x/2 - 5, viewport->y/2 - 1, 10, 2, 0x4fffffff);
 
 	if (enable_ground)
 		gameDrawMap(&frustum);
 
+	if (wireframe_mode)
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
 	skyDraw();
+
+	if (wireframe_mode)
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	if (enable_ground)
 		gameDrawAlphaPass();
@@ -696,30 +747,13 @@ void gameRender(SDL_Point* viewport, float frametime)
 	if (wireframe_mode)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-	/*
-	ml_vec3 mc = mlVec3Scalef(mlVec3Normalize(game.light_dir), 4.f);
-	ml_vec3 mc2 = mlVec3Scalef(mlVec3Normalize(game.light_dir), 5.f);
-	mc.y += OCEAN_LEVEL;
-	mc2.y += OCEAN_LEVEL;
-	uiDebugLine(mc, mc2, 0xffff7f00);
-	uiDebugSphere(mc2, 0.15f, 0xffcf9f3f);
-	*/
-
 	ml_matrix invview;
 	mlInvertOrthoMatrix(&invview, &view);
 
 
 	{
-		ml_dvec3 pp = {
-			game.camera.pos.x,
-			game.camera.pos.y,
-			game.camera.pos.z
-		};
-		ml_vec3 v = {
-			frustum.planes[5].x,
-			frustum.planes[5].y,
-			frustum.planes[5].z
-		};
+		ml_dvec3 pp = game.camera.pos;
+		ml_vec3 v = {frustum.planes[5].x, frustum.planes[5].y, frustum.planes[5].z};
 		if (gameRayTest(pp, v, 16, &picked_block, &prepicked_block))
 			if (game.camera.mode == CAMERA_FPS)
 				ui_debug_block(picked_block, 0xcff1c40f);
@@ -748,27 +782,29 @@ void gameRender(SDL_Point* viewport, float frametime)
 		ui_debug_line(origo, yaxis, 0xffff0000);
 		ui_debug_line(origo, zaxis, 0xff0000ff);
 
+		static float fps = 0;
+		fps = (1.f / frametime) * 0.1f + fps * 0.9f;
 
 		ui_rect(2, 2, 450, 60, 0x66000000);
 		ui_text(4, 60 - 9, 0xffffffff,
 			"pos: (%2.2g, %2.2g, %2.2g)\n"
 			"vel: (%2.2f, %2.2f, %2.2f)\n"
-			"acc: (%2.2f, %2.2f, %2.2f)\n"
 			"chunk: (%d, %d)\n"
-			"%d %d %2.1f\n"
+			"%s%s%s\n"
 			"fps: %d, t: %1.3f",
 			game.player.pos.x, game.player.pos.y, game.player.pos.z,
 			game.player.vel.x, game.player.vel.y, game.player.vel.z,
-			game.player.acc.x, game.player.acc.y, game.player.acc.z,
 			camera.x, camera.z,
-			game.player.onground, game.player.crouching, game.player.jumpcount,
-			(int)roundf(1.f / frametime), game.time_of_day);
+			game.player.onground ? "onground " : "",
+			game.player.crouching ? "crouching " : "",
+			game.player.sprinting ? "sprinting " : "",
+			(int)roundf(fps), game.time_of_day);
 	}
 	ui_draw_debug(&game.projection, &game.modelview);
 	ui_draw(viewport);
 
-	if (mouse_captured)
-		SDL_WarpMouseInWindow(window, viewport->x >> 1, viewport->y >> 1);
+	//if (mouse_captured)
+	//	SDL_WarpMouseInWindow(window, viewport->x >> 1, viewport->y >> 1);
 }
 
 int main(int argc, char* argv[])
@@ -866,6 +902,7 @@ int main(int argc, char* argv[])
 					              0.1f, 1024.f);
 				} else if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
 					SDL_SetRelativeMouseMode(SDL_FALSE);
+					SDL_SetWindowGrab(window, SDL_FALSE);
 					mouse_captured = false;
 				} else if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
 					goto exit;
