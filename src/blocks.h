@@ -62,4 +62,4 @@ enum block_types {
 	NUM_BLOCKTYPES
 };
 
-void initBlockInfo(void);
+void blocks_init(void);

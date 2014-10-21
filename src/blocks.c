@@ -31,7 +31,8 @@ struct blockinfo_t blockinfo[] = {
 	{ .name = "mushroom", .img = { IMG_BB_SHROOM1 }, .backfaces = true },
 };
 
-void initBlockInfo() {
+void blocks_init()
+{
 	for (int i = 0; i < sizeof(blockinfo)/sizeof(struct blockinfo_t); ++i) {
 		int prev = IMG_BLACKROCK;
 		for (int m = 0; m < 6; ++m) {

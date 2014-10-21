@@ -12,7 +12,9 @@
 
 extern ml_tex2d blocks_texture;
 
-static inline tc2us_t make_tc2us(ml_vec2 tc) {
+static inline
+tc2us_t make_tc2us(ml_vec2 tc)
+{
 	tc2us_t to = {
 		(uint16_t)(tc.x * (double)0xffff),
 		(uint16_t)(tc.y * (double)0xffff)
@@ -20,7 +22,9 @@ static inline tc2us_t make_tc2us(ml_vec2 tc) {
 	return to;
 }
 
-uint32_t blockType(int x, int y, int z) {
+uint32_t
+blockType(int x, int y, int z)
+{
 	if (y < 0)
 		return BLOCK_BLACKROCK;
 	if (y >= MAP_BLOCK_HEIGHT)
@@ -37,7 +41,9 @@ uint32_t blockType(int x, int y, int z) {
  */
 static tc2us_t block_texcoords[NUM_BLOCKTYPES * 6 * 4];
 #define BLOCKTC(t, f, i) block_texcoords[(t)*(6*4) + (f)*4 + (i)]
-static void initBlockTexcoords() {
+static
+void gen_block_tcs()
+{
 	float bw = IMG_TCW - IMG_TC_BIAS;
 	ml_vec2 tcoffs[4] = {{0, bw}, {bw, bw}, {bw, 0}, {0, 0} };
 	for (int t = 0; t < NUM_BLOCKTYPES; ++t) {
@@ -75,8 +81,8 @@ static bool popChunkTesselation(ml_chunk* chunk) {
 }
 
 void gameInitMap() {
-	initBlockInfo();
-	initBlockTexcoords();
+	blocks_init();
+	gen_block_tcs();
 
 	printf("* Allocate and build initial map...\n");
 	memset(&game.map, 0, sizeof(game_map));
