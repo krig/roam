@@ -51,7 +51,7 @@ void ui_init(ml_material* uimat, ml_material* debugmat)
 	debug_modelview_index = glGetUniformLocation(debugmat->program, "modelview");
 	printf("projmat: %d, modelview: %d\n", debug_projmat_index, debug_modelview_index);
 
-	mlLoadTexture2D(&ui_font, "data/VictoriaBold.png");
+	mlLoadTexture2D(&ui_font, "data/font.png");
 
 	glGenBuffers(1, &ui_vbo);
 	glGenVertexArrays(1, &ui_vao);
