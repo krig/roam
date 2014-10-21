@@ -16,13 +16,17 @@ enum blockflags_t {
 	BLOCK_TWOSIDED = 4 // render without backface culling
 };
 
+#define AIR_DENSITY 0
+#define WATER_DENSITY 1
+#define SOLID_DENSITY 2
+
 struct blockinfo_t {
 	const char* name; // short description
 	// image atlas index
 	// 0 = fill with previous
 	int img[6];
 
-	int density; // used for collisions and water physics: 0 = no collision, 100 = solid
+	int density;
 
 	bool alpha; // render in alpha pass
 	bool backfaces; // render in backface pass

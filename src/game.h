@@ -35,7 +35,8 @@ struct camera_t {
 
 struct player_t {
 	ml_dvec3 pos;
-	ml_vec3 velocity;
+	ml_vec3 vel;
+	ml_vec3 acc;
 	float jumpcount;
 	bool onground;
 	bool crouching;

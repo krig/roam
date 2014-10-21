@@ -38,10 +38,10 @@ void mlFPSRotation(float pitch, float yaw, ml_vec3* x, ml_vec3* y, ml_vec3* z) {
 
 void mlFPSMatrix(ml_matrix* to, ml_vec3 eye, float pitch, float yaw) {
 	/* equivalent to:
-	mlSetIdentity(to);
-	mlRotate(to, -pitch, 1.f, 0, 0);
-	mlRotate(to, -yaw, 0, 1.f, 0);
-	mlTranslate(to, -eye.x, -eye.y, -eye.z);
+	   mlSetIdentity(to);
+	   mlRotate(to, -pitch, 1.f, 0, 0);
+	   mlRotate(to, -yaw, 0, 1.f, 0);
+	   mlTranslate(to, -eye.x, -eye.y, -eye.z);
 	*/
 	float cosPitch = cosf(pitch);
 	float sinPitch = sinf(pitch);
@@ -70,9 +70,9 @@ void mlFPSMatrix(ml_matrix* to, ml_vec3 eye, float pitch, float yaw) {
 
 
 void mlLookAt(ml_matrix* m,
-              float eyeX, float eyeY, float eyeZ,
-              float atX, float atY, float atZ,
-              float upX, float upY, float upZ) {
+	float eyeX, float eyeY, float eyeZ,
+	float atX, float atY, float atZ,
+	float upX, float upY, float upZ) {
 	ml_matrix M;
 	ml_vec3 f, u, s;
 
@@ -782,27 +782,27 @@ void mlLoadTexture2D(ml_tex2d* tex, const char* filename) {
 	glGenTextures(1, &tex->id);
 	glBindTexture(GL_TEXTURE_2D, tex->id);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    tex->w = (uint16_t)x;
-    tex->h = (uint16_t)y;
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	tex->w = (uint16_t)x;
+	tex->h = (uint16_t)y;
 
-    switch (n) {
-    case 4:
-	    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-	    break;
-    case 3:
-	    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, x, y, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-	    break;
-    case 1:
-	    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, x, y, 0, GL_RED, GL_UNSIGNED_BYTE, data);
-	    break;
-    default:
-	    fatal_error("bad pixel depth %d for %s", n, filename);
-    }
+	switch (n) {
+	case 4:
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		break;
+	case 3:
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, x, y, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		break;
+	case 1:
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, x, y, 0, GL_RED, GL_UNSIGNED_BYTE, data);
+		break;
+	default:
+		fatal_error("bad pixel depth %d for %s", n, filename);
+	}
 
-    glGenerateMipmap(GL_TEXTURE_2D);
+	glGenerateMipmap(GL_TEXTURE_2D);
 
 	stbi_image_free(data);
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -821,7 +821,7 @@ void mlBindTexture2D(ml_tex2d* tex, int index) {
 
 /* based on code by Pierre Terdiman
    http://www.codercorner.com/RayAABB.cpp
- */
+*/
 bool mlTestRayAABB(ml_vec3 origin, ml_vec3 dir, ml_vec3 center, ml_vec3 extent)
 {
 	ml_vec3 diff;

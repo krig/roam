@@ -94,8 +94,8 @@ void gameInitMap() {
 	osnInit(game.map.seed);
 
 	ml_chunk camera = playerChunk();
-	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
-		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x)
+	for (int z = -VIEW_DISTANCE - 1; z < VIEW_DISTANCE + 1; ++z)
+		for (int x = -VIEW_DISTANCE - 1; x < VIEW_DISTANCE + 1; ++x)
 			gameLoadChunk(camera.x + x, camera.z + z);
 
 	// tesselate column
@@ -128,8 +128,8 @@ void gameUpdateMap() {
 		       game.camera.pos.x, game.camera.pos.z);
 		map_chunk = nc;
 
-		for (int dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
-			for (int dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
+		for (int dz = -VIEW_DISTANCE - 1; dz < VIEW_DISTANCE + 1; ++dz) {
+			for (int dx = -VIEW_DISTANCE - 1; dx < VIEW_DISTANCE + 1; ++dx) {
 				int bx = mod(cx + dx, MAP_CHUNK_WIDTH);
 				int bz = mod(cz + dz, MAP_CHUNK_WIDTH);
 				game_chunk* chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
@@ -139,12 +139,16 @@ void gameUpdateMap() {
 					gameLoadChunk(cx + dx, cz + dz);
 					chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
 					assert(chunk->x == (cx + dx) && chunk->z == (cz + dz));
-					if (!pushChunkTesselation(cx + dx, cz + dz)) {
-						ml_chunk tchunk;
-						if (popChunkTesselation(&tchunk)) {
-							gameTesselateChunk(tchunk.x, tchunk.z);
+					/*
+					if (dz > -VIEW_DISTANCE-1 && dz < VIEW_DISTANCE + 1 &&
+						dx > -VIEW_DISTANCE-1 && dx < VIEW_DISTANCE + 1) {
+						if (!pushChunkTesselation(cx + dx, cz + dz)) {
+							ml_chunk tchunk;
+							if (popChunkTesselation(&tchunk)) {
+								gameTesselateChunk(tchunk.x, tchunk.z);
+							}
 						}
-					}
+						}*/
 				}
 			}
 		}
@@ -421,7 +425,7 @@ void gameTesselateChunk(int x, int z) {
 	}
 }
 
-#define BSOLID(x,y,z) (blockinfo[blockType(x,y,z)].density >= density)
+#define BNONSOLID(x,y,z) (blockinfo[blockType(x,y,z)].density < density)
 
 bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 	int ix, iy, iz;
@@ -452,7 +456,7 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 					continue;
 				}
 
-				if (!BSOLID(bx+ix, by+iy+1, bz+iz)) {
+				if (BNONSOLID(bx+ix, by+iy+1, bz+iz)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_TOP, 0);
 					const game_block_vtx corners[4] = {
 						{POS(  ix, iy+1, iz+1), tc[0], 0xffffffff },
@@ -468,7 +472,7 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 					verts[vi++] = corners[2];
 				}
 
-				if (!BSOLID(bx+ix, by+iy-1, bz+iz)) {
+				if (BNONSOLID(bx+ix, by+iy-1, bz+iz)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BOTTOM, 0);
 					const game_block_vtx corners[4] = {
 						{POS(  ix, iy,   iz), tc[0], 0xffffffff },
@@ -483,7 +487,7 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 					verts[vi++] = corners[1];
 					verts[vi++] = corners[2];
 				}
-				if (!BSOLID(bx+ix-1, by+iy, bz+iz)) {
+				if (BNONSOLID(bx+ix-1, by+iy, bz+iz)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_LEFT, 0);
 					const game_block_vtx corners[4] = {
 						{POS(ix,   iy,   iz), tc[0], 0xffffffff },
@@ -498,7 +502,7 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 					verts[vi++] = corners[1];
 					verts[vi++] = corners[2];
 				}
-				if (!BSOLID(bx+ix+1, by+iy, bz+iz)) {
+				if (BNONSOLID(bx+ix+1, by+iy, bz+iz)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_RIGHT, 0);
 					const game_block_vtx corners[4] = {
 						{POS(ix+1,   iy, iz+1), tc[0], 0xffffffff },
@@ -513,7 +517,7 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 					verts[vi++] = corners[1];
 					verts[vi++] = corners[2];
 				}
-				if (!BSOLID(bx+ix, by+iy, bz+iz+1)) {
+				if (BNONSOLID(bx+ix, by+iy, bz+iz+1)) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_FRONT, 0);
 					game_block_vtx corners[4] = {
 						{POS(  ix,   iy, iz+1), tc[0], 0xffffffff },
@@ -528,7 +532,7 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy) {
 					verts[vi++] = corners[1];
 					verts[vi++] = corners[2];
 				}
-				if (!BSOLID(bx+ix, by+iy, bz+iz-1)) {
+				if (BNONSOLID(bx+ix, by+iy, bz+iz-1)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BACK, 0);
 					const game_block_vtx corners[4] = {
 						{POS(ix+1,   iy, iz), tc[0], 0xffffffff },
@@ -568,10 +572,10 @@ bool gameRayTest(ml_dvec3 origin, ml_vec3 dir, int len, ml_ivec3* hit, ml_ivec3*
 		if (block.x != prev.x || block.y != prev.y || block.z != prev.z) {
 			uint8_t t = blockTypeByCoord(block);
 			if (t != BLOCK_AIR) {
-				if (game.debug_mode) {
-					ui_debug_block(prev, 0xff0000ff);
-					ui_debug_block(block, 0xff00ff00);
-				}
+				//if (game.debug_mode) {
+				//	ui_debug_block(prev, 0xff0000ff);
+				//	ui_debug_block(block, 0xff00ff00);
+				//}
 				if (hit != NULL)
 					*hit = block;
 				if (prehit != NULL)
