@@ -529,6 +529,10 @@ bool mlTestRayAABB(ml_vec3 origin, ml_vec3 dir, ml_vec3 center, ml_vec3 extent);
 bool mlTestSphereAABB(ml_vec3 pos, float radius, ml_vec3 center, ml_vec3 extent);
 bool mlTestSphereAABB_Hit(ml_vec3 pos, float radius, ml_vec3 center, ml_vec3 extent, ml_vec3* hit);
 
+bool mlTestSegmentAABB(ml_vec3 pos, ml_vec3 delta, ml_vec3 padding, ml_vec3 center, ml_vec3 extent,
+	float* time, ml_vec3* hit, ml_vec3* hitdelta, ml_vec3* normal);
+bool mlTestAABBAABB_2(ml_vec3 center, ml_vec3 extent, ml_vec3 center2, ml_vec3 extent2, ml_vec3 *hitpoint, ml_vec3 *hitdelta, ml_vec3 *hitnormal);
+
 static inline int mlTestPlaneAABB(ml_vec4 plane, ml_vec3 center, ml_vec3 extent)
 {
 	ml_vec4 absplane = { fabs(plane.x), fabs(plane.y), fabs(plane.z), fabs(plane.w) };

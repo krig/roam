@@ -112,25 +112,33 @@ static const int gradients4D[] = {
 static uint8_t perm[256];
 static uint8_t permGradIndex3D[256];
 
-static inline int fastFloor(double x) {
+static inline
+int fastFloor(double x)
+{
 	int xi = (int)x;
 	return x < xi ? xi - 1 : xi;
 }
 
-static inline double extrapolate2(int xsb, int ysb, double dx, double dy) {
+static inline
+double extrapolate2(int xsb, int ysb, double dx, double dy)
+{
 	int index = perm[(perm[xsb & 0xFF] + ysb) & 0xFF] & 0x0E;
 	return gradients2D[index] * dx
 		+ gradients2D[index + 1] * dy;
 }
 
-static inline double extrapolate3(int xsb, int ysb, int zsb, double dx, double dy, double dz) {
+static inline
+double extrapolate3(int xsb, int ysb, int zsb, double dx, double dy, double dz)
+{
 	int index = permGradIndex3D[(perm[(perm[xsb & 0xFF] + ysb) & 0xFF] + zsb) & 0xFF];
 	return gradients3D[index] * dx
 		+ gradients3D[index + 1] * dy
 		+ gradients3D[index + 2] * dz;
 }
 
-static inline double extrapolate4(int xsb, int ysb, int zsb, int wsb, double dx, double dy, double dz, double dw) {
+static inline
+double extrapolate4(int xsb, int ysb, int zsb, int wsb, double dx, double dy, double dz, double dw)
+{
 	int index = perm[(perm[(perm[(perm[xsb & 0xFF] + ysb) & 0xFF] + zsb) & 0xFF] + wsb) & 0xFF] & 0xFC;
 	return gradients4D[index] * dx
 		+ gradients4D[index + 1] * dy
@@ -138,7 +146,8 @@ static inline double extrapolate4(int xsb, int ysb, int zsb, int wsb, double dx,
 		+ gradients4D[index + 3] * dw;
 }
 
-void osnInit(uint64_t seed) {
+void osnInit(uint64_t seed)
+{
 	uint8_t source[256];
 	memset(perm, 0, 256);
 	memset(permGradIndex3D, 0, 256);
@@ -155,7 +164,8 @@ void osnInit(uint64_t seed) {
 	}
 }
 
-double osnNoise2D(double x, double y) {
+double osnNoise2D(double x, double y)
+{
 	//Place input coordinates onto grid.
 	double stretchOffset = (x + y) * STRETCH_CONSTANT_2D;
 	double xs = x + stretchOffset;
@@ -268,8 +278,8 @@ double osnNoise2D(double x, double y) {
 	return value / NORM_CONSTANT_2D;
 }
 
-double osnNoise3D(double x, double y, double z) {
-
+double osnNoise3D(double x, double y, double z)
+{
 	//Place input coordinates on simplectic lattice.
 	double stretchOffset = (x + y + z) * STRETCH_CONSTANT_3D;
 	double xs = x + stretchOffset;
@@ -835,7 +845,8 @@ double osnNoise3D(double x, double y, double z) {
 }
 
 //4D OpenSimplex (Simplectic) Noise.
-double osnNoise4D(double x, double y, double z, double w) {
+double osnNoise4D(double x, double y, double z, double w)
+{
 
 	//Place input coordinates on simplectic honeycomb.
 	double stretchOffset = (x + y + z + w) * STRETCH_CONSTANT_4D;
@@ -2169,7 +2180,8 @@ static double grad[][2] = {
 static uint8_t simplexPerm[512];
 static uint8_t simplexPermMod12[512];
 
-void simplexInit(uint64_t seed) {
+void simplexInit(uint64_t seed)
+{
 	int i;
 	uint8_t source[256];
 	uint8_t p[256];
@@ -2195,7 +2207,8 @@ void simplexInit(uint64_t seed) {
 }
 
 
-double simplexNoise(double xin, double yin) {
+double simplexNoise(double xin, double yin)
+{
 	double n0, n1, n2; // Noise contributions from the three corners
 	// Skew the input space to determine which simplex cell we're in
 	double s = (xin+yin)*F2; // Hairy factor for 2D
@@ -2245,7 +2258,5 @@ double simplexNoise(double xin, double yin) {
 	}
 	// Add contributions from each corner to get the final noise value.
 	// The result is scaled to return values in the interval [-1,1].
-	double ret = 70.0 * (n0 + n1 + n2);
-	assert(ret <= 1.0 && ret >= -1.0);
-	return ret;
+	return 70.0 * (n0 + n1 + n2);
 }

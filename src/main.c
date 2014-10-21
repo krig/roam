@@ -11,6 +11,11 @@
 #include "sky.h"
 #include "easing.h"
 
+#define CAMOFFSET 0.4f
+#define CROUCHOFFSET 0.1f
+#define PLAYEREXTENT 0.9f
+#define CROUCHEXTENT 0.6f
+
 static SDL_Window* window;
 static SDL_GLContext context;
 static bool mouse_captured = false;
@@ -31,9 +36,8 @@ void gameInit()
 	game.camera.pitch = -0.544628;
 	game.camera.yaw = 1.056371;
 	game.player.pos = offs;
-	mlVec3Assign(game.player.camoffset, 0, 1.8, 0);
 	game.camera.pos = game.player.pos;
-	game.camera.pos.y += game.player.camoffset.y;
+	game.camera.pos.y += CAMOFFSET;
 	mlVec3Assign(game.player.velocity, 0, 0, 0);
 	game.player.jumpcount = 0;
 	game.player.onground = false;
@@ -325,9 +329,9 @@ bool gameHandleEvent(SDL_Event* event)
 			printf("creating block (%d, %d, %d)\n",
 			       prepicked_block.x, prepicked_block.y, prepicked_block.z);
 
-			ml_ivec3 head = cameraBlock();
-			ml_ivec3 feet = head;
-			feet.y -= 1;
+			ml_ivec3 feet = playerBlock();
+			ml_ivec3 head = feet;
+			head.y += 1;
 			if (blockTypeByCoord(prepicked_block) == BLOCK_AIR &&
 			    !blockCompare(head, prepicked_block) &&
 			    !blockCompare(feet, prepicked_block)) {
@@ -396,61 +400,189 @@ void playerCrouch(bool t, float dt)
 	crouch_fade = mlClamp(crouch_fade + dt*5.f, 0.f, 1.f);
 }
 
+static inline
+ml_ivec3 ml_ivec3_offset(ml_ivec3 v, int x, int y, int z) {
+	ml_ivec3 to = { v.x + x, v.y + y, v.z + z };
+	return to;
+}
+
+static inline
+ml_vec3 ml_ivec3_to_vec3(ml_ivec3 v) {
+	return mlMakeVec3(v.x, v.y, v.z);
+}
+
+// sweep box 2 into box 1
+static
+bool sweep_aabb(ml_vec3 center, ml_vec3 extent, ml_vec3 center2, ml_vec3 extent2, ml_vec3 delta,
+	ml_vec3* sweep_pos, float* time, ml_vec3* hitpoint, ml_vec3* hitdelta, ml_vec3* hitnormal)
+{
+	bool hit = false;
+	if (delta.x == 0 && delta.y == 0 && delta.z == 0) {
+		hit = mlTestAABBAABB_2(center, extent, center2, extent2, hitpoint, hitdelta, hitnormal);
+		if (hit) {
+			*time = 0;
+			*sweep_pos = center2;
+		}
+	} else {
+		hit = mlTestSegmentAABB(center2, delta, extent2, center, extent, time, hitpoint, hitdelta, hitnormal);
+		if (hit) {
+			sweep_pos->x = center2.x + delta.x * *time;
+			sweep_pos->y = center2.y + delta.y * *time;
+			sweep_pos->z = center2.z + delta.z * *time;
+			ml_vec3 dir = mlVec3Normalize(delta);
+			hitpoint->x += dir.x * extent2.x;
+			hitpoint->y += dir.y * extent2.y;
+			hitpoint->z += dir.z * extent2.z;
+		}
+	}
+	return hit;
+}
+
+static
+bool sweep_aabb_into_blocks(ml_vec3 center, ml_vec3 extent, ml_vec3 delta,
+	ml_ivec3* blocks, size_t nblocks,
+	ml_vec3* outhitpoint, ml_vec3* outhitdelta, ml_vec3* outhitnormal, ml_vec3* outsweeppos)
+{
+
+	float nearest_time;
+	float time;
+	ml_vec3 hitpoint;
+	ml_vec3 hitnormal;
+	ml_vec3 hitdelta;
+	ml_vec3 sweeppos;
+
+	bool hit;
+	ml_vec3 bcenter;
+	ml_vec3 bextent = { 0.5f, 0.5f, 0.5f };
+
+	hit = false;
+	nearest_time = 1.f;
+	for (int i = 0; i < nblocks; ++i) {
+		//if (game.debug_mode)
+		//	ui_debug_block(blocks[i], 0xffff0000);
+
+		bcenter = ml_ivec3_to_vec3(blocks[i]);
+		if (sweep_aabb(bcenter, bextent, center, extent, delta,
+				&sweeppos, &time, &hitpoint, &hitdelta, &hitnormal)) {
+			if (time < nearest_time) {
+				hit = true;
+				*outhitpoint = hitpoint;
+				*outhitdelta = hitdelta;
+				*outhitnormal = hitnormal;
+				*outsweeppos = sweeppos;
+			}
+		}
+	}
+
+	return hit;
+}
+
 static
 void gameUpdatePlayer(float dt)
 {
 	game.player.jumpcount = mlMax(0.f, game.player.jumpcount - dt);
 	float MAX_VEL = 54.f;
-	game.player.velocity.x = mlClamp(game.player.velocity.x, -MAX_VEL, MAX_VEL);
-	game.player.velocity.y = mlClamp(game.player.velocity.y, -MAX_VEL, MAX_VEL);
-	game.player.velocity.z = mlClamp(game.player.velocity.z, -MAX_VEL, MAX_VEL);
+	ml_vec3 vel = game.player.velocity;
+	vel.x = mlClamp(vel.x, -MAX_VEL, MAX_VEL);
+	vel.y = mlClamp(vel.y, -MAX_VEL, MAX_VEL);
+	vel.z = mlClamp(vel.z, -MAX_VEL, MAX_VEL);
 
-	ml_dvec3 newpos = game.player.pos;
-	newpos.x += game.player.velocity.x * dt;
-	newpos.y += game.player.velocity.y * dt;
-	newpos.z += game.player.velocity.z * dt;
+	ml_dvec3 pos = game.player.pos;
+	ml_dvec3 newpos = pos;
+	newpos.x += vel.x * dt;
+	newpos.y += vel.y * dt;
+	newpos.z += vel.z * dt;
 
-	ml_ivec3 preblock = { round(game.player.pos.x), round(game.player.pos.y), round(game.player.pos.z) };
+	ml_ivec3 preblock = { round(pos.x), round(pos.y), round(pos.z) };
 
+	if (game.camera.mode == CAMERA_3RDPERSON) {
+		ui_debug_block(preblock, 0xffff7f7f);
+	}
+
+	{
+		float offs = game.player.crouching ? CROUCHOFFSET : CAMOFFSET;
+		float ext = game.player.crouching ? CROUCHEXTENT : PLAYEREXTENT;
+		ml_vec3 pcenter = { pos.x, pos.y + offs, pos.z };
+		ml_vec3 pextent = { 0.4f, ext, 0.4f };
+
+		size_t n = 0;
+		ml_ivec3 cand[7] = {
+			ml_ivec3_offset(preblock, mlSign(vel.x), 0, 0),
+			ml_ivec3_offset(preblock, 0, 0, mlSign(vel.z)),
+			ml_ivec3_offset(preblock, mlSign(vel.x), 0, mlSign(vel.z)),
+			ml_ivec3_offset(preblock, mlSign(vel.x), 1, 0),
+			ml_ivec3_offset(preblock, 1, 0, mlSign(vel.z)),
+			ml_ivec3_offset(preblock, mlSign(vel.x), 1, mlSign(vel.z)),
+		};
+		cand[6] = ml_ivec3_offset(preblock, 0, mlSign(vel.y) < 0 ? -1 : 2, 0);
+
+		ml_ivec3 other[18];
+		for (int i = 0; i < 18; ++i)
+			if (blockinfo[blockTypeByCoord(cand[i])].density == 100)
+				other[n++] = cand[i];
+
+		ml_vec3 hitpoint;
+		ml_vec3 hitdelta;
+		ml_vec3 normal;
+		ml_vec3 sweeppos;
+		if (sweep_aabb_into_blocks(pcenter, pextent, vel, other, n, &hitpoint, &hitdelta, &normal, &sweeppos)) {
+			if (game.debug_mode) {
+				ml_vec3 nh = hitpoint;
+				nh.x -= playerChunk().x * CHUNK_SIZE;
+				nh.z -= playerChunk().z * CHUNK_SIZE;
+				ml_vec3 nh2 = mlVec3Add(nh, normal);
+				ui_debug_point(nh, 0xffff0000);
+				ui_debug_line(nh, nh2, 0xffff7f00);
+			}
+			// reflect and move along velocity vector
+			// then test again
+		}
+
+	}
+
+	// dumb "collision" as a test
 	int groundblock = preblock.y;
 	while (blockType(preblock.x, groundblock, preblock.z) != BLOCK_AIR)
 		++groundblock;
 	while (blockType(preblock.x, groundblock, preblock.z) == BLOCK_AIR && groundblock > 0)
 		--groundblock;
 	float groundlevel = (float)groundblock + 0.5f;
-	if (newpos.y < groundlevel) {
-		newpos.y += (groundlevel - newpos.y) * 10.f * dt;
-		game.player.velocity.y = 0.f;
+	if (newpos.y - 0.5f < groundlevel) {
+		newpos.y += (groundlevel - (newpos.y - 0.5f)) * 10.f * dt;
+		vel.y = 0.f;
 		game.player.onground = true;
 	}
 
-	game.player.pos = newpos;
+	pos = newpos;
 
+	ml_vec3 offset = {0, 0, 0};
 	if (game.camera.mode == CAMERA_FLIGHT) {
 		if (game.player.crouching)
-			game.player.velocity.y = -10.f;
-		game.player.velocity = mlVec3Scalef(game.player.velocity, 0.8f);
-		game.camera.pos = game.player.pos;
+			vel.y = -10.f;
+		vel = mlVec3Scalef(vel, 0.8f);
+		float d = enCubicInOut(crouch_fade);
+		offset.y = CAMOFFSET * (1.f - d) + CROUCHOFFSET * d;
 	} else {
 		if (game.player.onground) {
-			game.player.velocity.x *= 0.8f;
-			game.player.velocity.z *= 0.8f;
+			vel.x *= 0.8f;
+			vel.z *= 0.8f;
 		}
-		game.player.velocity.y -= 9.8f * 3.33f * dt;
-		game.camera.pos = game.player.pos;
+		vel.y -= 9.8f * 3.33f * dt;
 
-		ml_vec3 offset = {0, 0, 0};
 		if (game.camera.mode == CAMERA_FPS) {
-			offset.y = game.player.camoffset.y * 0.5f + (game.player.camoffset.y * 0.5f * (1.f - enCubicInOut(crouch_fade)));
+			float d = enCubicInOut(crouch_fade);
+			offset.y = CAMOFFSET * (1.f - d) + CROUCHOFFSET * d;
 		} else {
 			ml_vec3 x, y, z;
 			mlFPSRotation(game.camera.pitch, game.camera.yaw, &x, &y, &z);
 			offset = mlVec3Scalef(z, 6.f);
 		}
-		game.camera.pos.x = game.player.pos.x + offset.x;
-		game.camera.pos.y = game.player.pos.y + offset.y;
-		game.camera.pos.z = game.player.pos.z + offset.z;
 	}
+	game.player.velocity = vel;
+	game.player.pos = pos;
+	game.camera.pos.x = pos.x + offset.x;
+	game.camera.pos.y = pos.y + offset.y;
+	game.camera.pos.z = pos.z + offset.z;
 }
 
 static
@@ -597,19 +729,19 @@ void gameRender(SDL_Point* viewport, float frametime)
 			frustum.planes[5].y,
 			frustum.planes[5].z
 		};
-		if (gameRayTest(pp, v, 16, &picked_block, &prepicked_block)) {
-			ui_debug_block(picked_block, 0xcff1c40f);
-		}
+		if (gameRayTest(pp, v, 16, &picked_block, &prepicked_block))
+			if (game.camera.mode == CAMERA_FPS)
+				ui_debug_block(picked_block, 0xcff1c40f);
 	}
 
 	if (game.camera.mode == CAMERA_3RDPERSON) {
+		float offs = game.player.crouching ? CROUCHOFFSET : CAMOFFSET;
+		float ext = game.player.crouching ? CROUCHEXTENT : PLAYEREXTENT;
 		ml_vec3 center = { game.player.pos.x - camera.x*CHUNK_SIZE,
-		                   game.player.pos.y + 0.9f,
+		                   game.player.pos.y + offs,
 		                   game.player.pos.z - camera.z*CHUNK_SIZE };
-		ml_vec3 extent = { 0.5f, 0.9f, 0.5f };
+		ml_vec3 extent = { 0.4f, ext, 0.4f };
 		ui_debug_aabb(center, extent, 0xff7f7f7f);
-		if (game.debug_mode)
-			ui_debug_block(playerBlock(), 0xff00ffff);
 	}
 
 	if (game.debug_mode) {

@@ -1,6 +1,4 @@
 #include "common.h"
-#include <time.h>
-#include <assert.h>
 #include "math3d.h"
 #include "game.h"
 #include "voxelmap.h"

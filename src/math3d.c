@@ -909,3 +909,99 @@ bool mlTestSphereAABB_Hit(ml_vec3 pos, float radius, ml_vec3 center, ml_vec3 ext
 	}
 	return false;
 }
+
+bool mlTestAABBAABB_2(ml_vec3 center, ml_vec3 extent, ml_vec3 center2, ml_vec3 extent2, ml_vec3 *hitpoint, ml_vec3 *hitdelta, ml_vec3 *hitnormal)
+{
+	float dx = center2.x - center.x;
+	float px = (extent2.x + extent.x) - fabs(dx);
+	if (px <= 0)
+		return false;
+
+	float dy = center2.y - center.y;
+	float py = (extent2.y + extent.y) - fabs(dy);
+	if (py <= 0)
+		return false;
+
+	float dz = center2.z - center.z;
+	float pz = (extent2.z + extent.z) - fabs(dz);
+	if (pz <= 0)
+		return false;
+
+	if (px < py && px < pz) {
+		float sx = mlSign(dx);
+		hitdelta->x = px * sx;
+		hitnormal->x = sx;
+		hitdelta->y = hitdelta->z = 0;
+		hitnormal->y = hitnormal->z = 0;
+		hitpoint->x = center.x + (extent.x * sx);
+		hitpoint->y = center.y;
+		hitpoint->z = center.z;
+	}
+	if (py < px && py < pz) {
+		float sy = mlSign(dy);
+		hitdelta->y = py * sy;
+		hitnormal->y = sy;
+		hitdelta->x = hitdelta->z = 0;
+		hitnormal->x = hitnormal->z = 0;
+		hitpoint->y = center.y + (extent.y * sy);
+		hitpoint->x = center.x;
+		hitpoint->z = center.z;
+	}
+	if (pz < px && py < py) {
+		float sz = mlSign(dz);
+		hitdelta->z = pz * sz;
+		hitnormal->z = sz;
+		hitdelta->x = hitdelta->y = 0;
+		hitnormal->x = hitnormal->y = 0;
+		hitpoint->z = center.z + (extent.z * sz);
+		hitpoint->x = center.x;
+		hitpoint->y = center.y;
+	}
+	return true;
+}
+
+
+bool mlTestSegmentAABB(ml_vec3 pos, ml_vec3 delta, ml_vec3 padding, ml_vec3 center, ml_vec3 extent,
+	float* time, ml_vec3* hit, ml_vec3* hitdelta, ml_vec3* normal) {
+	float scaleX = 1.f / delta.x;
+	float scaleY = 1.f / delta.y;
+	float scaleZ = 1.f / delta.z;
+	float signX = mlSign(scaleX);
+	float signY = mlSign(scaleY);
+	float signZ = mlSign(scaleZ);
+	float nearTimeX = (center.x - signX * (extent.x + padding.x) - pos.x) * scaleX;
+	float nearTimeY = (center.y - signY * (extent.y + padding.y) - pos.y) * scaleY;
+	float nearTimeZ = (center.z - signZ * (extent.z + padding.z) - pos.z) * scaleZ;
+	float farTimeX = (center.x + signX * (extent.x + padding.x) - pos.x) * scaleX;
+	float farTimeY = (center.y + signY * (extent.y + padding.y) - pos.y) * scaleY;
+	float farTimeZ = (center.z + signZ * (extent.z + padding.z) - pos.z) * scaleZ;
+	if (nearTimeX > farTimeY || nearTimeY > farTimeX ||
+		nearTimeX > farTimeZ || nearTimeZ > farTimeX)
+		return false;
+	float nearTime = mlMax(mlMax(nearTimeX, nearTimeY), nearTimeZ);
+	float farTime = mlMin(mlMin(farTimeX, farTimeY), farTimeZ);
+	if (nearTime >= 1.f || farTime <= 0.f)
+		return false;
+
+	float t = mlClamp(nearTime, 0, 1.f);
+	ml_vec3 dir = delta;
+	mlVec3Normalize(dir);
+	*time = t;
+	hitdelta->x = t * delta.x;
+	hitdelta->y = t * delta.y;
+	hitdelta->z = t * delta.z;
+	hit->x = pos.x + hitdelta->x;
+	hit->y = pos.y + hitdelta->y;
+	hit->z = pos.z + hitdelta->z;
+	if (nearTimeX > nearTimeY && nearTimeX > nearTimeZ) {
+		normal->x = -signX;
+		normal->y = normal->z = 0.f;
+	} else if (nearTimeY > nearTimeX && nearTimeY > nearTimeZ) {
+		normal->y = -signY;
+		normal->x = normal->z = 0.f;
+	} else {
+		normal->z = -signZ;
+		normal->x = normal->y = 0.f;
+	}
+	return true;
+}

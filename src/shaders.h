@@ -109,7 +109,7 @@ static const char* chunk_vshader = "#version 130\n"
 	"}\n";
 
 // amb_light = color and intensity of skylight
-// out_color.xyz = torchlight level
+// out_color.xyz = torchlight level (rgb)
 // out_color.w = sunlight level
 static const char* chunk_fshader = "#version 130\n"
 	"precision highp float;\n"
@@ -128,7 +128,8 @@ static const char* chunk_fshader = "#version 130\n"
 	"void main() {\n"
 	"    vec4 tex = texture(tex0, out_texcoord);\n"
 	"    if (tex.w == 0) discard;\n"
-	"    vec3 base = tex.xyz * amb_light.xyz * out_color.w;\n"//clamp(out_color.xyz * (amb_light.xyz * out_color.w), 0.0, 1.0);\n"
+	"    vec3 light = amb_light.xyz * out_color.w;\n"
+	"    vec3 base = tex.xyz * light.xyz;\n"
 	"    vec3 fogged = fog(base, fog_color.xyz, out_depth, fog_color.w);\n"
 	"    fragment = vec4(fogged.rgb, 1);\n"
 	"}\n";

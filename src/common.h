@@ -9,6 +9,7 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include <assert.h>
 
 static inline
 void fatal_error(const char* msg, ...)

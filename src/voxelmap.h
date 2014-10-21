@@ -76,8 +76,6 @@ static inline int mod(int a, int b) {
    return ret;
 }
 
-#include <assert.h>
-
 // elements xyz are 0-32
 // w should be 0-3
 static inline uint32_t

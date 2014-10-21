@@ -59,7 +59,9 @@ void simplexInit(uint64_t seed);
 double simplexNoise(double x, double y);
 
 
-static inline double fBmSimplex(double x, double y, double gain, double frequency, double lacunarity, int octaves) {
+static inline
+double fBmSimplex(double x, double y, double gain, double frequency, double lacunarity, int octaves)
+{
 	double sum = 0.0;
 	double amplitude = 1.0;
 	for (int i = 0; i < octaves; ++i) {
