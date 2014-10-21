@@ -8,8 +8,6 @@
 #include "blocks.h"
 #include "ui.h"
 
-extern ml_tex2d blocks_texture;
-
 static inline
 tc2us_t make_tc2us(ml_vec2 tc)
 {
@@ -30,8 +28,34 @@ blockType(int x, int y, int z)
 	size_t idx = blockIndex(x, y, z);
 	if (idx >= MAP_BUFFER_SIZE)
 		return BLOCK_AIR;
-	return game.map.blocks[idx] & 0xff;
+	return map_blocks[idx] & 0xff;
 }
+
+static
+void set_sunlight(int x, int y, int z, uint32_t light)
+{
+	size_t idx = blockIndex(x, y, z);
+	if (idx < MAP_BUFFER_SIZE)
+		map_blocks[idx] = (map_blocks[idx] & 0xfffffff) + ((light&0xf) << 28);
+}
+
+static
+void set_lamplight(int x, int y, int z, uint32_t light)
+{
+	size_t idx = blockIndex(x, y, z);
+	if (idx < MAP_BUFFER_SIZE)
+		map_blocks[idx] = (map_blocks[idx] & 0xf000ffff) + ((light&0xfff) << 16);
+}
+
+static void
+set_light(int x, int y, int z, uint32_t light)
+{
+	size_t idx = blockIndex(x, y, z);
+	if (idx < MAP_BUFFER_SIZE)
+		map_blocks[idx] = (map_blocks[idx] & 0x0000ffff) + ((light&0xffff) << 16);
+}
+
+void map_unload_chunk_ptr(game_chunk* chunk);
 
 /*
   Set up a lookup table used for the texcoords of all regular blocks.
@@ -53,6 +77,8 @@ void gen_block_tcs()
 	}
 }
 
+extern ml_tex2d blocks_texture;
+uint32_t* map_blocks = NULL;
 static ml_chunk map_chunk;
 
 #define TESSELATION_QUEUE_SIZE (MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH)
@@ -84,9 +110,8 @@ void gameInitMap() {
 
 	printf("* Allocate and build initial map...\n");
 	memset(&game.map, 0, sizeof(game_map));
-	game.map.blocks = (uint32_t*)malloc(sizeof(uint32_t)*MAP_BUFFER_SIZE);
-	memset(game.map.blocks, 0, sizeof(uint32_t)*MAP_BUFFER_SIZE);
-	printf("blocks: %p\n", game.map.blocks);
+	map_blocks = (uint32_t*)malloc(sizeof(uint32_t)*MAP_BUFFER_SIZE);
+	memset(map_blocks, 0, sizeof(uint32_t)*MAP_BUFFER_SIZE);
 
 	game.map.seed = sys_urandom();
 	printf("* Seed: %lx\n", game.map.seed);
@@ -113,8 +138,11 @@ void gameInitMap() {
 }
 
 void gameFreeMap() {
-	printf("blocks: %p\n", game.map.blocks);
-	free(game.map.blocks);
+	for (size_t i = 0; i < MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH; ++i)
+		map_unload_chunk_ptr(game.map.chunks + i);
+
+	free(map_blocks);
+	map_blocks = NULL;
 }
 
 void gameUpdateMap() {
@@ -323,7 +351,7 @@ void gameLoadChunk(int x, int z) {
 	int bufx = mod(x, MAP_CHUNK_WIDTH);
 	int bufz = mod(z, MAP_CHUNK_WIDTH);
 	game_chunk* chunk = game.map.chunks + (bufz*MAP_CHUNK_WIDTH + bufx);
-	uint32_t* blocks = game.map.blocks;
+	uint32_t* blocks = map_blocks;
 	chunk->x = x;
 	chunk->z = z;
 	chunk->dirty = true;
@@ -392,17 +420,23 @@ void gameLoadChunk(int x, int z) {
 	*/
 }
 
-void gameUnloadChunk(int x, int z) {
-	int bufx = mod(x, MAP_CHUNK_WIDTH);
-	int bufz = mod(z, MAP_CHUNK_WIDTH);
-	game_chunk* chunk = game.map.chunks + (bufz*MAP_CHUNK_WIDTH + bufx);
-	if (chunk->x != x || chunk->z != z)
-		return;
+void map_unload_chunk_ptr(game_chunk* chunk)
+{
 	for (int i = 0; i < MAP_CHUNK_HEIGHT; ++i)
 		mlDestroyMesh(chunk->solid + i);
 	mlDestroyMesh(&chunk->alpha);
 	chunk->dirty = true;
 	//printf("unloaded chunk: [%d, %d] [%d, %d]\n", x, z, bufx, bufz);
+}
+
+void gameUnloadChunk(int x, int z)
+{
+	int bufx = mod(x, MAP_CHUNK_WIDTH);
+	int bufz = mod(z, MAP_CHUNK_WIDTH);
+	game_chunk* chunk = game.map.chunks + (bufz*MAP_CHUNK_WIDTH + bufx);
+	if (chunk->x != x || chunk->z != z)
+		return;
+	map_unload_chunk_ptr(chunk);
 }
 
 // tesselation buffer: size is maximum number of triangles generated
@@ -464,7 +498,7 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* al
 		for (ix = 0; ix < CHUNK_SIZE; ++ix) {
 			for (iy = 0; iy < CHUNK_SIZE; ++iy) {
 				idx = blockIndex(bx+ix, by+iy, bz+iz);
-				t = game.map.blocks[idx] & 0xff;
+				t = map_blocks[idx] & 0xff;
 				density = blockinfo[t].density;
 				if (t == BLOCK_AIR) {
 					++nprocessed;

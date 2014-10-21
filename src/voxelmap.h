@@ -66,9 +66,10 @@ typedef struct game_map {
 	game_chunk chunks[MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH];
 	// caches the block data for the area around the player
 	// blocks = [blockid | meta | sunlightlevel | torchlightlevel ]
-	uint32_t *blocks;
 	unsigned long seed;
 } game_map;
+
+extern uint32_t* map_blocks;
 
 void gameFreeMap(void);
 void gameInitMap(void);

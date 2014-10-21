@@ -324,7 +324,7 @@ bool gameHandleEvent(SDL_Event* event)
 			       picked_block.x, picked_block.y, picked_block.z);
 			if (blockTypeByCoord(picked_block) != BLOCK_AIR) {
 				printf("can delete.\n");
-				game.map.blocks[blockByCoord(picked_block)] = BLOCK_AIR;
+				map_blocks[blockByCoord(picked_block)] = BLOCK_AIR;
 				gameUpdateBlock(picked_block);
 			}
 		} break;
@@ -339,7 +339,7 @@ bool gameHandleEvent(SDL_Event* event)
 			    !blockCompare(head, prepicked_block) &&
 			    !blockCompare(feet, prepicked_block)) {
 				printf("can create.\n");
-				game.map.blocks[blockByCoord(prepicked_block)] = BLOCK_PIG;
+				map_blocks[blockByCoord(prepicked_block)] = BLOCK_PIG;
 				gameUpdateBlock(prepicked_block);
 			}
 		} break;
