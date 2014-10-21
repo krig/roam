@@ -139,16 +139,6 @@ void gameUpdateMap() {
 					gameLoadChunk(cx + dx, cz + dz);
 					chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
 					assert(chunk->x == (cx + dx) && chunk->z == (cz + dz));
-					/*
-					if (dz > -VIEW_DISTANCE-1 && dz < VIEW_DISTANCE + 1 &&
-						dx > -VIEW_DISTANCE-1 && dx < VIEW_DISTANCE + 1) {
-						if (!pushChunkTesselation(cx + dx, cz + dz)) {
-							ml_chunk tchunk;
-							if (popChunkTesselation(&tchunk)) {
-								gameTesselateChunk(tchunk.x, tchunk.z);
-							}
-						}
-						}*/
 				}
 			}
 		}

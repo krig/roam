@@ -53,6 +53,15 @@ typedef struct game_chunk {
 	// add per-chunk state information here (things like command blocks..., entities)
 } game_chunk;
 
+// block:
+// SSSSRRRRGGGGBBBBMMMMMMMMTTTTTTTT
+// S: sunlight value 0-15
+// R: red lamplight value 0-15
+// G: green lamplight value 0-15
+// B: blue lamplight value 0-15
+// M: metadata 0-255
+// T: blocktype 0-255
+
 typedef struct game_map {
 	game_chunk chunks[MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH];
 	// caches the block data for the area around the player
