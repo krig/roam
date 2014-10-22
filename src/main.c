@@ -11,10 +11,13 @@
 #include "sky.h"
 #include "easing.h"
 
-#define CAMOFFSET 0.4f
-#define CROUCHOFFSET 0.1f
-#define PLAYEREXTENT 0.9f
-#define CROUCHEXTENT 0.6f
+#define FEETDISTANCE 0.5f
+#define CAMOFFSET 0.9f
+#define CROUCHCAMOFFSET 0.6f
+#define CROUCHCENTEROFFSET 0.1f
+#define CENTEROFFSET 0.4f // pos + centeroffset = center of player
+#define PLAYERHEIGHT 1.8f // half-height of player
+#define CROUCHHEIGHT 1.2f
 
 static SDL_Window* window;
 static SDL_GLContext context;
@@ -557,9 +560,8 @@ void player_dumb_collide(ml_dvec3* pos, ml_vec3* move, ml_vec3* vel)
                 --groundblock;
         float groundlevel = (float)groundblock + 0.5f;
 
-        float poy = PLAYEREXTENT - CAMOFFSET;
-        if (pos->y - poy + move->y < groundlevel) {
-	        pos->y = groundlevel + poy;
+        if (pos->y - FEETDISTANCE + move->y < groundlevel) {
+	        pos->y = groundlevel + FEETDISTANCE;
 	        move->y = 0.f;
 	        game.player.onground = true;
         }
@@ -675,7 +677,7 @@ void player_update(float dt)
 	} break;
 	default: {
 		float d = enCubicInOut(crouch_fade);
-		offset.y = CAMOFFSET * (1.f - d) + CROUCHOFFSET * d;
+		offset.y = CAMOFFSET * (1.f - d) + CROUCHCAMOFFSET * d;
 	} break;
 	}
 
@@ -786,8 +788,8 @@ void render_game(SDL_Point* viewport, float frametime)
 	}
 
 	if (game.camera.mode == CAMERA_3RDPERSON) {
-		float offs = game.player.crouching ? CROUCHOFFSET : CAMOFFSET;
-		float ext = game.player.crouching ? CROUCHEXTENT : PLAYEREXTENT;
+		float ext = (game.player.crouching ? CROUCHHEIGHT : PLAYERHEIGHT) * 0.5f;
+		float offs = (game.player.crouching ? CROUCHCENTEROFFSET : CENTEROFFSET);
 		ml_vec3 center = { game.player.pos.x - camera.x*CHUNK_SIZE,
 		                   game.player.pos.y + offs,
 		                   game.player.pos.z - camera.z*CHUNK_SIZE };
