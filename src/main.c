@@ -25,10 +25,10 @@ struct game_t game;
 
 ml_tex2d blocks_texture;
 
-static void gameUpdateTime(float dt);
+static void update_worldtime(float dt);
 
 static
-void gameInit()
+void init_game()
 {
 	mlLoadTexture2D(&blocks_texture, "data/blocks8-v1.png");
 
@@ -75,7 +75,7 @@ void gameInit()
 
 	game.day = 0;
 	game.time_of_day = 0;
-	gameUpdateTime(0);
+	update_worldtime(0);
 	gameInitMap();
 
 	{
@@ -121,7 +121,7 @@ ml_vec3 mkrgb(uint32_t rgb)
 }
 
 static
-void gameUpdateTime(float dt)
+void update_worldtime(float dt)
 {
 	double daylength = DAY_LENGTH;
 	if (game.fast_day_mode)
@@ -235,7 +235,7 @@ void gameUpdateTime(float dt)
 }
 
 static
-void gameExit()
+void exit_game()
 {
 	gameFreeMap();
 	skyExit();
@@ -264,7 +264,7 @@ static int mouse_xrel = 0;
 static int mouse_yrel = 0;
 
 static
-bool gameHandleEvent(SDL_Event* event)
+bool handle_event(SDL_Event* event)
 {
 	if (ui_console_handle_event(event))
 		return true;
@@ -689,7 +689,7 @@ void player_update(float dt)
 }
 
 static
-void gameUpdate(float dt)
+void update_game(float dt)
 {
 	player_update(dt);
 	ui_update(dt);
@@ -699,7 +699,7 @@ void gameUpdate(float dt)
 	// update creatures
 	// update effects
 
-	gameUpdateTime(dt);
+	update_worldtime(dt);
 }
 
 /*
@@ -713,7 +713,7 @@ printMatrix(ml_matrix* m) {
 */
 
 static
-void gameRender(SDL_Point* viewport, float frametime)
+void render_game(SDL_Point* viewport, float frametime)
 {
 	ml_matrix view;
 	ml_frustum frustum;
@@ -899,7 +899,7 @@ int main(int argc, char* argv[])
 	              (float)sz.x / (float)sz.y,
 	              0.1f, 1024.f);
 
-	gameInit();
+	init_game();
 	glCheck(__LINE__);
 
 	int64_t startms, nowms;
@@ -930,7 +930,7 @@ int main(int argc, char* argv[])
 				} else if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
 					goto exit;
 				}
-			} else if (!gameHandleEvent(&event)) {
+			} else if (!handle_event(&event)) {
 				goto exit;
 			}
 		}
@@ -939,16 +939,16 @@ int main(int argc, char* argv[])
 		if (nowms < 1)
 			nowms = 1;
 		frametime = (float)((double)nowms / 1000.0);
-		gameUpdate(frametime);
+		update_game(frametime);
 		startms = (int64_t)SDL_GetTicks();
-		gameRender(&sz, frametime);
+		render_game(&sz, frametime);
 
 		SDL_GL_SwapWindow(window);
 		glCheck(__LINE__);
 	}
 
 exit:
-	gameExit();
+	exit_game();
 	SDL_GL_DeleteContext(context);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
