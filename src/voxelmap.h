@@ -76,53 +76,70 @@ void gameInitMap(void);
 void gameUpdateMap(void);
 void gameDrawMap(ml_frustum* frustum);
 void gameDrawAlphaPass(void);
+void gameLoadChunk(int x, int z);
+void gameUnloadChunk(int x, int z);
+void gameTesselateChunk(int x, int z);
+void gameUpdateBlock(ml_ivec3 block, uint32_t value);
+bool gameRayTest(ml_dvec3 origin, ml_vec3 dir, int len, ml_ivec3* hit, ml_ivec3* prehit);
+uint32_t blockData(int x, int y, int z);
 
 // mod which handles negative numbers
-static inline int mod(int a, int b) {
-   if(b < 0) //you can check for b == 0 separately and do what you want
-     return mod(-a, -b);
-   int ret = a % b;
-   if(ret < 0)
-     ret+=b;
-   return ret;
+static inline
+int mod(int a, int b)
+{
+	if (b < 0) { a = -a; b = -b; }
+	int ret = a % b;
+	return (ret < 0) ? ret + b : ret;
 }
 
 // elements xyz are 0-32
 // w should be 0-3
-static inline uint32_t
-mapPackVectorChunkCoord(unsigned int x, unsigned int y, unsigned int z, unsigned int w) {
+static inline
+uint32_t mapPackVectorChunkCoord(unsigned int x, unsigned int y, unsigned int z, unsigned int w)
+{
 	assert(x <= CHUNK_SIZE && y <= CHUNK_SIZE && z <= CHUNK_SIZE && w < 4);
 	return ((x)*(unsigned int)(1023/CHUNK_SIZE)) + (((y)*(unsigned int)(1023/CHUNK_SIZE))<<10) + (((z)*(unsigned int)(1023/CHUNK_SIZE))<<20) + ((w)<<30);
 }
 
-// origin block
-// direction vector
-// length in blocks
-bool gameRayTest(ml_dvec3 origin, ml_vec3 dir, int len, ml_ivec3* hit, ml_ivec3* prehit);
 
-static inline size_t blockIndex(int x, int y, int z) {
+static inline
+size_t blockIndex(int x, int y, int z)
+{
 	return mod(z, MAP_BLOCK_WIDTH) * (MAP_BLOCK_WIDTH * MAP_BLOCK_HEIGHT) +
 		mod(x, MAP_BLOCK_WIDTH) * MAP_BLOCK_HEIGHT +
 		y;
 }
 
-static inline size_t blockByCoord(ml_ivec3 xyz) {
+static inline
+uint32_t* blockColumn(int x, int z)
+{
+	return map_blocks +
+		mod(z, MAP_BLOCK_WIDTH) * (MAP_BLOCK_WIDTH * MAP_BLOCK_HEIGHT) +
+		mod(x, MAP_BLOCK_WIDTH) * MAP_BLOCK_HEIGHT;
+}
+
+static inline
+uint32_t blockType(int x, int y, int z)
+{
+	return blockData(x, y, z) & 0xff;
+}
+
+static inline
+size_t blockByCoord(ml_ivec3 xyz)
+{
 	return blockIndex(xyz.x, xyz.y, xyz.z);
 }
 
-uint32_t blockType(int x, int y, int z);
-
-static inline uint32_t blockTypeByCoord(ml_ivec3 xyz) {
+static inline
+uint32_t blockTypeByCoord(ml_ivec3 xyz)
+{
 	return blockType(xyz.x, xyz.y, xyz.z);
 }
 
-static inline ml_chunk blockToChunk(ml_ivec3 block) {
+static inline
+ml_chunk blockToChunk(ml_ivec3 block)
+{
 	ml_chunk c = { floor(round(block.x) / CHUNK_SIZE),
 	               floor(round(block.z) / CHUNK_SIZE) };
 	return c;
 }
-
-void gameLoadChunk(int x, int z);
-void gameUnloadChunk(int x, int z);
-void gameTesselateChunk(int x, int z);
-void gameUpdateBlock(ml_ivec3 block);

@@ -30,6 +30,7 @@ struct blockinfo_t {
 
 	bool alpha; // render in alpha pass
 	bool backfaces; // render in backface pass
+	bool lightsource; // emits light?
 
 	// todo: custom shape?
 	// maybe this has to be hardcoded in the tesselator for each blocktype

@@ -45,6 +45,7 @@ void init_game()
 	game.player.crouching = false;
 	game.fast_day_mode = false;
 	game.debug_mode = true;
+	game.collisions_on = true;
 	game.camera.mode = CAMERA_FLIGHT;
 
 	struct controls_t default_controls = {
@@ -291,6 +292,8 @@ bool handle_event(SDL_Event* event)
 			enable_ground = !enable_ground;
 		else if (sym == SDLK_F4)
 			game.camera.mode = (game.camera.mode + 1) % NUM_CAMERA_MODES;
+		else if (sym == SDLK_F5)
+			game.collisions_on = !game.collisions_on;
 		else if (sym == SDLK_BACKQUOTE)
 			ui_console_toggle(true);
 		else if (sym == SDLK_F2)
@@ -335,14 +338,14 @@ bool handle_event(SDL_Event* event)
 			printf("deleting picked block (%d, %d, %d)\n",
 			       picked_block.x, picked_block.y, picked_block.z);
 			if (!mouse_captured) {
+				printf("focus gained\n");
 				mouse_captured = true;
 				SDL_SetRelativeMouseMode(SDL_TRUE);
 				SDL_SetWindowGrab(window, SDL_TRUE);
 			} else {
 				if (blockTypeByCoord(picked_block) != BLOCK_AIR) {
 					printf("can delete.\n");
-					map_blocks[blockByCoord(picked_block)] = BLOCK_AIR;
-					gameUpdateBlock(picked_block);
+					gameUpdateBlock(picked_block, BLOCK_AIR);
 				}
 			}
 		} break;
@@ -357,8 +360,7 @@ bool handle_event(SDL_Event* event)
 			    !blockCompare(head, prepicked_block) &&
 			    !blockCompare(feet, prepicked_block)) {
 				printf("can create.\n");
-				map_blocks[blockByCoord(prepicked_block)] = BLOCK_PIG;
-				gameUpdateBlock(prepicked_block);
+				gameUpdateBlock(prepicked_block, BLOCK_PIG);
 			}
 		} break;
 		} break;
@@ -652,7 +654,8 @@ void player_update(float dt)
 	}
 
 	// collide
-	player_dumb_collide(&pos, &move, &vel);
+	if (game.collisions_on)
+		player_dumb_collide(&pos, &move, &vel);
 
 	pos.x += move.x;
 	pos.y += move.y;
@@ -724,7 +727,7 @@ void render_game(SDL_Point* viewport, float frametime)
 	glDepthFunc(GL_LESS);
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
-	glClearColor(game.fog_color.x, game.fog_color.y, game.fog_color.z, 1.f);
+	glClearColor(game.sky_light.x, game.sky_light.y, game.sky_light.z, 1.f);
 	glClearDepth(1.f);
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
@@ -924,6 +927,7 @@ int main(int argc, char* argv[])
 					              (float)sz.x / (float)sz.y,
 					              0.1f, 1024.f);
 				} else if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
+					printf("focus lost\n");
 					SDL_SetRelativeMouseMode(SDL_FALSE);
 					SDL_SetWindowGrab(window, SDL_FALSE);
 					mouse_captured = false;

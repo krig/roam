@@ -18,41 +18,14 @@ tc2us_t make_tc2us(ml_vec2 tc)
 	return to;
 }
 
-uint32_t
-blockType(int x, int y, int z)
+uint32_t blockData(int x, int y, int z)
 {
-	if (y < 0)
-		return BLOCK_BLACKROCK;
-	if (y >= MAP_BLOCK_HEIGHT)
-		return BLOCK_AIR;
+	if (y < 0 || y >= MAP_BLOCK_HEIGHT)
+		return (0xf0000000|BLOCK_AIR);
 	size_t idx = blockIndex(x, y, z);
 	if (idx >= MAP_BUFFER_SIZE)
-		return BLOCK_AIR;
-	return map_blocks[idx] & 0xff;
-}
-
-static
-void set_sunlight(int x, int y, int z, uint32_t light)
-{
-	size_t idx = blockIndex(x, y, z);
-	if (idx < MAP_BUFFER_SIZE)
-		map_blocks[idx] = (map_blocks[idx] & 0xfffffff) + ((light&0xf) << 28);
-}
-
-static
-void set_lamplight(int x, int y, int z, uint32_t light)
-{
-	size_t idx = blockIndex(x, y, z);
-	if (idx < MAP_BUFFER_SIZE)
-		map_blocks[idx] = (map_blocks[idx] & 0xf000ffff) + ((light&0xfff) << 16);
-}
-
-static void
-set_light(int x, int y, int z, uint32_t light)
-{
-	size_t idx = blockIndex(x, y, z);
-	if (idx < MAP_BUFFER_SIZE)
-		map_blocks[idx] = (map_blocks[idx] & 0x0000ffff) + ((light&0xffff) << 16);
+		return (0xf0000000|BLOCK_AIR);
+	return map_blocks[idx];
 }
 
 void map_unload_chunk_ptr(game_chunk* chunk);
@@ -299,7 +272,21 @@ void gameDrawAlphaPass() {
 	}
 }
 
-void gameUpdateBlock(ml_ivec3 block) {
+void gameUpdateBlock(ml_ivec3 block, uint32_t value) {
+	size_t idx = blockByCoord(block);
+
+	// relight column down (fixes sunlight)
+	uint32_t sunlight = 0xf0000000;
+	map_blocks[idx] = value;
+	idx -= block.y;
+	for (int dy = MAP_BLOCK_HEIGHT-1; dy >= 0; --dy) {
+		uint32_t t = map_blocks[idx + dy];
+		if ((t & 0xff) != BLOCK_AIR)
+			sunlight = 0;
+		map_blocks[idx + dy] = (t & 0x0fffffff) | sunlight;
+	}
+	// TODO: need to re-propagate light from lightsources affected by this change
+
 	ml_chunk chunk = blockToChunk(block);
 	bool tess[4] = { false, false, false, false };
 	int mx = block.x % CHUNK_SIZE;
@@ -372,6 +359,7 @@ void gameLoadChunk(int x, int z) {
 				printf("bad index: %d, %d, %d\n", fillx, 0, fillz);
 				abort();
 			}
+			uint32_t sunlight = 0xf0000000;
 			double height = fBmSimplex(fillx, fillz, 0.5, NOISE_SCALE, 2.1117, 5);
 			height = 32.0 + height * 24.0;
 			b = BLOCK_AIR;
@@ -398,14 +386,9 @@ void gameLoadChunk(int x, int z) {
 				} else {
 					b = BLOCK_AIR;
 				}
-				if (b == BLOCK_AIR) {
-					// in sunlight
-				} else if (p == BLOCK_AIR && b != BLOCK_AIR) {
-					// in sunlight
-				} else {
-					// not in sunlight
-				}
-				blocks[idx0 + filly] = b;
+				if (b != BLOCK_AIR)
+					sunlight = 0;
+				blocks[idx0 + filly] = b | sunlight;
 				p = b;
 			}
 		}
@@ -450,7 +433,6 @@ static game_block_vtx alpha_buffer[ALPHA_BUFFER_SIZE];
 
 #define TESSELATION_BUFFER_SIZE (CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE*36)
 static game_block_vtx tesselation_buffer[TESSELATION_BUFFER_SIZE];
-#define POS(x, y, z) mlMakeVec3(x, y, z)//mapPackVectorChunkCoord((unsigned int)(x), (unsigned int)(y), (unsigned int)(z), 0)
 
 bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* alphai);
 
@@ -474,7 +456,53 @@ void gameTesselateChunk(int x, int z) {
 	}
 }
 
-#define BNONSOLID(x,y,z) (blockinfo[blockType(x,y,z)].density < density)
+// Interleave lower 16 bits of x and y in groups of 4
+// ie turn 0xabcd into 0xaabbccdd
+static
+uint32_t bitexpand16(uint32_t x) {
+	x = ((x << 12) & 0xF000000) + ((x << 8) & 0xF0000) + ((x << 4) & 0xF00) + (x & 0xF);
+	return x | (x << 4);
+}
+
+// turn 0xaabbccdd into 0xabcd
+static
+uint32_t bitcontract16(uint32_t x) {
+	return ((x >> 16) & 0xF000) + ((x >> 12) & 0xF00) + ((x >> 8) & 0xF0) + ((x & 0xF0) >> 4);
+}
+
+// take light from the given four blocks and mix it into a single light value
+// assert(avglight(0xabcd0000, 0xabcd0000, 0xabcd0000, 0xabcd0000) == 0xafbfcfdf);
+// assert(avglight(0, 0, 0, 0) == 0x0f0f0f0f);
+// assert(avglight(0xffff0000, 0xffff0000, 0xffff0000, 0xffff0000) == 0xffff0000);
+// MC smooth lighting: average light of four blocks around vert on the positive face side
+static
+uint32_t avglight(uint32_t b0, uint32_t b1, uint32_t b2, uint32_t b3) {
+	static const uint32_t M[4] = { 0xf0000000, 0xf000000, 0xf00000, 0xf0000 };
+	static const uint32_t S[4] = { 28, 24, 20, 16 };
+	uint32_t ret = 0;
+	ret |= ((((b0 & M[0]) >> S[0]) + ((b1 & M[0]) >> S[0]) + ((b2 & M[0]) >> S[0]) + ((b3 & M[0]) >> S[0]) + 4) * 4 - 1) << 24;
+	ret |= ((((b0 & M[1]) >> S[1]) + ((b1 & M[1]) >> S[1]) + ((b2 & M[1]) >> S[1]) + ((b3 & M[1]) >> S[1]) + 4) * 4 - 1) << 16;
+	ret |= ((((b0 & M[2]) >> S[2]) + ((b1 & M[2]) >> S[2]) + ((b2 & M[2]) >> S[2]) + ((b3 & M[2]) >> S[2]) + 4) * 4 - 1) << 8;
+	ret |= ((((b0 & M[3]) >> S[3]) + ((b1 & M[3]) >> S[3]) + ((b2 & M[3]) >> S[3]) + ((b3 & M[3]) >> S[3]) + 4) * 4 - 1);
+	return ret;
+}
+
+// TODO: calculate index of surrounding blocks directly without going through blockType
+#define POS(x, y, z) mlMakeVec3(x, y, z)
+#define BNONSOLID(t) (blockinfo[(n[(t)] & 0xff)].density < density)
+//#define BNONSOLID(t) ((n[(t)] & 0xff) == BLOCK_AIR)
+#define BLOCKAT(x, y, z) (map_blocks[blockIndex((x), (y), (z))])
+#define BLOCKLIGHT(a, b, c, d) avglight(n[a], n[b], n[c], n[d])
+#define GETCOL(np, ng, x, y, z) memcpy(n + (np), map_blocks + blockIndex(bx + (x), by + (y), bz + (z)), sizeof(uint32_t) * (ng))
+
+// n array layout:
+//+y       +y       +y
+// \ 2 5 8  | b e h  | k n q
+// \ 1 4 7  | a d g  | j m p
+// \ 0 3 6  | 9 c f  | i l o
+// +-----+x +-----+x +-----+x
+//  (iz-1)   (iz)     (iz+1)
+
 
 bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* alphai) {
 	int ix, iy, iz;
@@ -489,53 +517,87 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* al
 	bz = bufz*CHUNK_SIZE;
 	size_t nprocessed = 0;
 
-	size_t idx, idx0;
+	size_t idx0;
 	uint32_t t;
+	uint32_t n[27]; // blocktypes for a 3x3 cube around this block
 	int density;
+	size_t save_vi;
 
 	// fill in verts
 	for (iz = 0; iz < CHUNK_SIZE; ++iz) {
 		for (ix = 0; ix < CHUNK_SIZE; ++ix) {
 			idx0 = blockIndex(bx+ix, by, bz+iz);
 			for (iy = 0; iy < CHUNK_SIZE; ++iy) {
-				idx = idx0 + iy;
-				t = map_blocks[idx] & 0xff;
+				t = map_blocks[idx0 + iy] & 0xff;
 				density = blockinfo[t].density;
 				if (t == BLOCK_AIR) {
 					++nprocessed;
 					continue;
 				}
 
-				size_t save_vi;
 				if (blockinfo[t].alpha) {
 					save_vi = vi;
 					verts = alpha_buffer;
 					vi = *alphai;
 				}
 
-				if (BNONSOLID(bx+ix, by+iy+1, bz+iz)) {
-					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_TOP, 0);
-					const game_block_vtx corners[4] = {
-						{POS(  ix, by+iy+1, iz+1), tc[0], 0xffffffff },
-						{POS(ix+1, by+iy+1, iz+1), tc[1], 0xffffffff },
-						{POS(ix+1, by+iy+1,   iz), tc[2], 0xffffffff },
-						{POS(  ix, by+iy+1,   iz), tc[3], 0xffffffff },
-					};
-					verts[vi++] = corners[0];
-					verts[vi++] = corners[1];
-					verts[vi++] = corners[3];
-					verts[vi++] = corners[3];
-					verts[vi++] = corners[1];
-					verts[vi++] = corners[2];
+				if (by+iy+1 >= MAP_BLOCK_HEIGHT) {
+					n[2] = n[5] = n[8] = n[11] = n[14] = n[17] = n[20] = n[23] = n[26] = (0xf0000000|BLOCK_AIR);
+					GETCOL(0, 2, ix - 1, iy - 1, iz - 1);
+					GETCOL(3, 2, ix, iy - 1, iz - 1);
+					GETCOL(6, 2, ix + 1, iy - 1, iz - 1);
+					GETCOL(9, 2, ix - 1, iy - 1, iz);
+					GETCOL(12, 2, ix, iy - 1, iz);
+					GETCOL(15, 2, ix + 1, iy - 1, iz);
+					GETCOL(18, 2, ix - 1, iy - 1, iz + 1);
+					GETCOL(21, 2, ix, iy - 1, iz + 1);
+					GETCOL(24, 2, ix + 1, iy - 1, iz + 1);
+				} else if (by+iy-1 < 0) {
+					n[0] = n[3] = n[6] = n[9] = n[12] = n[15] = n[18] = n[21] = n[24] = (0xf0000000|BLOCK_AIR);
+					GETCOL(1, 2, ix - 1, iy, iz - 1);
+					GETCOL(4, 2, ix, iy, iz - 1);
+					GETCOL(7, 2, ix + 1, iy, iz - 1);
+					GETCOL(10, 2, ix - 1, iy, iz);
+					GETCOL(13, 2, ix, iy, iz);
+					GETCOL(16, 2, ix + 1, iy, iz);
+					GETCOL(19, 2, ix - 1, iy, iz + 1);
+					GETCOL(22, 2, ix, iy, iz + 1);
+					GETCOL(25, 2, ix + 1, iy, iz + 1);
+				} else {
+					GETCOL(0, 3, ix - 1, iy - 1, iz - 1);
+					GETCOL(3, 3, ix, iy - 1, iz - 1);
+					GETCOL(6, 3, ix + 1, iy - 1, iz - 1);
+					GETCOL(9, 3, ix - 1, iy - 1, iz);
+					GETCOL(12, 3, ix, iy - 1, iz);
+					GETCOL(15, 3, ix + 1, iy - 1, iz);
+					GETCOL(18, 3, ix - 1, iy - 1, iz + 1);
+					GETCOL(21, 3, ix, iy - 1, iz + 1);
+					GETCOL(24, 3, ix + 1, iy - 1, iz + 1);
 				}
 
-				if (BNONSOLID(bx+ix, by+iy-1, bz+iz)) {
+				if (BNONSOLID(14)) {
+					assert((n[14]&0xff) != (n[13]&0xff));
+					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_TOP, 0);
+					const game_block_vtx corners[4] = {
+						{POS(  ix, by+iy+1, iz+1), tc[0], BLOCKLIGHT(20,23,11,14)},
+						{POS(ix+1, by+iy+1, iz+1), tc[1], BLOCKLIGHT(23,26,14,17)},
+						{POS(ix+1, by+iy+1,   iz), tc[2], BLOCKLIGHT( 5, 8,14,17)},
+						{POS(  ix, by+iy+1,   iz), tc[3], BLOCKLIGHT( 2, 5,11,14)},
+					};
+					verts[vi++] = corners[0];
+					verts[vi++] = corners[1];
+					verts[vi++] = corners[3];
+					verts[vi++] = corners[3];
+					verts[vi++] = corners[1];
+					verts[vi++] = corners[2];
+				}
+				if (BNONSOLID(12)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BOTTOM, 0);
 					const game_block_vtx corners[4] = {
-						{POS(  ix, by+iy,   iz), tc[0], 0xffffffff },
-						{POS(ix+1, by+iy,   iz), tc[1], 0xffffffff },
-						{POS(ix+1, by+iy, iz+1), tc[2], 0xffffffff },
-						{POS(  ix, by+iy, iz+1), tc[3], 0xffffffff },
+						{POS(  ix, by+iy,   iz), tc[0], BLOCKLIGHT( 0, 3, 9,12)},
+						{POS(ix+1, by+iy,   iz), tc[1], BLOCKLIGHT( 3, 6,12,15)},
+						{POS(ix+1, by+iy, iz+1), tc[2], BLOCKLIGHT(12,15,21,24)},
+						{POS(  ix, by+iy, iz+1), tc[3], BLOCKLIGHT( 9,12,18,21)},
 					};
 					verts[vi++] = corners[0];
 					verts[vi++] = corners[1];
@@ -544,13 +606,13 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* al
 					verts[vi++] = corners[1];
 					verts[vi++] = corners[2];
 				}
-				if (BNONSOLID(bx+ix-1, by+iy, bz+iz)) {
+				if (BNONSOLID(10)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_LEFT, 0);
 					const game_block_vtx corners[4] = {
-						{POS(ix,   by+iy,   iz), tc[0], 0xffffffff },
-						{POS(ix,   by+iy, iz+1), tc[1], 0xffffffff },
-						{POS(ix, by+iy+1, iz+1), tc[2], 0xffffffff },
-						{POS(ix, by+iy+1,   iz), tc[3], 0xffffffff },
+						{POS(ix,   by+iy,   iz), tc[0], BLOCKLIGHT( 0, 1, 9,10)},
+						{POS(ix,   by+iy, iz+1), tc[1], BLOCKLIGHT( 9,10,18,19)},
+						{POS(ix, by+iy+1, iz+1), tc[2], BLOCKLIGHT(10,11,19,20)},
+						{POS(ix, by+iy+1,   iz), tc[3], BLOCKLIGHT( 1, 2,10,11)},
 					};
 					verts[vi++] = corners[0];
 					verts[vi++] = corners[1];
@@ -559,13 +621,13 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* al
 					verts[vi++] = corners[1];
 					verts[vi++] = corners[2];
 				}
-				if (BNONSOLID(bx+ix+1, by+iy, bz+iz)) {
+				if (BNONSOLID(16)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_RIGHT, 0);
 					const game_block_vtx corners[4] = {
-						{POS(ix+1,   by+iy, iz+1), tc[0], 0xffffffff },
-						{POS(ix+1,   by+iy,   iz), tc[1], 0xffffffff },
-						{POS(ix+1, by+iy+1,   iz), tc[2], 0xffffffff },
-						{POS(ix+1, by+iy+1, iz+1), tc[3], 0xffffffff },
+						{POS(ix+1,   by+iy, iz+1), tc[0], BLOCKLIGHT(15,16,24,25)},
+						{POS(ix+1,   by+iy,   iz), tc[1], BLOCKLIGHT( 6, 7,15,16)},
+						{POS(ix+1, by+iy+1,   iz), tc[2], BLOCKLIGHT( 7, 8,16,17)},
+						{POS(ix+1, by+iy+1, iz+1), tc[3], BLOCKLIGHT(16,17,25,26)},
 					};
 					verts[vi++] = corners[0];
 					verts[vi++] = corners[1];
@@ -574,13 +636,13 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* al
 					verts[vi++] = corners[1];
 					verts[vi++] = corners[2];
 				}
-				if (BNONSOLID(bx+ix, by+iy, bz+iz+1)) {
+				if (BNONSOLID(22)) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_FRONT, 0);
 					game_block_vtx corners[4] = {
-						{POS(  ix,   by+iy, iz+1), tc[0], 0xffffffff },
-						{POS(ix+1,   by+iy, iz+1), tc[1], 0xffffffff },
-						{POS(ix+1, by+iy+1, iz+1), tc[2], 0xffffffff },
-						{POS(  ix, by+iy+1, iz+1), tc[3], 0xffffffff },
+						{POS(  ix,   by+iy, iz+1), tc[0], BLOCKLIGHT(18,19,21,22)},
+						{POS(ix+1,   by+iy, iz+1), tc[1], BLOCKLIGHT(21,22,24,25)},
+						{POS(ix+1, by+iy+1, iz+1), tc[2], BLOCKLIGHT(22,23,25,26)},
+						{POS(  ix, by+iy+1, iz+1), tc[3], BLOCKLIGHT(19,20,22,23)},
 					};
 					verts[vi++] = corners[0];
 					verts[vi++] = corners[1];
@@ -589,13 +651,13 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* al
 					verts[vi++] = corners[1];
 					verts[vi++] = corners[2];
 				}
-				if (BNONSOLID(bx+ix, by+iy, bz+iz-1)) {
+				if (BNONSOLID(4)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BACK, 0);
 					const game_block_vtx corners[4] = {
-						{POS(ix+1,   by+iy, iz), tc[0], 0xffffffff },
-						{POS(  ix,   by+iy, iz), tc[1], 0xffffffff },
-						{POS(  ix, by+iy+1, iz), tc[2], 0xffffffff },
-						{POS(ix+1, by+iy+1, iz), tc[3], 0xffffffff },
+						{POS(ix+1,   by+iy, iz), tc[0], BLOCKLIGHT( 3, 4, 6, 7)},
+						{POS(  ix,   by+iy, iz), tc[1], BLOCKLIGHT( 0, 1, 3, 4)},
+						{POS(  ix, by+iy+1, iz), tc[2], BLOCKLIGHT( 1, 2, 4, 5)},
+						{POS(ix+1, by+iy+1, iz), tc[3], BLOCKLIGHT( 4, 5, 7, 8)},
 					};
 					verts[vi++] = corners[0];
 					verts[vi++] = corners[1];
