@@ -243,33 +243,33 @@ void gameDrawMap(ml_frustum* frustum) {
 
 void gameDrawAlphaPass() {
 	ml_material* material;
-	if (nalphas > 0) {
-		material = game.materials + MAT_CHUNK_ALPHA;
-		glEnable(GL_TEXTURE_2D);
-		mlBindTexture2D(&blocks_texture, 0);
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glDepthMask(GL_FALSE);
-		glDepthFunc(GL_LEQUAL);
-		glUseProgram(material->program);
-		glUniform1i(material->tex0, 0);
-		mlUniformMatrix(material->projmat, mlGetMatrix(&game.projection));
-		mlUniformMatrix(material->modelview, mlGetMatrix(&game.modelview));
-		mlUniformVec3(material->amb_light, &game.amb_light);
-		mlUniformVec4(material->fog_color, &game.fog_color);
+	if (nalphas == 0)
+		return;
+	material = game.materials + MAT_CHUNK_ALPHA;
+	glEnable(GL_TEXTURE_2D);
+	mlBindTexture2D(&blocks_texture, 0);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glDepthMask(GL_FALSE);
+	glDepthFunc(GL_LESS);
+	glUseProgram(material->program);
+	glUniform1i(material->tex0, 0);
+	mlUniformMatrix(material->projmat, mlGetMatrix(&game.projection));
+	mlUniformMatrix(material->modelview, mlGetMatrix(&game.modelview));
+	mlUniformVec3(material->amb_light, &game.amb_light);
+	mlUniformVec4(material->fog_color, &game.fog_color);
 
-		for (size_t i = 0; i < nalphas; ++i) {
-			mlUniformVec3(material->chunk_offset, alphaoffsets + i);
-			mlMapMeshToMaterial(alphas[i], material);
-			glDrawArrays(alphas[i]->mode, 0, alphas[i]->count);
-		}
-
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glUseProgram(0);
-		glDisable(GL_BLEND);
-		glDepthMask(GL_TRUE);
-		glDisable(GL_TEXTURE_2D);
+	for (size_t i = 0; i < nalphas; ++i) {
+		mlUniformVec3(material->chunk_offset, alphaoffsets + i);
+		mlMapMeshToMaterial(alphas[i], material);
+		glDrawArrays(alphas[i]->mode, 0, alphas[i]->count);
 	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glUseProgram(0);
+	glDisable(GL_BLEND);
+	glDepthMask(GL_TRUE);
+	glDisable(GL_TEXTURE_2D);
 }
 
 void gameUpdateBlock(ml_ivec3 block, uint32_t value) {

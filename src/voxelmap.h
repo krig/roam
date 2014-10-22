@@ -34,22 +34,29 @@ typedef struct game_block_vtx {
 
 #pragma pack(pop)
 
-enum CHUNK_STATE {
-	CHUNK_UNLOADED,
-	CHUNK_ECOLOGY, /* ecology has been generated */
-	CHUNK_TERRAIN, /* terrain has been generated */
-	CHUNK_PLANTS, /* plants have been generated */
- 	CHUNK_LIT /* chunk has been lit */
+enum CHUNK_GEN_STATE {
+	CHUNK_GEN_S0, /* no blocks generated for this chunk yet */
+	CHUNK_GEN_S1, /* base terrain blocks generated */
+	CHUNK_GEN_S2, /* structures / plants generated */
+	CHUNK_GEN_S3, /* light fully propagated */
+};
+
+enum CHUNK_TESS_STATE {
+	CHUNK_TESS_S0, /* no mesh generated */
+	CHUNK_TESS_S1, /* gen-state 1 mesh generated */
+	CHUNK_TESS_S2, /* gen-state 2 mesh generated */
+	CHUNK_TESS_S3
 };
 
 typedef struct game_chunk {
 	int x; // actual coordinates of chunk
 	int z;
 	bool dirty;
-	uint32_t state;
+	uint32_t sgen;
+	uint32_t stess;
 	ml_mesh solid[MAP_CHUNK_HEIGHT];
-	ml_mesh alpha; // sort before rendering - should not be a mesh?
-	ml_mesh twosided; // render twosided
+	ml_mesh alpha; // sort before rendering - should not be a mesh? no backface culling?
+	ml_mesh twosided; // render twosided (same shader as solid meshes but different render state)
 	// add per-chunk state information here (things like command blocks..., entities)
 } game_chunk;
 
