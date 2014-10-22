@@ -367,6 +367,11 @@ void gameLoadChunk(int x, int z) {
 	uint32_t p, b;
 	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
 		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
+			size_t idx0 = blockIndex(fillx, 0, fillz);
+			if (idx0 >= MAP_BUFFER_SIZE) {
+				printf("bad index: %d, %d, %d\n", fillx, 0, fillz);
+				abort();
+			}
 			double height = fBmSimplex(fillx, fillz, 0.5, NOISE_SCALE, 2.1117, 5);
 			height = 32.0 + height * 24.0;
 			b = BLOCK_AIR;
@@ -400,12 +405,7 @@ void gameLoadChunk(int x, int z) {
 				} else {
 					// not in sunlight
 				}
-				size_t idx = blockIndex(fillx, filly, fillz);
-				if (idx >= MAP_BUFFER_SIZE) {
-					printf("bad index: %d, %d, %d\n", fillx, filly, fillz);
-					abort();
-				}
-				blocks[idx] = b;
+				blocks[idx0 + filly] = b;
 				p = b;
 			}
 		}
@@ -489,15 +489,16 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* al
 	bz = bufz*CHUNK_SIZE;
 	size_t nprocessed = 0;
 
-	size_t idx;
+	size_t idx, idx0;
 	uint32_t t;
 	int density;
 
 	// fill in verts
 	for (iz = 0; iz < CHUNK_SIZE; ++iz) {
 		for (ix = 0; ix < CHUNK_SIZE; ++ix) {
+			idx0 = blockIndex(bx+ix, by, bz+iz);
 			for (iy = 0; iy < CHUNK_SIZE; ++iy) {
-				idx = blockIndex(bx+ix, by+iy, bz+iz);
+				idx = idx0 + iy;
 				t = map_blocks[idx] & 0xff;
 				density = blockinfo[t].density;
 				if (t == BLOCK_AIR) {
