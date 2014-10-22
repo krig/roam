@@ -92,8 +92,8 @@ void gameInitMap() {
 	osnInit(game.map.seed);
 
 	ml_chunk camera = playerChunk();
-	for (int z = -VIEW_DISTANCE - 1; z < VIEW_DISTANCE + 1; ++z)
-		for (int x = -VIEW_DISTANCE - 1; x < VIEW_DISTANCE + 1; ++x)
+	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
+		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x)
 			gameLoadChunk(camera.x + x, camera.z + z);
 
 	// tesselate column
@@ -129,8 +129,8 @@ void gameUpdateMap() {
 		       game.camera.pos.x, game.camera.pos.z);
 		map_chunk = nc;
 
-		for (int dz = -VIEW_DISTANCE - 1; dz < VIEW_DISTANCE + 1; ++dz) {
-			for (int dx = -VIEW_DISTANCE - 1; dx < VIEW_DISTANCE + 1; ++dx) {
+		for (int dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
+			for (int dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
 				int bx = mod(cx + dx, MAP_CHUNK_WIDTH);
 				int bz = mod(cz + dz, MAP_CHUNK_WIDTH);
 				game_chunk* chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);

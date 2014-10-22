@@ -155,7 +155,7 @@ static const char* chunkalpha_fshader = "#version 130\n"
 	"    vec3 light = ((amb_light.xyz * out_color.w));\n"
 	"    vec3 base = tex.xyz * light.xyz;\n"
 	"    vec3 fogged = fog(base, fog_color.xyz, out_depth, fog_color.w);\n"
-	"    fragment = tex;\n"//vec4(fogged.rgb, tex.w);\n"
+	"    fragment = vec4(fogged.rgb, tex.w);\n"
 	"}\n";
 
 
