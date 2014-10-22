@@ -326,6 +326,21 @@ void gameUpdateBlock(ml_ivec3 block, uint32_t value) {
 	}
 }
 
+// propagate light from x,y,z
+// so (x,y,z) is the light "source"
+//   push (x,y,z) to process queue
+//   check its neighbours
+//   if neighbour is !solid and...
+//      has lightlevel < this - 2,
+//       increase their lightlevel
+//       add that neighbour to propagation queue
+//   loop until queue is empty
+//   neighbour data can be packed into uint8[3]
+// TODO: per-thread queue, queue retesselation of
+// lit chunks as they are modified
+void propagate_light(int x, int y, int z) {
+}
+
 
 // TODO: chunk saving/loading
 // TODO: asynchronous
