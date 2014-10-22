@@ -494,6 +494,7 @@ uint32_t avglight(uint32_t b0, uint32_t b1, uint32_t b2, uint32_t b3) {
 #define BLOCKAT(x, y, z) (map_blocks[blockIndex((x), (y), (z))])
 #define BLOCKLIGHT(a, b, c, d) avglight(n[a], n[b], n[c], n[d])
 #define GETCOL(np, ng, x, y, z) memcpy(n + (np), map_blocks + blockIndex(bx + (x), by + (y), bz + (z)), sizeof(uint32_t) * (ng))
+#define FLIPCHECK() ((corners[0].clr/2) + (corners[2].clr/2) > (corners[1].clr/2) + (corners[3].clr/2))
 
 // n array layout:
 //+y       +y       +y
@@ -584,12 +585,21 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* al
 						{POS(ix+1, by+iy+1,   iz), tc[2], BLOCKLIGHT( 5, 8,14,17)},
 						{POS(  ix, by+iy+1,   iz), tc[3], BLOCKLIGHT( 2, 5,11,14)},
 					};
-					verts[vi++] = corners[0];
-					verts[vi++] = corners[1];
-					verts[vi++] = corners[3];
-					verts[vi++] = corners[3];
-					verts[vi++] = corners[1];
-					verts[vi++] = corners[2];
+					if (FLIPCHECK()) {
+						verts[vi++] = corners[0];
+						verts[vi++] = corners[1];
+						verts[vi++] = corners[2];
+						verts[vi++] = corners[2];
+						verts[vi++] = corners[3];
+						verts[vi++] = corners[0];
+					} else {
+						verts[vi++] = corners[0];
+						verts[vi++] = corners[1];
+						verts[vi++] = corners[3];
+						verts[vi++] = corners[3];
+						verts[vi++] = corners[1];
+						verts[vi++] = corners[2];
+					}
 				}
 				if (BNONSOLID(12)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BOTTOM, 0);
@@ -599,12 +609,21 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* al
 						{POS(ix+1, by+iy, iz+1), tc[2], BLOCKLIGHT(12,15,21,24)},
 						{POS(  ix, by+iy, iz+1), tc[3], BLOCKLIGHT( 9,12,18,21)},
 					};
-					verts[vi++] = corners[0];
-					verts[vi++] = corners[1];
-					verts[vi++] = corners[3];
-					verts[vi++] = corners[3];
-					verts[vi++] = corners[1];
-					verts[vi++] = corners[2];
+					if (FLIPCHECK()) {
+						verts[vi++] = corners[0];
+						verts[vi++] = corners[1];
+						verts[vi++] = corners[2];
+						verts[vi++] = corners[2];
+						verts[vi++] = corners[3];
+						verts[vi++] = corners[0];
+					} else {
+						verts[vi++] = corners[0];
+						verts[vi++] = corners[1];
+						verts[vi++] = corners[3];
+						verts[vi++] = corners[3];
+						verts[vi++] = corners[1];
+						verts[vi++] = corners[2];
+					}
 				}
 				if (BNONSOLID(10)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_LEFT, 0);
@@ -614,12 +633,21 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* al
 						{POS(ix, by+iy+1, iz+1), tc[2], BLOCKLIGHT(10,11,19,20)},
 						{POS(ix, by+iy+1,   iz), tc[3], BLOCKLIGHT( 1, 2,10,11)},
 					};
-					verts[vi++] = corners[0];
-					verts[vi++] = corners[1];
-					verts[vi++] = corners[3];
-					verts[vi++] = corners[3];
-					verts[vi++] = corners[1];
-					verts[vi++] = corners[2];
+					if (FLIPCHECK()) {
+						verts[vi++] = corners[0];
+						verts[vi++] = corners[1];
+						verts[vi++] = corners[2];
+						verts[vi++] = corners[2];
+						verts[vi++] = corners[3];
+						verts[vi++] = corners[0];
+					} else {
+						verts[vi++] = corners[0];
+						verts[vi++] = corners[1];
+						verts[vi++] = corners[3];
+						verts[vi++] = corners[3];
+						verts[vi++] = corners[1];
+						verts[vi++] = corners[2];
+					}
 				}
 				if (BNONSOLID(16)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_RIGHT, 0);
@@ -629,12 +657,21 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* al
 						{POS(ix+1, by+iy+1,   iz), tc[2], BLOCKLIGHT( 7, 8,16,17)},
 						{POS(ix+1, by+iy+1, iz+1), tc[3], BLOCKLIGHT(16,17,25,26)},
 					};
-					verts[vi++] = corners[0];
-					verts[vi++] = corners[1];
-					verts[vi++] = corners[3];
-					verts[vi++] = corners[3];
-					verts[vi++] = corners[1];
-					verts[vi++] = corners[2];
+					if (FLIPCHECK()) {
+						verts[vi++] = corners[0];
+						verts[vi++] = corners[1];
+						verts[vi++] = corners[2];
+						verts[vi++] = corners[2];
+						verts[vi++] = corners[3];
+						verts[vi++] = corners[0];
+					} else {
+						verts[vi++] = corners[0];
+						verts[vi++] = corners[1];
+						verts[vi++] = corners[3];
+						verts[vi++] = corners[3];
+						verts[vi++] = corners[1];
+						verts[vi++] = corners[2];
+					}
 				}
 				if (BNONSOLID(22)) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_FRONT, 0);
@@ -644,12 +681,21 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* al
 						{POS(ix+1, by+iy+1, iz+1), tc[2], BLOCKLIGHT(22,23,25,26)},
 						{POS(  ix, by+iy+1, iz+1), tc[3], BLOCKLIGHT(19,20,22,23)},
 					};
-					verts[vi++] = corners[0];
-					verts[vi++] = corners[1];
-					verts[vi++] = corners[3];
-					verts[vi++] = corners[3];
-					verts[vi++] = corners[1];
-					verts[vi++] = corners[2];
+					if (FLIPCHECK()) {
+						verts[vi++] = corners[0];
+						verts[vi++] = corners[1];
+						verts[vi++] = corners[2];
+						verts[vi++] = corners[2];
+						verts[vi++] = corners[3];
+						verts[vi++] = corners[0];
+					} else {
+						verts[vi++] = corners[0];
+						verts[vi++] = corners[1];
+						verts[vi++] = corners[3];
+						verts[vi++] = corners[3];
+						verts[vi++] = corners[1];
+						verts[vi++] = corners[2];
+					}
 				}
 				if (BNONSOLID(4)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BACK, 0);
@@ -659,12 +705,21 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* al
 						{POS(  ix, by+iy+1, iz), tc[2], BLOCKLIGHT( 1, 2, 4, 5)},
 						{POS(ix+1, by+iy+1, iz), tc[3], BLOCKLIGHT( 4, 5, 7, 8)},
 					};
-					verts[vi++] = corners[0];
-					verts[vi++] = corners[1];
-					verts[vi++] = corners[3];
-					verts[vi++] = corners[3];
-					verts[vi++] = corners[1];
-					verts[vi++] = corners[2];
+					if (FLIPCHECK()) {
+						verts[vi++] = corners[0];
+						verts[vi++] = corners[1];
+						verts[vi++] = corners[2];
+						verts[vi++] = corners[2];
+						verts[vi++] = corners[3];
+						verts[vi++] = corners[0];
+					} else {
+						verts[vi++] = corners[0];
+						verts[vi++] = corners[1];
+						verts[vi++] = corners[3];
+						verts[vi++] = corners[3];
+						verts[vi++] = corners[1];
+						verts[vi++] = corners[2];
+					}
 				}
 
 				if (blockinfo[t].alpha) {
