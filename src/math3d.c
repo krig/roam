@@ -1005,3 +1005,74 @@ bool mlTestSegmentAABB(ml_vec3 pos, ml_vec3 delta, ml_vec3 padding, ml_vec3 cent
 	}
 	return true;
 }
+
+bool intersect_moving_aabb_aabb(aabb_t a, aabb_t b, ml_vec3 va, ml_vec3 vb, float* tfirst, float* tlast) {
+	if (mlTestAABBAABB(a.center, a.extent, b.center, b.extent)) {
+		*tfirst = *tlast = 0.f;
+		return true;
+	}
+
+	ml_vec3 v = mlVec3Sub(vb, va);
+	*tfirst = 0;
+	*tlast = 1.f;
+
+	// for each axis, determine time of first and last contact (if any)
+	{
+		float amax_x = a.center.x + a.extent.x;
+		float amin_x = a.center.x - a.extent.x;
+		float bmax_x = b.center.x + b.extent.x;
+		float bmin_x = b.center.x - b.extent.x;
+		if (v.x < 0) {
+			if (bmax_x < amin_x) return false;
+			if (amax_x < bmin_x) *tfirst = mlMax((amax_x - bmin_x) / v.x, *tfirst);
+			if (bmax_x > amin_x) *tlast = mlMin((amin_x - bmax_x) / v.x, *tlast);
+		}
+		if (v.x > 0) {
+			if (bmin_x > amax_x) return false;
+			if (bmax_x < amin_x) *tfirst = mlMax((amin_x - bmax_x) / v.x, *tfirst);
+			if (amax_x > bmin_x) *tlast = mlMin((amax_x - bmin_x) / v.x, *tlast);
+		}
+		// No overlap possible if time of first contact occurs after time of last contact
+		if (*tfirst > *tlast) return false;
+	}
+
+	{
+		float amax_y = a.center.y + a.extent.y;
+		float amin_y = a.center.y - a.extent.y;
+		float bmax_y = b.center.y + b.extent.y;
+		float bmin_y = b.center.y - b.extent.y;
+		if (v.y < 0) {
+			if (bmax_y < amin_y) return false;
+			if (amax_y < bmin_y) *tfirst = mlMax((amax_y - bmin_y) / v.y, *tfirst);
+			if (bmax_y > amin_y) *tlast = mlMin((amin_y - bmax_y) / v.y, *tlast);
+		}
+		if (v.y > 0) {
+			if (bmin_y > amax_y) return false;
+			if (bmax_y < amin_y) *tfirst = mlMax((amin_y - bmax_y) / v.y, *tfirst);
+			if (amax_y > bmin_y) *tlast = mlMin((amax_y - bmin_y) / v.y, *tlast);
+		}
+		// No overlap possible if time of first contact occurs after time of last contact
+		if (*tfirst > *tlast) return false;
+	}
+
+	{
+		float amax_z = a.center.z + a.extent.z;
+		float amin_z = a.center.z - a.extent.z;
+		float bmax_z = b.center.z + b.extent.z;
+		float bmin_z = b.center.z - b.extent.z;
+		if (v.z < 0) {
+			if (bmax_z < amin_z) return false;
+			if (amax_z < bmin_z) *tfirst = mlMax((amax_z - bmin_z) / v.z, *tfirst);
+			if (bmax_z > amin_z) *tlast = mlMin((amin_z - bmax_z) / v.z, *tlast);
+		}
+		if (v.z > 0) {
+			if (bmin_z > amax_z) return false;
+			if (bmax_z < amin_z) *tfirst = mlMax((amin_z - bmax_z) / v.z, *tfirst);
+			if (amax_z > bmin_z) *tlast = mlMin((amax_z - bmin_z) / v.z, *tlast);
+		}
+		// No overlap possible if time of first contact occurs after time of last contact
+		if (*tfirst > *tlast) return false;
+	}
+
+	return true;
+}

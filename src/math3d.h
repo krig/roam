@@ -565,4 +565,11 @@ static inline bool mlTestPointAABB(ml_vec3 point, ml_vec3 center, ml_vec3 extent
 		(fabs(center.z - point.z) < extent.z);
 }
 
+typedef struct aabb_t {
+	ml_vec3 center;
+	ml_vec3 extent;
+} aabb_t;
+
+bool intersect_moving_aabb_aabb(aabb_t a, aabb_t b, ml_vec3 va, ml_vec3 vb, float* tfirst, float* tlast);
+
 // TODO: GL state stack - track state as a stack of uint64_ts...
