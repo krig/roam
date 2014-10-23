@@ -88,7 +88,7 @@ void ui_exit()
 	glDeleteVertexArrays(1, &debug_vao);
 }
 
-void ui_update(float dt)
+void ui_tick(float dt)
 {
 	if (console_enabled)
 		console_fade = mlClamp(console_fade + dt*1.5f, 0, 1.f);

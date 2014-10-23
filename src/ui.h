@@ -2,13 +2,13 @@
 
 void ui_init(ml_material* ui, ml_material* debug);
 void ui_exit(void);
+void ui_tick(float dt);
+void ui_draw(SDL_Point* viewport);
 
 void ui_set_scale(float scale);
 void ui_text_measure(int* w, int* h, const char* str, ...);
 void ui_text(float x, float y, uint32_t clr, const char* str, ...);
 void ui_rect(float x, float y, float w, float h, uint32_t clr);
-void ui_update(float dt);
-void ui_draw(SDL_Point* viewport);
 
 void ui_debug_line(ml_vec3 p1, ml_vec3 p2, uint32_t clr);
 void ui_debug_aabb(ml_vec3 center, ml_vec3 extent, uint32_t clr);
