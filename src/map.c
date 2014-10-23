@@ -572,7 +572,7 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 	uint32_t t;
 	uint32_t n[27]; // blocktypes for a 3x3 cube around this block
 	int density;
-	size_t save_vi;
+	size_t save_vi = 0;
 
 	// fill in verts
 	for (iz = 0; iz < CHUNK_SIZE; ++iz) {
