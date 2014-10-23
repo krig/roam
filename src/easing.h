@@ -26,122 +26,159 @@
   Jesse Crossen (http://stackoverflow.com/questions/5161465/how-to-create-custom-easing-function-with-core-animation)
 */
 
-#define EN_Scalar float
 
-static inline EN_Scalar
-enEase(EN_Scalar a, EN_Scalar b, EN_Scalar t) {
+typedef float easing_t;
+
+
+static inline
+easing_t enEase(easing_t a, easing_t b, easing_t t)
+{
 	return a + (b - a) * t;
 }
 
-static inline EN_Scalar
-enLinear(EN_Scalar t) {
+
+static inline
+easing_t enLinear(easing_t t)
+{
 	return t;
 }
 
-static inline EN_Scalar
-enQuadraticIn(EN_Scalar t) {
+
+static inline
+easing_t enQuadraticIn(easing_t t)
+{
 	return t * t;
 }
 
-static inline EN_Scalar
-enQuadraticOut(EN_Scalar t) {
+
+static inline
+easing_t enQuadraticOut(easing_t t)
+{
 	return -(t * (t - 2.));
 }
 
-static inline EN_Scalar
-enQuadraticInOut(EN_Scalar t) {
+
+static inline
+easing_t enQuadraticInOut(easing_t t)
+{
 	return (t < 0.5) ? 2. * t * t : (-2. * t * t) + (4. * t) - 1.;
 }
 
-static inline EN_Scalar
-enCubicIn(EN_Scalar t) {
+
+static inline
+easing_t enCubicIn(easing_t t)
+{
 	return t * t * t;
 }
 
-static inline EN_Scalar
-enCubicOut(EN_Scalar t) {
-	const EN_Scalar f = t - 1.; return f * f * f + 1.;
+
+static inline
+easing_t enCubicOut(easing_t t)
+{
+	const easing_t f = t - 1.; return f * f * f + 1.;
 }
 
-static inline EN_Scalar
-enCubicInOut(EN_Scalar t) {
-	if (t < (EN_Scalar)0.5) {
+
+static inline
+easing_t enCubicInOut(easing_t t)
+{
+	if (t < (easing_t)0.5) {
 		return 4. * t * t * t;
 	} else {
-		const EN_Scalar f = (2. * t) - 2.;
+		const easing_t f = (2. * t) - 2.;
 		return 0.5 * f * f * f + 1.;
 	}
 }
 
-static inline EN_Scalar
-enQuarticIn(EN_Scalar t) {
+
+static inline
+easing_t enQuarticIn(easing_t t) {
 	return t * t * t * t;
 }
 
-static inline EN_Scalar
-enQuarticOut(EN_Scalar t) {
-	const EN_Scalar f = t - 1.;
+
+static inline
+easing_t enQuarticOut(easing_t t) {
+	const easing_t f = t - 1.;
 	return f * f * f * (1. - t) + 1.;
 }
 
-static inline EN_Scalar
-enQuarticInOut(EN_Scalar t) {
+
+static inline
+easing_t enQuarticInOut(easing_t t)
+{
 	if(t < 0.5) {
 		return 8. * t * t * t * t;
 	} else {
-		EN_Scalar f = (t - 1.);
+		easing_t f = (t - 1.);
 		return -8. * f * f * f * f + 1.;
 	}
 }
 
-static inline EN_Scalar
-enQuinticIn(EN_Scalar t) {
+
+static inline
+easing_t enQuinticIn(easing_t t) {
 	return t * t * t * t * t;
 }
 
-static inline EN_Scalar
-enQuinticOut(EN_Scalar t) {
-	EN_Scalar f = (t - 1.);
+
+static inline
+easing_t enQuinticOut(easing_t t) {
+	easing_t f = (t - 1.);
 	return f * f * f * f * f + 1.;
 }
 
-static inline EN_Scalar
-enQuinticInOut(EN_Scalar t) {
+
+static inline
+easing_t enQuinticInOut(easing_t t)
+{
 	if (t < 0.5) {
 		return 16. * t * t * t * t * t;
 	} else {
-		EN_Scalar f = ((2. * t) - 2.);
+		easing_t f = ((2. * t) - 2.);
 		return  0.5 * f * f * f * f * f + 1.;
 	}
 }
 
-static inline EN_Scalar
-enSineIn(EN_Scalar t) {
+
+static inline
+easing_t enSineIn(easing_t t)
+{
 	return sin((t - 1.) * M_PI_2) + 1.;
 }
 
-static inline EN_Scalar
-enSineOut(EN_Scalar t) {
+
+static inline
+easing_t enSineOut(easing_t t)
+{
 	return sin(t * M_PI_2);
 }
 
-static inline EN_Scalar
-enSineInOut(EN_Scalar t) {
+
+static inline
+easing_t enSineInOut(easing_t t)
+{
 	return 0.5 * (1. - cos(t * M_PI));
 }
 
-static inline EN_Scalar
-enCircularIn(EN_Scalar t) {
+
+static inline
+easing_t enCircularIn(easing_t t)
+{
 	return 1. - sqrt(1. - (t * t));
 }
 
-static inline EN_Scalar
-enCircularOut(EN_Scalar t) {
+
+static inline
+easing_t enCircularOut(easing_t t)
+{
 	return sqrt((2. - t) * t);
 }
 
-static inline EN_Scalar
-enCircularInOut(EN_Scalar t) {
+
+static inline
+easing_t enCircularInOut(easing_t t)
+{
 	if (t < 0.5) {
 		return 0.5 * (1 - sqrt(1 - 4. * (t * t)));
 	} else {
@@ -149,40 +186,53 @@ enCircularInOut(EN_Scalar t) {
 	}
 }
 
-static inline EN_Scalar
-enExponentialIn(EN_Scalar t) {
+
+static inline
+easing_t enExponentialIn(easing_t t)
+{
 	return (t <= 0) ? t : pow(2., 10. * (t - 1.));
 }
 
-static inline EN_Scalar
-enExponentialOut(EN_Scalar t) {
+
+static inline
+easing_t enExponentialOut(easing_t t)
+{
 	return (t >= 1.) ? t : 1. - pow(2., -10. * t);
 }
 
-static inline EN_Scalar
-enExponentialInOut(EN_Scalar t) {
+
+static inline
+easing_t enExponentialInOut(easing_t t)
+{
 	if (t <= 0. || t >= 1.)
 		return t;
 
-	if (t < 0.5) {
+	if (t < 0.5)
+{
 		return 0.5 * pow(2., (20. * t) - 10.);
 	} else {
 		return -0.5 * pow(2., (-20. * t) + 10.) + 1.;
 	}
 }
 
-static inline EN_Scalar
-enElasticIn(EN_Scalar t) {
+
+static inline
+easing_t enElasticIn(easing_t t)
+{
 	return sin(13. * M_PI_2 * t) * pow(2., 10. * (t - 1.));
 }
 
-static inline EN_Scalar
-enElasticOut(EN_Scalar t) {
+
+static inline
+easing_t enElasticOut(easing_t t)
+{
 	return sin(-13. * M_PI_2 * (t + 1.)) * pow(2., -10. * t) + 1.;
 }
 
-static inline EN_Scalar
-enElasticInOut(EN_Scalar t) {
+
+static inline
+easing_t enElasticInOut(easing_t t)
+{
 	if (t < 0.5) {
 		return 0.5 * sin(13. * M_PI_2 * (2. * t)) * pow(2., 10. * ((2. * t) - 1.));
 	} else {
@@ -190,30 +240,38 @@ enElasticInOut(EN_Scalar t) {
 	}
 }
 
-static inline EN_Scalar
-enBackIn(EN_Scalar t) {
+
+static inline
+easing_t enBackIn(easing_t t)
+{
 	return t * t * t - t * sin(t * M_PI);
 }
 
-static inline EN_Scalar
-enBackOut(EN_Scalar t) {
-	const EN_Scalar f = 1. - t;
+
+static inline
+easing_t enBackOut(easing_t t)
+{
+	const easing_t f = 1. - t;
 	return 1. - (f * f * f - f * sin(f * M_PI));
 }
 
-static inline EN_Scalar
-enBackInOut(EN_Scalar t) {
+
+static inline
+easing_t enBackInOut(easing_t t)
+{
 	if (t < 0.5) {
-		const EN_Scalar f = 2. * t;
+		const easing_t f = 2. * t;
 		return 0.5 * (f * f * f - f * sin(f * M_PI));
 	} else {
-		const EN_Scalar f = (1. - (2.*t - 1.));
+		const easing_t f = (1. - (2.*t - 1.));
 		return 0.5 * (1. - (f * f * f - f * sin(f * M_PI))) + 0.5;
 	}
 }
 
-static inline EN_Scalar
-enBounceOut(EN_Scalar t) {
+
+static inline
+easing_t enBounceOut(easing_t t)
+{
 	if (t < 4. / 11.) {
 		return (121. * t * t) / 16.;
 	} else if (t < 8. / 11.) {
@@ -225,13 +283,17 @@ enBounceOut(EN_Scalar t) {
 	}
 }
 
-static inline EN_Scalar
-enBounceIn(EN_Scalar t) {
+
+static inline
+easing_t enBounceIn(easing_t t)
+{
 	return 1. - enBounceOut(1. - t);
 }
 
-static inline EN_Scalar
-enBounceInOut(EN_Scalar t) {
+
+static inline
+easing_t enBounceInOut(easing_t t)
+{
 	if (t < 0.5) {
 		return 0.5 * enBounceIn(t * 2.);
 	} else {
@@ -239,10 +301,12 @@ enBounceInOut(EN_Scalar t) {
 	}
 }
 
-static inline EN_Scalar
-enPerlinInOut(EN_Scalar t) {
-	EN_Scalar t3 = t * t * t;
-	EN_Scalar t4 = t3 * t;
-	EN_Scalar t5 = t4 * t;
+
+static inline
+easing_t enPerlinInOut(easing_t t)
+{
+	easing_t t3 = t * t * t;
+	easing_t t4 = t3 * t;
+	easing_t t5 = t4 * t;
 	return 6. * t5 - 15. * t4 + 10. * t3;
 }
