@@ -208,8 +208,8 @@ bool handle_event(SDL_Event* event)
 				game.input.prepicked_block.y,
 				game.input.prepicked_block.z);
 
-			ml_ivec3 feet = playerBlock();
-			ml_ivec3 head = feet;
+			ivec3_t feet = playerBlock();
+			ivec3_t head = feet;
 			head.y += 1;
 			if (blockTypeByCoord(game.input.prepicked_block) == BLOCK_AIR &&
 			    !blockCompare(head, game.input.prepicked_block) &&
@@ -233,20 +233,20 @@ bool handle_event(SDL_Event* event)
 
 /*
 static inline
-ml_ivec3 ml_ivec3_offset(ml_ivec3 v, int x, int y, int z) {
-	ml_ivec3 to = { v.x + x, v.y + y, v.z + z };
+ivec3_t ivec3_t_offset(ivec3_t v, int x, int y, int z) {
+	ivec3_t to = { v.x + x, v.y + y, v.z + z };
 	return to;
 }
 
 static inline
-ml_vec3 ml_ivec3_to_vec3(ml_ivec3 v) {
+vec3_t ivec3_t_to_vec3(ivec3_t v) {
 	return mlMakeVec3(v.x, v.y, v.z);
 }
 
 // sweep box 2 into box 1
 static
-bool sweep_aabb(ml_vec3 center, ml_vec3 extent, ml_vec3 center2, ml_vec3 extent2, ml_vec3 delta,
-	ml_vec3* sweep_pos, float* time, ml_vec3* hitpoint, ml_vec3* hitdelta, ml_vec3* hitnormal)
+bool sweep_aabb(vec3_t center, vec3_t extent, vec3_t center2, vec3_t extent2, vec3_t delta,
+	vec3_t* sweep_pos, float* time, vec3_t* hitpoint, vec3_t* hitdelta, vec3_t* hitnormal)
 {
 	bool hit = false;
 	if (delta.x == 0 && delta.y == 0 && delta.z == 0) {
@@ -261,7 +261,7 @@ bool sweep_aabb(ml_vec3 center, ml_vec3 extent, ml_vec3 center2, ml_vec3 extent2
 			sweep_pos->x = center2.x + delta.x * *time;
 			sweep_pos->y = center2.y + delta.y * *time;
 			sweep_pos->z = center2.z + delta.z * *time;
-			ml_vec3 dir = mlVec3Normalize(delta);
+			vec3_t dir = mlVec3Normalize(delta);
 			hitpoint->x += dir.x * extent2.x;
 			hitpoint->y += dir.y * extent2.y;
 			hitpoint->z += dir.z * extent2.z;
@@ -271,26 +271,26 @@ bool sweep_aabb(ml_vec3 center, ml_vec3 extent, ml_vec3 center2, ml_vec3 extent2
 }
 
 static
-bool sweep_aabb_into_blocks(ml_vec3 center, ml_vec3 extent, ml_vec3 delta,
-	ml_ivec3* blocks, size_t nblocks,
-	ml_vec3* outhitpoint, ml_vec3* outhitdelta, ml_vec3* outhitnormal, ml_vec3* outsweeppos)
+bool sweep_aabb_into_blocks(vec3_t center, vec3_t extent, vec3_t delta,
+	ivec3_t* blocks, size_t nblocks,
+	vec3_t* outhitpoint, vec3_t* outhitdelta, vec3_t* outhitnormal, vec3_t* outsweeppos)
 {
 
 	float nearest_time;
 	float time;
-	ml_vec3 hitpoint;
-	ml_vec3 hitnormal;
-	ml_vec3 hitdelta;
-	ml_vec3 sweeppos;
+	vec3_t hitpoint;
+	vec3_t hitnormal;
+	vec3_t hitdelta;
+	vec3_t sweeppos;
 
 	bool hit;
-	ml_vec3 bcenter;
-	ml_vec3 bextent = { 0.5f, 0.5f, 0.5f };
+	vec3_t bcenter;
+	vec3_t bextent = { 0.5f, 0.5f, 0.5f };
 
 	hit = false;
 	nearest_time = 1.f;
 	for (int i = 0; i < nblocks; ++i) {
-		bcenter = ml_ivec3_to_vec3(blocks[i]);
+		bcenter = ivec3_t_to_vec3(blocks[i]);
 		if (sweep_aabb(bcenter, bextent, center, extent, delta,
 				&sweeppos, &time, &hitpoint, &hitdelta, &hitnormal)) {
 			if (time < nearest_time) {
@@ -324,8 +324,8 @@ void game_tick(float dt)
 static
 void game_draw(SDL_Point* viewport, float frametime)
 {
-	ml_matrix view;
-	ml_frustum frustum;
+	mat44_t view;
+	frustum_t frustum;
 	glCheck(__LINE__);
 
 	glEnable(GL_DEPTH_TEST);
@@ -340,8 +340,8 @@ void game_draw(SDL_Point* viewport, float frametime)
 	if (game.wireframe)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-	ml_chunk camera = playerChunk();
-	ml_vec3 viewcenter = playerChunkCameraOffset();
+	chunkpos_t camera = playerChunk();
+	vec3_t viewcenter = playerChunkCameraOffset();
 
 	if (game.camera.mode != CAMERA_3RDPERSON) {
 		mlFPSMatrix(&view, viewcenter, game.camera.pitch, game.camera.yaw);
@@ -379,13 +379,13 @@ void game_draw(SDL_Point* viewport, float frametime)
 	if (game.wireframe)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-	ml_matrix invview;
+	mat44_t invview;
 	mlInvertOrthoMatrix(&invview, &view);
 
 
 	{
-		ml_dvec3 pp = game.camera.pos;
-		ml_vec3 v = {frustum.planes[5].x, frustum.planes[5].y, frustum.planes[5].z};
+		dvec3_t pp = game.camera.pos;
+		vec3_t v = {frustum.planes[5].x, frustum.planes[5].y, frustum.planes[5].z};
 		if (map_raycast(pp, v, 16, &game.input.picked_block, &game.input.prepicked_block))
 			if (game.camera.mode == CAMERA_FPS)
 				ui_debug_block(game.input.picked_block, 0xcff1c40f);
@@ -394,18 +394,18 @@ void game_draw(SDL_Point* viewport, float frametime)
 	if (game.camera.mode == CAMERA_3RDPERSON) {
 		float ext = (game.player.crouching ? CROUCHHEIGHT : PLAYERHEIGHT) * 0.5f;
 		float offs = (game.player.crouching ? CROUCHCENTEROFFSET : CENTEROFFSET);
-		ml_vec3 center = { game.player.pos.x - camera.x*CHUNK_SIZE,
+		vec3_t center = { game.player.pos.x - camera.x*CHUNK_SIZE,
 		                   game.player.pos.y + offs,
 		                   game.player.pos.z - camera.z*CHUNK_SIZE };
-		ml_vec3 extent = { 0.4f, ext, 0.4f };
+		vec3_t extent = { 0.4f, ext, 0.4f };
 		ui_debug_aabb(center, extent, 0xffffffff);
 	}
 
 	if (game.debug_mode) {
-		ml_vec3 origo = { 0.0f, -0.25f, -0.4f };
-		ml_vec3 xaxis = { 0.025, 0, 0 };
-		ml_vec3 yaxis = { 0, 0.025, 0 };
-		ml_vec3 zaxis = { 0, 0, 0.025 };
+		vec3_t origo = { 0.0f, -0.25f, -0.4f };
+		vec3_t xaxis = { 0.025, 0, 0 };
+		vec3_t yaxis = { 0, 0.025, 0 };
+		vec3_t zaxis = { 0, 0, 0.025 };
 		origo = mlMulMatVec3(&invview, &origo);
 		xaxis = mlVec3Add(origo, xaxis);
 		yaxis = mlVec3Add(origo, yaxis);
@@ -504,7 +504,7 @@ int main(int argc, char* argv[])
 	mlInitMatrixStack(&game.projection, 3);
 	mlInitMatrixStack(&game.modelview, 16);
 
-	mlPerspective(mlGetMatrix(&game.projection), mlDeg2Rad(70.f),
+	mlPerspective(mlGetMatrix(&game.projection), DEG2RAD(70.f),
 	              (float)sz.x / (float)sz.y,
 	              0.1f, 1024.f);
 
@@ -529,7 +529,7 @@ int main(int argc, char* argv[])
 					//SDL_GL_GetDrawableSize(window, &sz.x, &sz.y);
 					SDL_GetWindowSize(window, &sz.x, &sz.y);
 					glViewport(0, 0, sz.x, sz.y);
-					mlPerspective(mlGetMatrix(&game.projection), mlDeg2Rad(70.f),
+					mlPerspective(mlGetMatrix(&game.projection), DEG2RAD(70.f),
 					              (float)sz.x / (float)sz.y,
 					              0.1f, 1024.f);
 				} else if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {

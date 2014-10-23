@@ -27,7 +27,7 @@ typedef struct tc2us_t {
 } tc2us_t;
 
 typedef struct block_vtx_t {
-	ml_vec3 pos;
+	vec3_t pos;
 	tc2us_t tc;
 	uint32_t clr;
 } block_vtx_t;
@@ -58,12 +58,12 @@ typedef struct game_chunk {
 	bool dirty;
 	uint32_t sgen;
 	uint32_t stess;
-	ml_mesh solid[MAP_CHUNK_HEIGHT];
-	ml_mesh alpha; // sort before rendering - should not be a mesh? no backface culling?
+	mesh_t solid[MAP_CHUNK_HEIGHT];
+	mesh_t alpha; // sort before rendering - should not be a mesh? no backface culling?
 	block_face_t* alphadata;
 	size_t alphadata_size;
 	size_t alphadata_capacity;
-	ml_mesh twosided; // render twosided (same shader as solid meshes but different render state)
+	mesh_t twosided; // render twosided (same shader as solid meshes but different render state)
 	// add per-chunk state information here (things like command blocks..., entities)
 } game_chunk;
 
@@ -88,13 +88,13 @@ extern uint32_t* map_blocks;
 void map_init(void);
 void map_exit(void);
 void map_tick(void);
-void map_draw(ml_frustum* frustum);
+void map_draw(frustum_t* frustum);
 void map_draw_alphapass(void);
 void chunk_load(int x, int z);
 void chunk_unload(int x, int z);
 void chunk_build_mesh(int x, int z);
-void map_update_block(ml_ivec3 block, uint32_t value);
-bool map_raycast(ml_dvec3 origin, ml_vec3 dir, int len, ml_ivec3* hit, ml_ivec3* prehit);
+void map_update_block(ivec3_t block, uint32_t value);
+bool map_raycast(dvec3_t origin, vec3_t dir, int len, ivec3_t* hit, ivec3_t* prehit);
 uint32_t blockData(int x, int y, int z);
 
 // mod which handles negative numbers
@@ -139,21 +139,21 @@ uint32_t blockType(int x, int y, int z)
 }
 
 static inline
-size_t blockByCoord(ml_ivec3 xyz)
+size_t blockByCoord(ivec3_t xyz)
 {
 	return blockIndex(xyz.x, xyz.y, xyz.z);
 }
 
 static inline
-uint32_t blockTypeByCoord(ml_ivec3 xyz)
+uint32_t blockTypeByCoord(ivec3_t xyz)
 {
 	return blockType(xyz.x, xyz.y, xyz.z);
 }
 
 static inline
-ml_chunk blockToChunk(ml_ivec3 block)
+chunkpos_t blockToChunk(ivec3_t block)
 {
-	ml_chunk c = { floor(round(block.x) / CHUNK_SIZE),
+	chunkpos_t c = { floor(round(block.x) / CHUNK_SIZE),
 	               floor(round(block.z) / CHUNK_SIZE) };
 	return c;
 }

@@ -117,7 +117,7 @@ void objLoad(obj_mesh* mesh, const char* data, float vscale) {
 void objGenNormalsFn(obj_mesh* obj, void** vertexdata, size_t* vertexsize, GLenum* meshflags) {
 	size_t i;
 	size_t nvertices = obj->nverts / 3;
-	ml_vtx_pos_n* verts = malloc(sizeof(ml_vtx_pos_n) * nvertices);
+	posnormalvert_t* verts = malloc(sizeof(posnormalvert_t) * nvertices);
 	for (i = 0; i < nvertices; ++i) {
 		memcpy(&verts[i].pos.x, obj->verts + (i * 3), sizeof(float) * 3);
 	}
@@ -129,21 +129,21 @@ void objGenNormalsFn(obj_mesh* obj, void** vertexdata, size_t* vertexsize, GLenu
 			fatal_error("index out of bound: %u", obj->indices[i + 1]);
 		if (obj->indices[i + 2] > nvertices)
 			fatal_error("index out of bound: %u", obj->indices[i + 2]);
-		ml_vec3 t1 = verts[obj->indices[i + 0]].pos;
-		ml_vec3 t2 = verts[obj->indices[i + 1]].pos;
-		ml_vec3 t3 = verts[obj->indices[i + 2]].pos;
-		ml_vec3 n = mlVec3Normalize(mlVec3Cross(mlVec3Sub(t2, t1), mlVec3Sub(t3, t1)));
+		vec3_t t1 = verts[obj->indices[i + 0]].pos;
+		vec3_t t2 = verts[obj->indices[i + 1]].pos;
+		vec3_t t3 = verts[obj->indices[i + 2]].pos;
+		vec3_t n = mlVec3Normalize(mlVec3Cross(mlVec3Sub(t2, t1), mlVec3Sub(t3, t1)));
 		verts[obj->indices[i + 0]].n = n;
 		verts[obj->indices[i + 1]].n = n;
 		verts[obj->indices[i + 2]].n = n;
 	}
 
-	*vertexsize = sizeof(ml_vtx_pos_n);
+	*vertexsize = sizeof(posnormalvert_t);
 	*vertexdata = verts;
 	*meshflags = ML_POS_3F | ML_N_3F;
 }
 
-void objCreateMesh(ml_mesh* mesh, obj_mesh* obj, objCreateMeshGenFn fn) {
+void objCreateMesh(mesh_t* mesh, obj_mesh* obj, objCreateMeshGenFn fn) {
 
 	void* vtxdata;
 	GLenum meshflags;

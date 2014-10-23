@@ -6,7 +6,7 @@
 #include "stb.h"
 
 // UI drawing
-static ml_material* ui_material = NULL;
+static material_t* ui_material = NULL;
 static ml_tex2d ui_font;
 static GLint ui_screensize_index = -1;
 static GLint ui_tex0_index = -1;
@@ -15,14 +15,14 @@ static GLuint ui_vbo = 0;
 static GLsizei ui_count = 0;
 static float ui_scale = 1;
 #define MAX_UI_VERTICES 8192
-static ml_vtx_ui ui_vertices[MAX_UI_VERTICES];
+static uivert_t ui_vertices[MAX_UI_VERTICES];
 
 // debug 3d drawing
 #define MAX_DEBUG_LINEVERTS 8192
-static ml_material* debug_material = NULL;
+static material_t* debug_material = NULL;
 static GLint debug_projmat_index = -1;
 static GLint debug_modelview_index = -1;
-static ml_vtx_pos_clr debug_lines[MAX_DEBUG_LINEVERTS];
+static posclrvert_t debug_lines[MAX_DEBUG_LINEVERTS];
 static size_t debug_linevertcount = 0;
 static GLuint debug_vao = -1;
 static GLuint debug_vbo = -1;
@@ -40,7 +40,7 @@ static int console_scrollback_pos = 0;
 #define UI_CHAR_H (9)
 
 
-void ui_init(ml_material* uimat, ml_material* debugmat)
+void ui_init(material_t* uimat, material_t* debugmat)
 {
 	ui_material = uimat;
 	ui_screensize_index = glGetUniformLocation(uimat->program, "screensize");
@@ -57,9 +57,9 @@ void ui_init(ml_material* uimat, ml_material* debugmat)
 	glGenVertexArrays(1, &ui_vao);
 	glBindVertexArray(ui_vao);
 	glBindBuffer(GL_ARRAY_BUFFER, ui_vbo);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(ml_vtx_ui), 0);
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(ml_vtx_ui), (void*)(1 * sizeof(ml_vec2)));
-	glVertexAttribPointer(2, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(ml_vtx_ui), (void*)(2 * sizeof(ml_vec2)));
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(uivert_t), 0);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(uivert_t), (void*)(1 * sizeof(vec2_t)));
+	glVertexAttribPointer(2, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(uivert_t), (void*)(2 * sizeof(vec2_t)));
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
 	glEnableVertexAttribArray(2);
@@ -70,8 +70,8 @@ void ui_init(ml_material* uimat, ml_material* debugmat)
 	glGenVertexArrays(1, &debug_vao);
 	glBindVertexArray(debug_vao);
 	glBindBuffer(GL_ARRAY_BUFFER, debug_vbo);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(ml_vtx_pos_clr), 0);
-	glVertexAttribPointer(1, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(ml_vtx_pos_clr), (void*)(sizeof(ml_vec3)));
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(posclrvert_t), 0);
+	glVertexAttribPointer(1, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(posclrvert_t), (void*)(sizeof(vec3_t)));
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
 	glBindVertexArray(0);
@@ -110,7 +110,7 @@ void ui_draw(SDL_Point* viewport)
 		int max_display = console_width/UI_CHAR_W - 1;
 		size_t len, offset;
 		float elastic_fade = enQuinticInOut(console_fade);
-		uint32_t alpha = (uint32_t)(mlMax(elastic_fade, 0.1f)*255.5f);
+		uint32_t alpha = (uint32_t)(ML_MAX(elastic_fade, 0.1f)*255.5f);
 		float yoffs = (float)(NLINES*UI_CHAR_H) * elastic_fade;
 		ui_rect(0, viewport->y - (int)yoffs, console_width, NLINES*UI_CHAR_H, ((alpha * 5 / 6)<<24)|0x2c3e50);
 		ui_rect(0, viewport->y - (int)yoffs - UI_CHAR_H - 4, console_width, UI_CHAR_H + 4, (alpha<<24)|0x34495e);
@@ -135,7 +135,7 @@ void ui_draw(SDL_Point* viewport)
 	}
 
 	if (ui_count > 0) {
-		ml_vec2 screensize = { (float)viewport->x, (float)viewport->y };
+		vec2_t screensize = { (float)viewport->x, (float)viewport->y };
 		glEnable(GL_TEXTURE_2D);
 		glEnable(GL_BLEND);
 //		glDisable(GL_CULL_FACE);
@@ -147,7 +147,7 @@ void ui_draw(SDL_Point* viewport)
 		glUniform1i(ui_tex0_index, 0);
 		glBindVertexArray(ui_vao);
 		glBindBuffer(GL_ARRAY_BUFFER, ui_vbo);
-		glBufferData(GL_ARRAY_BUFFER, (unsigned long)(ui_count)*sizeof(ml_vtx_ui), ui_vertices, GL_DYNAMIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, (unsigned long)(ui_count)*sizeof(uivert_t), ui_vertices, GL_DYNAMIC_DRAW);
 		glDrawArrays(GL_TRIANGLES, 0, ui_count);
 		glBindVertexArray(0);
 		glUseProgram(0);
@@ -197,7 +197,7 @@ void ui_text(float x, float y, uint32_t clr, const char* str, ...)
 	size_t len;
 	int scale;
 	float d, v;
-	ml_vtx_ui* ptr = ui_vertices + ui_count;
+	uivert_t* ptr = ui_vertices + ui_count;
 	va_list va_args;
 	va_start(va_args, str);
 	vsnprintf(buf, MAX_TEXT_LEN, str, va_args);
@@ -221,7 +221,7 @@ void ui_text(float x, float y, uint32_t clr, const char* str, ...)
 	d = (float)UI_CHAR_W / (float)ui_font.w;
 	v = (float)UI_CHAR_H / (float)ui_font.h;
 
-	ml_vec2 rpos = { x, y };
+	vec2_t rpos = { x, y };
 	for (size_t i = 0; i < len; ++i) {
 		if (buf[i] < 0 || buf[i] > 127)
 			continue;
@@ -233,12 +233,12 @@ void ui_text(float x, float y, uint32_t clr, const char* str, ...)
 			rpos.x += scale;
 			continue;
 		}
-		ml_vec2 tc = { (buf[i] - ' ') * d, 0.f };
-		ml_vec2 p1 = { rpos.x, rpos.y };
-		ml_vec2 p2 = { rpos.x + scale, rpos.y + scale };
-		ml_vec2 t1 = { tc.x, 0.f };
-		ml_vec2 t2 = { tc.x + d, v };
-		ml_vtx_ui quad[6] = {
+		vec2_t tc = { (buf[i] - ' ') * d, 0.f };
+		vec2_t p1 = { rpos.x, rpos.y };
+		vec2_t p2 = { rpos.x + scale, rpos.y + scale };
+		vec2_t t1 = { tc.x, 0.f };
+		vec2_t t2 = { tc.x + d, v };
+		uivert_t quad[6] = {
 			{ p1, { t1.x, t2.y }, clr },
 			{ p2, { t2.x, t1.y }, clr },
 			{ { p1.x, p2.y }, t1, clr },
@@ -261,7 +261,7 @@ void ui_rect(float x, float y, float w, float h, uint32_t clr)
 	float v = 2.f / (float)ui_font.h;
 	if (ui_count + 6 > MAX_UI_VERTICES)
 		return;
-	ml_vtx_ui quad[6] = {
+	uivert_t quad[6] = {
 		{ { x, y }, { tl, v }, clr },
 		{ { x + w, y }, { br, v }, clr },
 		{ { x, y + h }, { tl, 0 }, clr },
@@ -274,7 +274,7 @@ void ui_rect(float x, float y, float w, float h, uint32_t clr)
 }
 
 
-void ui_debug_line(ml_vec3 p1, ml_vec3 p2, uint32_t clr)
+void ui_debug_line(vec3_t p1, vec3_t p2, uint32_t clr)
 {
 	if (debug_linevertcount + 2 > MAX_DEBUG_LINEVERTS)
 		return;
@@ -288,11 +288,11 @@ void ui_debug_line(ml_vec3 p1, ml_vec3 p2, uint32_t clr)
 	//       p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
 }
 
-void ui_debug_aabb(ml_vec3 center, ml_vec3 extent, uint32_t clr)
+void ui_debug_aabb(vec3_t center, vec3_t extent, uint32_t clr)
 {
-	ml_vec3 maxp = mlVec3Add(center, extent);
-	ml_vec3 minp = mlVec3Sub(center, extent);
-	ml_vec3 corners[8] = {
+	vec3_t maxp = mlVec3Add(center, extent);
+	vec3_t minp = mlVec3Sub(center, extent);
+	vec3_t corners[8] = {
 		{ minp.x, minp.y, minp.z },
 		{ maxp.x, minp.y, minp.z },
 		{ maxp.x, minp.y, maxp.z },
@@ -319,11 +319,11 @@ void ui_debug_aabb(ml_vec3 center, ml_vec3 extent, uint32_t clr)
 	ui_debug_line(corners[3], corners[7], clr);
 }
 
-void ui_debug_block(ml_ivec3 block, uint32_t clr)
+void ui_debug_block(ivec3_t block, uint32_t clr)
 {
-	ml_vec3 pos;
-	ml_vec3 ext;
-	ml_chunk camera = playerChunk();
+	vec3_t pos;
+	vec3_t ext;
+	chunkpos_t camera = playerChunk();
 	mlVec3Assign(pos,
 	             block.x - camera.x*CHUNK_SIZE,
 	             block.y,
@@ -333,9 +333,9 @@ void ui_debug_block(ml_ivec3 block, uint32_t clr)
 }
 
 
-void ui_debug_point(ml_vec3 p, uint32_t clr)
+void ui_debug_point(vec3_t p, uint32_t clr)
 {
-	ml_vec3 p0, p1, p2, p3, p4, p5;
+	vec3_t p0, p1, p2, p3, p4, p5;
 	p0 = p1 = p2 = p3 = p4 = p5 = p;
 	p0.x -= 0.05f;
 	p1.x += 0.05f;
@@ -348,7 +348,7 @@ void ui_debug_point(ml_vec3 p, uint32_t clr)
 	ui_debug_line(p4, p5, clr);
 }
 
-void ui_debug_sphere(ml_vec3 p, float r, uint32_t clr)
+void ui_debug_sphere(vec3_t p, float r, uint32_t clr)
 {
 	#define SPHERE_NDIV 7
 
@@ -362,16 +362,16 @@ void ui_debug_sphere(ml_vec3 p, float r, uint32_t clr)
 			i2 = 0;
 		float st1 = sin(((float)i2 / SPHERE_NDIV) * ML_TWO_PI);
 		float ct1 = cos(((float)i2 / SPHERE_NDIV) * ML_TWO_PI);
-		ml_vec3 p1 = { p.x + r * st, p.y, p.z + r * ct };
-		ml_vec3 p2 = { p.x + r * st1, p.y, p.z + r * ct1 };
-		ml_vec3 p3 = { p.x + r * st, p.y + r * ct, p.z };
-		ml_vec3 p4 = { p.x + r * st1, p.y + r * ct1, p.z };
+		vec3_t p1 = { p.x + r * st, p.y, p.z + r * ct };
+		vec3_t p2 = { p.x + r * st1, p.y, p.z + r * ct1 };
+		vec3_t p3 = { p.x + r * st, p.y + r * ct, p.z };
+		vec3_t p4 = { p.x + r * st1, p.y + r * ct1, p.z };
 		ui_debug_line(p1, p2, clr);
 		ui_debug_line(p3, p4, clr);
 	}
 }
 
-void ui_draw_debug(ml_matrixstack* projection, ml_matrixstack* modelview)
+void ui_draw_debug(mtxstack_t* projection, mtxstack_t* modelview)
 {
 	if (debug_linevertcount > 0) {
 		glEnable(GL_BLEND);
@@ -384,7 +384,7 @@ void ui_draw_debug(ml_matrixstack* projection, ml_matrixstack* modelview)
 		mlUniformMatrix(debug_modelview_index, mlGetMatrix(modelview));
 		glBindVertexArray(debug_vao);
 		glBindBuffer(GL_ARRAY_BUFFER, debug_vbo);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(ml_vtx_pos_clr)*debug_linevertcount, debug_lines, GL_DYNAMIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(posclrvert_t)*debug_linevertcount, debug_lines, GL_DYNAMIC_DRAW);
 		glDrawArrays(GL_LINES, 0, debug_linevertcount);
 		glBindVertexArray(0);
 		glUseProgram(0);

@@ -3,7 +3,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-void mlPerspective(ml_matrix* m, float fovy, float aspect, float zNear, float zFar) {
+void mlPerspective(mat44_t* m, float fovy, float aspect, float zNear, float zFar) {
 	mlSetIdentity(m);
 	float r = fovy * 0.5f;
 	float f = cos(r) / sin(r);
@@ -15,12 +15,12 @@ void mlPerspective(ml_matrix* m, float fovy, float aspect, float zNear, float zF
 	m->m[15] = 0;
 }
 
-void mlSetIdentity(ml_matrix* m) {
+void mlSetIdentity(mat44_t* m) {
 	memset(m->m, 0, sizeof(float)*16);
 	m->m[0] = m->m[5] = m->m[10] = m->m[15] = 1.f;
 }
 
-void mlFPSRotation(float pitch, float yaw, ml_vec3* x, ml_vec3* y, ml_vec3* z) {
+void mlFPSRotation(float pitch, float yaw, vec3_t* x, vec3_t* y, vec3_t* z) {
 	float cosPitch = cosf(pitch);
 	float sinPitch = sinf(pitch);
 	float cosYaw = cosf(yaw);
@@ -36,7 +36,7 @@ void mlFPSRotation(float pitch, float yaw, ml_vec3* x, ml_vec3* y, ml_vec3* z) {
 	z->z = cosPitch * cosYaw;
 }
 
-void mlFPSMatrix(ml_matrix* to, ml_vec3 eye, float pitch, float yaw) {
+void mlFPSMatrix(mat44_t* to, vec3_t eye, float pitch, float yaw) {
 	/* equivalent to:
 	   mlSetIdentity(to);
 	   mlRotate(to, -pitch, 1.f, 0, 0);
@@ -47,9 +47,9 @@ void mlFPSMatrix(ml_matrix* to, ml_vec3 eye, float pitch, float yaw) {
 	float sinPitch = sinf(pitch);
 	float cosYaw = cosf(yaw);
 	float sinYaw = sinf(yaw);
-	ml_vec3 xaxis = { cosYaw, 0, -sinYaw };
-	ml_vec3 yaxis = { sinYaw * sinPitch, cosPitch, cosYaw * sinPitch };
-	ml_vec3 zaxis = { sinYaw * cosPitch, -sinPitch, cosPitch * cosYaw };
+	vec3_t xaxis = { cosYaw, 0, -sinYaw };
+	vec3_t yaxis = { sinYaw * sinPitch, cosPitch, cosYaw * sinPitch };
+	vec3_t zaxis = { sinYaw * cosPitch, -sinPitch, cosPitch * cosYaw };
 	to->m[0] = xaxis.x;
 	to->m[1] = yaxis.x;
 	to->m[2] = zaxis.x;
@@ -69,12 +69,12 @@ void mlFPSMatrix(ml_matrix* to, ml_vec3 eye, float pitch, float yaw) {
 }
 
 
-void mlLookAt(ml_matrix* m,
+void mlLookAt(mat44_t* m,
 	float eyeX, float eyeY, float eyeZ,
 	float atX, float atY, float atZ,
 	float upX, float upY, float upZ) {
-	ml_matrix M;
-	ml_vec3 f, u, s;
+	mat44_t M;
+	vec3_t f, u, s;
 
 	mlVec3Assign(f, atX - eyeX, atY - eyeY, atZ - eyeZ);
 	f = mlVec3Normalize(f);
@@ -98,11 +98,11 @@ void mlLookAt(ml_matrix* m,
 }
 
 void
-mlCopyMatrix(ml_matrix* to, const ml_matrix* from) {
-	memcpy(to, from, sizeof(ml_matrix));
+mlCopyMatrix(mat44_t* to, const mat44_t* from) {
+	memcpy(to, from, sizeof(mat44_t));
 }
 
-void mlGetRotationMatrix(ml_matrix33* to, const ml_matrix* from) {
+void mlGetRotationMatrix(mat33_t* to, const mat44_t* from) {
 	float*__restrict__ a = to->m;
 	const float*__restrict__ b = from->m;
 	a[0] = b[0];
@@ -117,12 +117,12 @@ void mlGetRotationMatrix(ml_matrix33* to, const ml_matrix* from) {
 }
 
 void
-mlGetFrustum(ml_frustum* frustum, ml_matrix* projection, ml_matrix* view) {
-	ml_matrix MP;
+mlGetFrustum(frustum_t* frustum, mat44_t* projection, mat44_t* view) {
+	mat44_t MP;
 	mlCopyMatrix(&MP, projection);
 	mlMulMatrix(&MP, view);
-	ml_vec4*__restrict__ p = frustum->planes;
-	ml_vec4*__restrict__ a = frustum->absplanes;
+	vec4_t*__restrict__ p = frustum->planes;
+	vec4_t*__restrict__ a = frustum->absplanes;
 	float* m = MP.m;
 	// right
 	mlVec4Assign(p[0], m[3] - m[0], m[7] - m[4], m[11] - m[8], m[15] - m[12]);
@@ -144,9 +144,9 @@ mlGetFrustum(ml_frustum* frustum, ml_matrix* projection, ml_matrix* view) {
 
 // center: (max + min)/2
 // extents: (max - min)/2
-int mlTestFrustumAABB(ml_frustum* frustum, ml_vec3 center, ml_vec3 extent) {
+int mlTestFrustumAABB(frustum_t* frustum, vec3_t center, vec3_t extent) {
 	int result, i;
-	ml_vec4 p, a;
+	vec4_t p, a;
 	result = ML_INSIDE;
 	for (i = 0; i < 6; ++i) {
 		p = frustum->planes[i];
@@ -161,9 +161,9 @@ int mlTestFrustumAABB(ml_frustum* frustum, ml_vec3 center, ml_vec3 extent) {
 }
 
 // these are very voxelgame-specific
-int mlTestFrustumAABB_XZ(ml_frustum* frustum, ml_vec3 center, ml_vec3 extent) {
+int mlTestFrustumAABB_XZ(frustum_t* frustum, vec3_t center, vec3_t extent) {
 	int result, i;
-	ml_vec4 p, a;
+	vec4_t p, a;
 	result = ML_INSIDE;
 	for (i = 0; i < 6; ++i) {
 		if (i == 2 || i == 3) continue;
@@ -177,9 +177,9 @@ int mlTestFrustumAABB_XZ(ml_frustum* frustum, ml_vec3 center, ml_vec3 extent) {
 	return result;
 }
 
-int mlTestFrustumAABB_Y(ml_frustum* frustum, ml_vec3 center, ml_vec3 extent) {
+int mlTestFrustumAABB_Y(frustum_t* frustum, vec3_t center, vec3_t extent) {
 	int result, i;
-	ml_vec4 p, a;
+	vec4_t p, a;
 	result = ML_INSIDE;
 	for (i = 2; i < 4; ++i) {
 		p = frustum->planes[i];
@@ -193,8 +193,8 @@ int mlTestFrustumAABB_Y(ml_frustum* frustum, ml_vec3 center, ml_vec3 extent) {
 }
 
 
-ml_vec3 mlVec3RotateBy(const ml_matrix* m, const ml_vec3 *v) {
-	ml_vec3 ret;
+vec3_t mlVec3RotateBy(const mat44_t* m, const vec3_t *v) {
+	vec3_t ret;
 	ret.x = (v->x * m->m[0]) +
 		(v->y * m->m[4]) +
 		(v->z * m->m[8]);
@@ -208,8 +208,8 @@ ml_vec3 mlVec3RotateBy(const ml_matrix* m, const ml_vec3 *v) {
 }
 
 
-ml_vec3 mlMulMat33Vec3(const ml_matrix33* m, const ml_vec3* v) {
-	ml_vec3 ret;
+vec3_t mlMulMat33Vec3(const mat33_t* m, const vec3_t* v) {
+	vec3_t ret;
 	ret.x = (v->x * m->m[0]) +
 		(v->y * m->m[3]) +
 		(v->z * m->m[6]);
@@ -223,7 +223,7 @@ ml_vec3 mlMulMat33Vec3(const ml_matrix33* m, const ml_vec3* v) {
 }
 
 void
-mlMulMatrix(ml_matrix* to, const ml_matrix* by) {
+mlMulMatrix(mat44_t* to, const mat44_t* by) {
 	const float*__restrict__ a = to->m;
 	const float*__restrict__ b = by->m;
 	float m[16];
@@ -249,8 +249,8 @@ mlMulMatrix(ml_matrix* to, const ml_matrix* by) {
 }
 
 void
-mlTranslate(ml_matrix* m, float x, float y, float z) {
-	ml_matrix trans;
+mlTranslate(mat44_t* m, float x, float y, float z) {
+	mat44_t trans;
 	mlSetIdentity(&trans);
 	trans.m[12] = x;
 	trans.m[13] = y;
@@ -259,7 +259,7 @@ mlTranslate(ml_matrix* m, float x, float y, float z) {
 }
 
 void
-mlRotate(ml_matrix* m, float angle, float x, float y, float z) {
+mlRotate(mat44_t* m, float angle, float x, float y, float z) {
 	float cosa = cosf(angle);
 	float sina = sinf(angle);
 	float icosa = 1.f - cosa;
@@ -269,12 +269,12 @@ mlRotate(ml_matrix* m, float angle, float x, float y, float z) {
 		x*z*icosa + y*sina, y*z*icosa - x*sina, cosa + z*z*icosa, 0.f,
 		0.f, 0.f, 0.f, 1.f
 	};
-	mlMulMatrix(m, (ml_matrix*)&r);
+	mlMulMatrix(m, (mat44_t*)&r);
 }
 
 
 void
-mlTranspose(ml_matrix* m) {
+mlTranspose(mat44_t* m) {
 #if 0
 	__m128 col1 = _mm_load_ps(&m->m[0]);
 	__m128 col2 = _mm_load_ps(&m->m[4]);
@@ -286,23 +286,23 @@ mlTranspose(ml_matrix* m) {
 	_mm_store_ps(&m->m[8], col3);
 	_mm_store_ps(&m->m[12], col4);
 #else
-	mlSwap(m->m[1], m->m[4]);
-	mlSwap(m->m[2], m->m[8]);
-	mlSwap(m->m[3], m->m[12]);
-	mlSwap(m->m[6], m->m[9]);
-	mlSwap(m->m[7], m->m[13]);
-	mlSwap(m->m[11], m->m[14]);
+	SWAP(m->m[1], m->m[4]);
+	SWAP(m->m[2], m->m[8]);
+	SWAP(m->m[3], m->m[12]);
+	SWAP(m->m[6], m->m[9]);
+	SWAP(m->m[7], m->m[13]);
+	SWAP(m->m[11], m->m[14]);
 #endif
 }
 
-void mlTranspose33(ml_matrix33* m) {
-	mlSwap(m->m[1], m->m[3]);
-	mlSwap(m->m[2], m->m[6]);
-	mlSwap(m->m[5], m->m[7]);
+void mlTranspose33(mat33_t* m) {
+	SWAP(m->m[1], m->m[3]);
+	SWAP(m->m[2], m->m[6]);
+	SWAP(m->m[5], m->m[7]);
 }
 
 
-bool mlInvertMatrix(ml_matrix* to, const ml_matrix* from) {
+bool mlInvertMatrix(mat44_t* to, const mat44_t* from) {
 	float inv[16];
 	float* out = to->m;
 	const float* m = from->m;
@@ -435,9 +435,9 @@ bool mlInvertMatrix(ml_matrix* to, const ml_matrix* from) {
 }
 
 // Must be orthonormal
-void mlInvertOrthoMatrix(ml_matrix* to, const ml_matrix* from) {
-	ml_matrix33 R;
-	ml_vec3 T;
+void mlInvertOrthoMatrix(mat44_t* to, const mat44_t* from) {
+	mat33_t R;
+	vec3_t T;
 	mlGetRotationMatrix(&R, from);
 	mlTranspose33(&R);
 	mlVec3Assign(T, -from->m[12], -from->m[13], -from->m[14]);
@@ -459,8 +459,8 @@ void mlInvertOrthoMatrix(ml_matrix* to, const ml_matrix* from) {
 }
 
 
-ml_vec4 mlMulMatVec(const ml_matrix* m, const ml_vec4* v) {
-	ml_vec4 ret;
+vec4_t mlMulMatVec(const mat44_t* m, const vec4_t* v) {
+	vec4_t ret;
 	ret.x = (v->x * m->m[0]) +
 		(v->y * m->m[4]) +
 		(v->z * m->m[8]) +
@@ -480,8 +480,8 @@ ml_vec4 mlMulMatVec(const ml_matrix* m, const ml_vec4* v) {
 	return ret;
 }
 
-ml_vec3 mlMulMatVec3(const ml_matrix* m, const ml_vec3* v) {
-	ml_vec3 ret;
+vec3_t mlMulMatVec3(const mat44_t* m, const vec3_t* v) {
+	vec3_t ret;
 	ret.x = (v->x * m->m[0]) +
 		(v->y * m->m[4]) +
 		(v->z * m->m[8]) +
@@ -544,7 +544,7 @@ GLuint mlLinkProgram(GLuint vsh, GLuint fsh) {
 }
 
 
-void mlCreateMaterial(ml_material* material, const char* vsource, const char* fsource) {
+void mlCreateMaterial(material_t* material, const char* vsource, const char* fsource) {
 	GLuint vshader, fshader, program;
 	vshader = mlCompileShader(GL_VERTEX_SHADER, vsource);
 	fshader = mlCompileShader(GL_FRAGMENT_SHADER, fsource);
@@ -576,7 +576,7 @@ void mlCreateMaterial(ml_material* material, const char* vsource, const char* fs
 	glUseProgram(0);
 }
 
-void mlDestroyMaterial(ml_material* material) {
+void mlDestroyMaterial(material_t* material) {
 	if (material->program != 0)
 		glDeleteProgram(material->program);
 	material->program = 0;
@@ -594,7 +594,7 @@ static inline GLsizei mesh_stride(GLenum flags) {
 		((flags & ML_TC_2US) ? 4 : 0);
 }
 
-void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags, GLenum usage) {
+void mlCreateMesh(mesh_t* mesh, size_t n, void* data, GLenum flags, GLenum usage) {
 	GLsizei stride = mesh_stride(flags);
 	glGenBuffers(1, &mesh->vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
@@ -621,13 +621,13 @@ void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags, GLenum usag
 	glCheck(__LINE__);
 }
 
-void mlUpdateMesh(ml_mesh* mesh, GLintptr offset, GLsizeiptr n, void* data) {
+void mlUpdateMesh(mesh_t* mesh, GLintptr offset, GLsizeiptr n, void* data) {
 	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
 	glBufferSubData(GL_ARRAY_BUFFER, offset, n, data);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void mlCreateIndexedMesh(ml_mesh* mesh, size_t n, void* data, size_t ilen, GLenum indextype, void* indices, GLenum flags) {
+void mlCreateIndexedMesh(mesh_t* mesh, size_t n, void* data, size_t ilen, GLenum indextype, void* indices, GLenum flags) {
 	mlCreateMesh(mesh, n, data, flags, GL_STATIC_DRAW);
 	glGenBuffers(1, &mesh->ibo);
 
@@ -652,7 +652,7 @@ void mlCreateIndexedMesh(ml_mesh* mesh, size_t n, void* data, size_t ilen, GLenu
 	glCheck(__LINE__);
 }
 
-void mlDestroyMesh(ml_mesh* mesh) {
+void mlDestroyMesh(mesh_t* mesh) {
 	if (mesh->vbo != 0)
 		glDeleteBuffers(1, &(mesh->vbo));
 	mesh->vbo = 0;
@@ -661,7 +661,7 @@ void mlDestroyMesh(ml_mesh* mesh) {
 	mesh->ibo = 0;
 }
 
-void mlMapMeshToMaterial(const ml_mesh* mesh, const ml_material* material) {
+void mlMapMeshToMaterial(const mesh_t* mesh, const material_t* material) {
 	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
 	if (material->position > -1) {
 		if (mesh->position > -1) {
@@ -711,7 +711,7 @@ void mlMapMeshToMaterial(const ml_mesh* mesh, const ml_material* material) {
 	}
 }
 
-void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, const ml_mesh* mesh) {
+void mlCreateRenderable(ml_renderable* renderable, const material_t* material, const mesh_t* mesh) {
 	glGenVertexArrays(1, &renderable->vao);
 	glBindVertexArray(renderable->vao);
 	renderable->material = material;
@@ -729,46 +729,46 @@ void mlDestroyRenderable(ml_renderable* renderable) {
 	renderable->vao = 0;
 }
 
-void mlInitMatrixStack(ml_matrixstack* stack, size_t size) {
+void mlInitMatrixStack(mtxstack_t* stack, size_t size) {
 	if (size == 0)
 		fatal_error("Matrix stack too small");
 	stack->top = 0;
-	stack->stack = malloc(sizeof(ml_matrix) * size);
+	stack->stack = malloc(sizeof(mat44_t) * size);
 	for (size_t i = 0; i < size; ++i)
 		mlSetIdentity(stack->stack + i);
 }
 
-void mlDestroyMatrixStack(ml_matrixstack* stack) {
+void mlDestroyMatrixStack(mtxstack_t* stack) {
 	free(stack->stack);
 	stack->top = -1;
 	stack->stack = NULL;
 }
 
-void mlPushMatrix(ml_matrixstack* stack) {
+void mlPushMatrix(mtxstack_t* stack) {
 	++stack->top;
 	mlCopyMatrix(stack->stack + stack->top, stack->stack + stack->top - 1);
 }
 
-void mlLoadMatrix(ml_matrixstack* stack, ml_matrix* m) {
+void mlLoadMatrix(mtxstack_t* stack, mat44_t* m) {
 	mlCopyMatrix(stack->stack + stack->top, m);
 }
 
-void mlLoadIdentity(ml_matrixstack* stack) {
+void mlLoadIdentity(mtxstack_t* stack) {
 	mlSetIdentity(stack->stack + stack->top);
 }
 
-void mlPushIdentity(ml_matrixstack* stack) {
+void mlPushIdentity(mtxstack_t* stack) {
 	++stack->top;
 	mlSetIdentity(stack->stack + stack->top);
 }
 
-void mlPopMatrix(ml_matrixstack* stack) {
+void mlPopMatrix(mtxstack_t* stack) {
 	if (stack->top < 0)
 		fatal_error("Matrix stack underflow");
 	--stack->top;
 }
 
-ml_matrix* mlGetMatrix(ml_matrixstack* stack) {
+mat44_t* mlGetMatrix(mtxstack_t* stack) {
 	if (stack->top < 0)
 		fatal_error("Matrix stack underflow");
 	return stack->stack + stack->top;
@@ -828,9 +828,9 @@ void mlBindTexture2D(ml_tex2d* tex, int index) {
 /* based on code by Pierre Terdiman
    http://www.codercorner.com/RayAABB.cpp
 */
-bool mlTestRayAABB(ml_vec3 origin, ml_vec3 dir, ml_vec3 center, ml_vec3 extent)
+bool mlTestRayAABB(vec3_t origin, vec3_t dir, vec3_t center, vec3_t extent)
 {
-	ml_vec3 diff;
+	vec3_t diff;
 
 	diff.x = origin.x - center.x;
 	if (fabsf(diff.x) > extent.x && diff.x*dir.x >= 0.0f)
@@ -844,7 +844,7 @@ bool mlTestRayAABB(ml_vec3 origin, ml_vec3 dir, ml_vec3 center, ml_vec3 extent)
 	if (fabsf(diff.z) > extent.z && diff.z*dir.z >= 0.0f)
 		return false;
 
-	ml_vec3 absdir = { fabsf(dir.x), fabsf(dir.y), fabsf(dir.z) };
+	vec3_t absdir = { fabsf(dir.x), fabsf(dir.y), fabsf(dir.z) };
 	float f;
 	f = dir.y * diff.z - dir.z * diff.y;
 	if (fabsf(f) > extent.y*absdir.z + extent.z*absdir.y)
@@ -860,11 +860,11 @@ bool mlTestRayAABB(ml_vec3 origin, ml_vec3 dir, ml_vec3 center, ml_vec3 extent)
 
 
 /* http://tog.acm.org/resources/GraphicsGems/gems/BoxSphere.c */
-bool mlTestSphereAABB(ml_vec3 pos, float radius, ml_vec3 center, ml_vec3 extent)
+bool mlTestSphereAABB(vec3_t pos, float radius, vec3_t center, vec3_t extent)
 {
 	float dmin = 0;
-	ml_vec3 bmin = { center.x - extent.x, center.y - extent.y, center.z - extent.z };
-	ml_vec3 bmax = { center.x + extent.x, center.y + extent.y, center.z + extent.z };
+	vec3_t bmin = { center.x - extent.x, center.y - extent.y, center.z - extent.z };
+	vec3_t bmax = { center.x + extent.x, center.y + extent.y, center.z + extent.z };
 	if (pos.x < bmin.x) dmin = pos.x - bmin.x;
 	else if (pos.x > bmax.x) dmin = pos.x - bmax.x;
 	if (dmin <= radius) return true;
@@ -877,12 +877,12 @@ bool mlTestSphereAABB(ml_vec3 pos, float radius, ml_vec3 center, ml_vec3 extent)
 	return false;
 }
 
-bool mlTestSphereAABB_Hit(ml_vec3 pos, float radius, ml_vec3 center, ml_vec3 extent, ml_vec3* hit)
+bool mlTestSphereAABB_Hit(vec3_t pos, float radius, vec3_t center, vec3_t extent, vec3_t* hit)
 {
-	ml_vec3 sphereCenterRelBox;
+	vec3_t sphereCenterRelBox;
 	sphereCenterRelBox = mlVec3Sub(pos, center);
 	// Point on surface of box that is closest to the center of the sphere
-	ml_vec3 boxPoint;
+	vec3_t boxPoint;
 
 	// Check sphere center against box along the X axis alone.
 	// If the sphere is off past the left edge of the box,
@@ -907,7 +907,7 @@ bool mlTestSphereAABB_Hit(ml_vec3 pos, float radius, ml_vec3 center, ml_vec3 ext
 	// Now we have the closest point on the box, so get the distance from
 	// that to the sphere center, and see if it's less than the radius
 
-	ml_vec3 dist = mlVec3Sub(sphereCenterRelBox, boxPoint);
+	vec3_t dist = mlVec3Sub(sphereCenterRelBox, boxPoint);
 
 	if (dist.x*dist.x + dist.y*dist.y + dist.z*dist.z < radius*radius) {
 		*hit = boxPoint;
@@ -916,7 +916,7 @@ bool mlTestSphereAABB_Hit(ml_vec3 pos, float radius, ml_vec3 center, ml_vec3 ext
 	return false;
 }
 
-bool mlTestAABBAABB_2(ml_vec3 center, ml_vec3 extent, ml_vec3 center2, ml_vec3 extent2, ml_vec3 *hitpoint, ml_vec3 *hitdelta, ml_vec3 *hitnormal)
+bool mlTestAABBAABB_2(vec3_t center, vec3_t extent, vec3_t center2, vec3_t extent2, vec3_t *hitpoint, vec3_t *hitdelta, vec3_t *hitnormal)
 {
 	float dx = center2.x - center.x;
 	float px = (extent2.x + extent.x) - fabs(dx);
@@ -967,8 +967,8 @@ bool mlTestAABBAABB_2(ml_vec3 center, ml_vec3 extent, ml_vec3 center2, ml_vec3 e
 }
 
 
-bool mlTestSegmentAABB(ml_vec3 pos, ml_vec3 delta, ml_vec3 padding, ml_vec3 center, ml_vec3 extent,
-	float* time, ml_vec3* hit, ml_vec3* hitdelta, ml_vec3* normal) {
+bool mlTestSegmentAABB(vec3_t pos, vec3_t delta, vec3_t padding, vec3_t center, vec3_t extent,
+	float* time, vec3_t* hit, vec3_t* hitdelta, vec3_t* normal) {
 	float scaleX = 1.f / delta.x;
 	float scaleY = 1.f / delta.y;
 	float scaleZ = 1.f / delta.z;
@@ -984,13 +984,13 @@ bool mlTestSegmentAABB(ml_vec3 pos, ml_vec3 delta, ml_vec3 padding, ml_vec3 cent
 	if (nearTimeX > farTimeY || nearTimeY > farTimeX ||
 		nearTimeX > farTimeZ || nearTimeZ > farTimeX)
 		return false;
-	float nearTime = mlMax(mlMax(nearTimeX, nearTimeY), nearTimeZ);
-	float farTime = mlMin(mlMin(farTimeX, farTimeY), farTimeZ);
+	float nearTime = ML_MAX(ML_MAX(nearTimeX, nearTimeY), nearTimeZ);
+	float farTime = ML_MIN(ML_MIN(farTimeX, farTimeY), farTimeZ);
 	if (nearTime >= 1.f || farTime <= 0.f)
 		return false;
 
 	float t = mlClamp(nearTime, 0, 1.f);
-	ml_vec3 dir = delta;
+	vec3_t dir = delta;
 	mlVec3Normalize(dir);
 	*time = t;
 	hitdelta->x = t * delta.x;
@@ -1012,13 +1012,13 @@ bool mlTestSegmentAABB(ml_vec3 pos, ml_vec3 delta, ml_vec3 padding, ml_vec3 cent
 	return true;
 }
 
-bool intersect_moving_aabb_aabb(aabb_t a, aabb_t b, ml_vec3 va, ml_vec3 vb, float* tfirst, float* tlast) {
+bool intersect_moving_aabb_aabb(aabb_t a, aabb_t b, vec3_t va, vec3_t vb, float* tfirst, float* tlast) {
 	if (mlTestAABBAABB(a.center, a.extent, b.center, b.extent)) {
 		*tfirst = *tlast = 0.f;
 		return true;
 	}
 
-	ml_vec3 v = mlVec3Sub(vb, va);
+	vec3_t v = mlVec3Sub(vb, va);
 	*tfirst = 0;
 	*tlast = 1.f;
 
@@ -1030,13 +1030,13 @@ bool intersect_moving_aabb_aabb(aabb_t a, aabb_t b, ml_vec3 va, ml_vec3 vb, floa
 		float bmin_x = b.center.x - b.extent.x;
 		if (v.x < 0) {
 			if (bmax_x < amin_x) return false;
-			if (amax_x < bmin_x) *tfirst = mlMax((amax_x - bmin_x) / v.x, *tfirst);
-			if (bmax_x > amin_x) *tlast = mlMin((amin_x - bmax_x) / v.x, *tlast);
+			if (amax_x < bmin_x) *tfirst = ML_MAX((amax_x - bmin_x) / v.x, *tfirst);
+			if (bmax_x > amin_x) *tlast = ML_MIN((amin_x - bmax_x) / v.x, *tlast);
 		}
 		if (v.x > 0) {
 			if (bmin_x > amax_x) return false;
-			if (bmax_x < amin_x) *tfirst = mlMax((amin_x - bmax_x) / v.x, *tfirst);
-			if (amax_x > bmin_x) *tlast = mlMin((amax_x - bmin_x) / v.x, *tlast);
+			if (bmax_x < amin_x) *tfirst = ML_MAX((amin_x - bmax_x) / v.x, *tfirst);
+			if (amax_x > bmin_x) *tlast = ML_MIN((amax_x - bmin_x) / v.x, *tlast);
 		}
 		// No overlap possible if time of first contact occurs after time of last contact
 		if (*tfirst > *tlast) return false;
@@ -1049,13 +1049,13 @@ bool intersect_moving_aabb_aabb(aabb_t a, aabb_t b, ml_vec3 va, ml_vec3 vb, floa
 		float bmin_y = b.center.y - b.extent.y;
 		if (v.y < 0) {
 			if (bmax_y < amin_y) return false;
-			if (amax_y < bmin_y) *tfirst = mlMax((amax_y - bmin_y) / v.y, *tfirst);
-			if (bmax_y > amin_y) *tlast = mlMin((amin_y - bmax_y) / v.y, *tlast);
+			if (amax_y < bmin_y) *tfirst = ML_MAX((amax_y - bmin_y) / v.y, *tfirst);
+			if (bmax_y > amin_y) *tlast = ML_MIN((amin_y - bmax_y) / v.y, *tlast);
 		}
 		if (v.y > 0) {
 			if (bmin_y > amax_y) return false;
-			if (bmax_y < amin_y) *tfirst = mlMax((amin_y - bmax_y) / v.y, *tfirst);
-			if (amax_y > bmin_y) *tlast = mlMin((amax_y - bmin_y) / v.y, *tlast);
+			if (bmax_y < amin_y) *tfirst = ML_MAX((amin_y - bmax_y) / v.y, *tfirst);
+			if (amax_y > bmin_y) *tlast = ML_MIN((amax_y - bmin_y) / v.y, *tlast);
 		}
 		// No overlap possible if time of first contact occurs after time of last contact
 		if (*tfirst > *tlast) return false;
@@ -1068,13 +1068,13 @@ bool intersect_moving_aabb_aabb(aabb_t a, aabb_t b, ml_vec3 va, ml_vec3 vb, floa
 		float bmin_z = b.center.z - b.extent.z;
 		if (v.z < 0) {
 			if (bmax_z < amin_z) return false;
-			if (amax_z < bmin_z) *tfirst = mlMax((amax_z - bmin_z) / v.z, *tfirst);
-			if (bmax_z > amin_z) *tlast = mlMin((amin_z - bmax_z) / v.z, *tlast);
+			if (amax_z < bmin_z) *tfirst = ML_MAX((amax_z - bmin_z) / v.z, *tfirst);
+			if (bmax_z > amin_z) *tlast = ML_MIN((amin_z - bmax_z) / v.z, *tlast);
 		}
 		if (v.z > 0) {
 			if (bmin_z > amax_z) return false;
-			if (bmax_z < amin_z) *tfirst = mlMax((amin_z - bmax_z) / v.z, *tfirst);
-			if (amax_z > bmin_z) *tlast = mlMin((amax_z - bmin_z) / v.z, *tlast);
+			if (bmax_z < amin_z) *tfirst = ML_MAX((amin_z - bmax_z) / v.z, *tfirst);
+			if (amax_z > bmin_z) *tlast = ML_MIN((amax_z - bmin_z) / v.z, *tlast);
 		}
 		// No overlap possible if time of first contact occurs after time of last contact
 		if (*tfirst > *tlast) return false;

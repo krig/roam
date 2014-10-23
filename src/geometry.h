@@ -1,5 +1,5 @@
 #pragma once
 
-void makeSphere(ml_mesh* mesh, float radius, int subdivisions);
-void makeHemisphere(ml_mesh* mesh, float radius, int subdivisions);
-void makeCube(ml_mesh* mesh, ml_vec3 size, uint32_t top_clr, uint32_t bottom_clr);
+void make_sphere(mesh_t* mesh, float radius, int subdivisions);
+void make_hemisphere(mesh_t* mesh, float radius, int subdivisions);
+void make_cube(mesh_t* mesh, vec3_t size, uint32_t top_clr, uint32_t bottom_clr);

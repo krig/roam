@@ -28,7 +28,7 @@ typedef enum cameramode_t {
 
 
 struct camera_t {
-	ml_dvec3 pos;
+	dvec3_t pos;
 	float pitch;
 	float yaw;
 	cameramode_t mode;
@@ -56,20 +56,20 @@ struct game_t {
 	struct player_t player;
 	struct controls_t controls;
 	struct inputstate_t input;
-	ml_material materials[MAX_MATERIALS];
-	ml_matrixstack projection;
-	ml_matrixstack modelview;
+	material_t materials[MAX_MATERIALS];
+	mtxstack_t projection;
+	mtxstack_t modelview;
 	struct game_map_t map;
 
 	int day; // increases after every day/night cycle
 	double time_of_day;
 	double light_level;
-	ml_vec3 amb_light;
-	ml_vec4 fog_color;
-	ml_vec3 light_dir;
-	ml_vec3 sun_color;
-	ml_vec3 sky_dark;
-	ml_vec3 sky_light;
+	vec3_t amb_light;
+	vec4_t fog_color;
+	vec3_t light_dir;
+	vec3_t sun_color;
+	vec3_t sky_dark;
+	vec3_t sky_light;
 
 	bool fast_day_mode;
 	bool debug_mode;
@@ -85,50 +85,50 @@ extern struct game_t game;
 
 
 static inline
-ml_chunk cameraChunk()
+chunkpos_t cameraChunk()
 {
-	ml_chunk c = { floor(round(game.camera.pos.x) / CHUNK_SIZE),
+	chunkpos_t c = { floor(round(game.camera.pos.x) / CHUNK_SIZE),
 	               floor(round(game.camera.pos.z) / CHUNK_SIZE) };
 	return c;
 }
 
 static inline
-ml_ivec3 cameraBlock()
+ivec3_t cameraBlock()
 {
-	ml_ivec3 b = { round(game.camera.pos.x),
+	ivec3_t b = { round(game.camera.pos.x),
 	               round(game.camera.pos.y),
 	               round(game.camera.pos.z) };
 	return b;
 }
 
 static inline
-ml_chunk playerChunk()
+chunkpos_t playerChunk()
 {
-	ml_chunk c = { floor(round(game.player.pos.x) / CHUNK_SIZE),
+	chunkpos_t c = { floor(round(game.player.pos.x) / CHUNK_SIZE),
 	               floor(round(game.player.pos.z) / CHUNK_SIZE) };
 	return c;
 }
 
 static inline
-ml_ivec3 playerBlock()
+ivec3_t playerBlock()
 {
-	ml_ivec3 b = { round(game.player.pos.x),
+	ivec3_t b = { round(game.player.pos.x),
 	               round(game.player.pos.y),
 	               round(game.player.pos.z) };
 	return b;
 }
 
 static inline
-bool blockCompare(ml_ivec3 a, ml_ivec3 b)
+bool blockCompare(ivec3_t a, ivec3_t b)
 {
 	return (a.x == b.x && a.y == b.y && a.z == b.z);
 }
 
 static inline
-ml_vec3 playerChunkCameraOffset()
+vec3_t playerChunkCameraOffset()
 {
-	ml_chunk c = playerChunk();
-	ml_vec3 ret = {
+	chunkpos_t c = playerChunk();
+	vec3_t ret = {
 		game.camera.pos.x - (double)(c.x * CHUNK_SIZE),
 		game.camera.pos.y,
 		game.camera.pos.z - (double)(c.z * CHUNK_SIZE)

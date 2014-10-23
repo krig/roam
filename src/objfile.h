@@ -15,7 +15,7 @@ typedef void (*objCreateMeshGenFn)(obj_mesh* obj, void** vertexdata, size_t* ver
 
 void objGenNormalsFn(obj_mesh* obj, void** vertexdata, size_t* vertexsize, GLenum* meshflags);
 
-void objCreateMesh(ml_mesh* mesh, obj_mesh* obj, objCreateMeshGenFn fn);
+void objCreateMesh(mesh_t* mesh, obj_mesh* obj, objCreateMeshGenFn fn);
 
 static inline void
 objFree(obj_mesh* mesh) {

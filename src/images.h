@@ -81,8 +81,8 @@ enum img_types {
 	NUM_IMG_TYPES
 };
 
-static inline ml_vec2 imgTC(int idx) {
-	ml_vec2 tc;
+static inline vec2_t imgTC(int idx) {
+	vec2_t tc;
 	tc.x = (float)((idx-1) % IMG_ATLAS_ROW) * IMG_TCW;
 	tc.y = (float)((idx-1) / IMG_ATLAS_ROW) * IMG_TCW;
 	return tc;

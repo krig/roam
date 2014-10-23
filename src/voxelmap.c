@@ -9,7 +9,7 @@
 #include "gen.h"
 
 static inline
-tc2us_t make_tc2us(ml_vec2 tc)
+tc2us_t make_tc2us(vec2_t tc)
 {
 	tc2us_t to = {
 		(uint16_t)(tc.x * (double)0xffff),
@@ -40,10 +40,10 @@ static
 void gen_block_tcs()
 {
 	float bw = IMG_TCW - IMG_TC_BIAS;
-	ml_vec2 tcoffs[4] = {{0, bw}, {bw, bw}, {bw, 0}, {0, 0} };
+	vec2_t tcoffs[4] = {{0, bw}, {bw, bw}, {bw, 0}, {0, 0} };
 	for (int t = 0; t < NUM_BLOCKTYPES; ++t) {
 		for (int i = 0; i < 6; ++i) {
-			ml_vec2 tl = mlVec2AddScalar(imgTC(blockinfo[t].img[i]), IMG_TC_BIAS);
+			vec2_t tl = mlVec2AddScalar(imgTC(blockinfo[t].img[i]), IMG_TC_BIAS);
 			for (int j = 0; j < 4; ++j)
 				BLOCKTC(t, i, j) = make_tc2us(mlVec2Add(tl, tcoffs[j]));
 		}
@@ -52,17 +52,17 @@ void gen_block_tcs()
 
 extern ml_tex2d blocks_texture;
 uint32_t* map_blocks = NULL;
-static ml_chunk map_chunk;
+static chunkpos_t map_chunk;
 
 #define TESSELATION_QUEUE_SIZE (MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH)
-static ml_chunk tesselation_queue[TESSELATION_QUEUE_SIZE];
+static chunkpos_t tesselation_queue[TESSELATION_QUEUE_SIZE];
 static size_t tesselation_queue_head = 0;
 static size_t tesselation_queue_len = 0;
 
 static
 bool pushChunkTesselation(int x, int z)
 {
-	ml_chunk chunk = { x, z };
+	chunkpos_t chunk = { x, z };
 	if (tesselation_queue_len >= TESSELATION_QUEUE_SIZE)
 		return false;
 	size_t pos = (tesselation_queue_head + tesselation_queue_len) % TESSELATION_QUEUE_SIZE;
@@ -72,7 +72,7 @@ bool pushChunkTesselation(int x, int z)
 }
 
 static
-bool popChunkTesselation(ml_chunk* chunk)
+bool popChunkTesselation(chunkpos_t* chunk)
 {
 	if (tesselation_queue_len == 0)
 		return false;
@@ -97,7 +97,7 @@ void map_init()
 	simplexInit(game.map.seed);
 	osnInit(game.map.seed);
 
-	ml_chunk camera = playerChunk();
+	chunkpos_t camera = playerChunk();
 	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
 		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x)
 			chunk_load(camera.x + x, camera.z + z);
@@ -129,7 +129,7 @@ void map_exit()
 
 void map_tick()
 {
-	ml_chunk nc = playerChunk();
+	chunkpos_t nc = playerChunk();
 	if (nc.x != map_chunk.x || nc.z != map_chunk.z) {
 		game_chunk* chunks = game.map.chunks;
 		int cx = nc.x;
@@ -161,7 +161,7 @@ void map_tick()
 			}
 		}
 	}
-	ml_chunk chunk;
+	chunkpos_t chunk;
 	for (int i = 0; i < 5; ++i) {
 		if (popChunkTesselation(&chunk)) {
 			chunk_build_mesh(chunk.x, chunk.z);
@@ -173,17 +173,17 @@ void map_tick()
 
 struct alpha_t {
 	game_chunk* chunk;
-	ml_vec3 offset;
+	vec3_t offset;
 };
 
 static struct alpha_t alphas[MAX_ALPHAS];
 static size_t nalphas;
 
-void map_draw(ml_frustum* frustum)
+void map_draw(frustum_t* frustum)
 {
 	// for each visible chunk...
 	// set up material etc. once.
-	ml_material* material = game.materials + MAT_CHUNK;
+	material_t* material = game.materials + MAT_CHUNK;
 
 	glDisable(GL_BLEND);
 	glEnable(GL_DEPTH_TEST);
@@ -198,13 +198,13 @@ void map_draw(ml_frustum* frustum)
 	mlUniformVec4(material->fog_color, &game.fog_color);
 
 	float chunk_radius = (float)CHUNK_SIZE*0.5f;
-	ml_vec3 offset, center, extent;
+	vec3_t offset, center, extent;
 	game_chunk* chunks = game.map.chunks;
-	ml_chunk camera = playerChunk();
+	chunkpos_t camera = playerChunk();
 
 	int dx, dz, bx, bz, x, z, j;
 	game_chunk* chunk;
-	ml_mesh* mesh;
+	mesh_t* mesh;
 
 	nalphas = 0;
 
@@ -272,13 +272,13 @@ int cmp_alpha_chunks(struct alpha_t *a, struct alpha_t *b)
 	return ret;
 }
 
-static ml_vec3 alpha_offset_cmpval;
+static vec3_t alpha_offset_cmpval;
 bool alpha_sort_chunks = true;
 bool alpha_sort_faces = true;
 
 static
-ml_vec3 avg3(ml_vec3 a, ml_vec3 b, ml_vec3 c) {
-	ml_vec3 r = {
+vec3_t avg3(vec3_t a, vec3_t b, vec3_t c) {
+	vec3_t r = {
 		(a.x + b.x + c.x) / 3.f,
 		(a.y + b.y + c.y) / 3.f,
 		(a.z + b.z + c.z) / 3.f
@@ -289,11 +289,11 @@ ml_vec3 avg3(ml_vec3 a, ml_vec3 b, ml_vec3 c) {
 static
 int cmp_alpha_faces(block_face_t* a, block_face_t* b)
 {
-	ml_vec3 offset = alpha_offset_cmpval;
+	vec3_t offset = alpha_offset_cmpval;
 	int ret = 0;
 
-	ml_vec3 ca = avg3(a->vtx[0].pos, a->vtx[1].pos, a->vtx[2].pos);
-	ml_vec3 cb = avg3(b->vtx[0].pos, b->vtx[1].pos, b->vtx[2].pos);
+	vec3_t ca = avg3(a->vtx[0].pos, a->vtx[1].pos, a->vtx[2].pos);
+	vec3_t cb = avg3(b->vtx[0].pos, b->vtx[1].pos, b->vtx[2].pos);
 	ca = mlVec3Sub(ca, offset);
 	cb = mlVec3Sub(cb, offset);
 	float da = mlVec3Dot(ca, ca);
@@ -310,7 +310,7 @@ int cmp_alpha_faces(block_face_t* a, block_face_t* b)
 void map_draw_alphapass()
 {
 	size_t i;
-	ml_material* material;
+	material_t* material;
 	struct alpha_t* alpha;
 	if (nalphas == 0)
 		return;
@@ -334,7 +334,7 @@ void map_draw_alphapass()
 
 	for (i = 0, alpha = alphas; i < nalphas; ++i, ++alpha) {
 		game_chunk* chunk = alpha->chunk;
-		ml_mesh* mesh = &(chunk->alpha);
+		mesh_t* mesh = &(chunk->alpha);
 		alpha_offset_cmpval.x = game.player.pos.x + alpha->offset.x;
 		alpha_offset_cmpval.y = game.player.pos.y + alpha->offset.y;
 		alpha_offset_cmpval.z = game.player.pos.z + alpha->offset.z;
@@ -356,7 +356,7 @@ void map_draw_alphapass()
 	glDisable(GL_TEXTURE_2D);
 }
 
-void map_update_block(ml_ivec3 block, uint32_t value)
+void map_update_block(ivec3_t block, uint32_t value)
 {
 	size_t idx = blockByCoord(block);
 
@@ -372,7 +372,7 @@ void map_update_block(ml_ivec3 block, uint32_t value)
 	}
 	// TODO: need to re-propagate light from lightsources affected by this change
 
-	ml_chunk chunk = blockToChunk(block);
+	chunkpos_t chunk = blockToChunk(block);
 	bool tess[4] = { false, false, false, false };
 	int mx = block.x % CHUNK_SIZE;
 	int mz = block.z % CHUNK_SIZE;
@@ -475,7 +475,7 @@ static block_vtx_t alpha_buffer[ALPHA_BUFFER_SIZE];
 static block_vtx_t tesselation_buffer[TESSELATION_BUFFER_SIZE];
 
 static
-bool mesh_subchunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* alphai);
+bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai);
 
 
 void chunk_build_mesh(int x, int z)
@@ -487,13 +487,13 @@ void chunk_build_mesh(int x, int z)
 		return;
 	if (chunk->dirty) {
 		size_t alphai = 0;
-		ml_mesh* mesh = chunk->solid;
+		mesh_t* mesh = chunk->solid;
 		for (int y = 0; y < MAP_CHUNK_HEIGHT; ++y)
 			mesh_subchunk(mesh + y, bufx, bufz, y, &alphai);
 		chunk->dirty = false;
 		//printf("tesselated chunk: [%d, %d] [%d, %d]\n", x, z, bufx, bufz);
 		if (alphai > 0) {
-			ml_mesh* alpha = &(chunk->alpha);
+			mesh_t* alpha = &(chunk->alpha);
 			size_t nalphafaces = (alphai/3);
 			if (chunk->alphadata == NULL || chunk->alphadata_capacity < nalphafaces) {
 				size_t sz = nalphafaces * sizeof(block_face_t);
@@ -561,7 +561,7 @@ uint32_t avglight(uint32_t b0, uint32_t b1, uint32_t b2, uint32_t b3)
 //  (iz-1)   (iz)     (iz+1)
 
 
-bool mesh_subchunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* alphai)
+bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 {
 	int ix, iy, iz;
 	int bx, by, bz;
@@ -800,11 +800,11 @@ bool mesh_subchunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* alphai)
 	return (vi > 0);
 }
 
-bool map_raycast(ml_dvec3 origin, ml_vec3 dir, int len, ml_ivec3* hit, ml_ivec3* prehit)
+bool map_raycast(dvec3_t origin, vec3_t dir, int len, ivec3_t* hit, ivec3_t* prehit)
 {
-	ml_dvec3 blockf = { origin.x, origin.y, origin.z };
-	ml_ivec3 block = { round(origin.x), round(origin.y), round(origin.z) };
-	ml_ivec3 prev = {0, 0, 0};
+	dvec3_t blockf = { origin.x, origin.y, origin.z };
+	ivec3_t block = { round(origin.x), round(origin.y), round(origin.z) };
+	ivec3_t prev = {0, 0, 0};
 	int step = 32;
 	for (int i = 0; i < len*step; ++i) {
 		block.x = round(blockf.x);

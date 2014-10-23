@@ -3,8 +3,8 @@
 struct camera_t;
 
 struct player_t {
-	ml_dvec3 pos;
-	ml_vec3 vel;
+	dvec3_t pos;
+	vec3_t vel;
 	float jumpcount;
 	float crouch_fade;
 	bool onground;
@@ -13,8 +13,8 @@ struct player_t {
 };
 
 struct inputstate_t {
-	ml_ivec3 picked_block;
-	ml_ivec3 prepicked_block;
+	ivec3_t picked_block;
+	ivec3_t prepicked_block;
 	bool enable_ground;
 	bool move_sprint;
 	bool move_left;

@@ -4,14 +4,14 @@
 #include "sky.h"
 #include "geometry.h"
 
-static ml_mesh sky_mesh;
+static mesh_t sky_mesh;
 static ml_renderable sky_renderable;
 
 
 void sky_init()
 {
-	ml_material* material = game.materials + MAT_SKY;
-	makeHemisphere(&sky_mesh, 5.f, 4);
+	material_t* material = game.materials + MAT_SKY;
+	make_hemisphere(&sky_mesh, 5.f, 4);
 	mlCreateRenderable(&sky_renderable, material, &sky_mesh);
 	sky_tick(0);
 }
@@ -26,12 +26,12 @@ void sky_exit()
 
 void sky_draw()
 {
-	ml_material* material = game.materials + MAT_SKY;
+	material_t* material = game.materials + MAT_SKY;
 	glCullFace(GL_FRONT);
 	glDepthFunc(GL_EQUAL);
 	glDepthRange(1, 1);
-	ml_matrix skyview;
-	ml_vec3 origo = {0, 0, 0};
+	mat44_t skyview;
+	vec3_t origo = {0, 0, 0};
 	if (game.camera.mode != CAMERA_3RDPERSON) {
 		mlFPSMatrix(&skyview, origo, game.camera.pitch, game.camera.yaw);
 	} else {
@@ -55,9 +55,9 @@ void sky_draw()
 }
 
 static
-ml_vec3 sun_mix(const ml_vec3* colors, double day_amt, double dusk_amt, double night_amt, double dawn_amt)
+vec3_t sun_mix(const vec3_t* colors, double day_amt, double dusk_amt, double night_amt, double dawn_amt)
 {
-	ml_vec3 c;
+	vec3_t c;
 	c.x = colors[0].x*day_amt + colors[1].x*dusk_amt + colors[2].x*night_amt + colors[3].x*dawn_amt;
 	c.y = colors[0].y*day_amt + colors[1].y*dusk_amt + colors[2].y*night_amt + colors[3].y*dawn_amt;
 	c.z = colors[0].z*day_amt + colors[1].z*dusk_amt + colors[2].z*night_amt + colors[3].z*dawn_amt;
@@ -65,9 +65,9 @@ ml_vec3 sun_mix(const ml_vec3* colors, double day_amt, double dusk_amt, double n
 }
 
 static inline
-ml_vec3 mkrgb(uint32_t rgb)
+vec3_t mkrgb(uint32_t rgb)
 {
-	ml_vec3 c = {((float)((rgb>>16)&0xff)/255.f),
+	vec3_t c = {((float)((rgb>>16)&0xff)/255.f),
 	             ((float)((rgb>>8)&0xff)/255.f),
 	             ((float)((rgb)&0xff)/255.f) };
 	return c;
@@ -130,37 +130,37 @@ void sky_tick(float dt)
 	//dusk_amt *= mag;
 
 	double low_light = 0.1;
-	double lightlevel = mlMax(day_amt, low_light);
+	double lightlevel = ML_MAX(day_amt, low_light);
 	game.light_level = lightlevel;
 
 #define MKRGB(rgb) mkrgb(0x##rgb)
 
 	// day, dusk, night, dawn
-	const ml_vec3 ambient[4] = {
+	const vec3_t ambient[4] = {
 		MKRGB(ffffff),
 		MKRGB(544769),
 		MKRGB(101010),
 		MKRGB(6f2168),
 	};
-	const ml_vec3 sky_dark[4] = {
+	const vec3_t sky_dark[4] = {
 		MKRGB(3F6CB4),
 		MKRGB(40538e),
 		MKRGB(000000),
 		MKRGB(3d2163),
 	};
-	const ml_vec3 sky_light[4] = {
+	const vec3_t sky_light[4] = {
 		MKRGB(00AAFF),
 		MKRGB(6a6ca5),
 		MKRGB(171b33),
 		MKRGB(e16e7a),
 	};
-	const ml_vec3 sun_color[4] = {
+	const vec3_t sun_color[4] = {
 		MKRGB(E8EAE7),
 		MKRGB(fdf2c9),
 		MKRGB(e2f3fa),
 		MKRGB(fefebb),
 	};
-	const ml_vec3 fog[4] = {
+	const vec3_t fog[4] = {
 		MKRGB(7ed4ff),
 		MKRGB(ad6369),
 		MKRGB(383e60),
@@ -178,7 +178,7 @@ void sky_tick(float dt)
 	game.sky_dark = sun_mix(sky_dark, day_amt, dusk_amt, night_amt, dawn_amt);
 	game.sky_light = sun_mix(sky_light, day_amt, dusk_amt, night_amt, dawn_amt);
 	game.sun_color = sun_mix(sun_color, day_amt, dusk_amt, night_amt, dawn_amt);
-	ml_vec3 fogc = sun_mix(fog, day_amt, dusk_amt, night_amt, dawn_amt);
+	vec3_t fogc = sun_mix(fog, day_amt, dusk_amt, night_amt, dawn_amt);
 	float fogd = fogdensity[0]*day_amt + fogdensity[1]*dusk_amt + fogdensity[2]*night_amt + fogdensity[3]*dawn_amt;
 
 	mlVec4Assign(game.fog_color, fogc.x, fogc.y, fogc.z, fogd);

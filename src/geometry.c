@@ -7,8 +7,8 @@
    bottom = 0xff514A9D;
 */
 
-void makeCube(ml_mesh* mesh, ml_vec3 size, uint32_t top_clr, uint32_t bottom_clr) {
-	ml_vtx_pos_n_clr vtx[] = {
+void make_cube(mesh_t* mesh, vec3_t size, uint32_t top_clr, uint32_t bottom_clr) {
+	posnormalclrvert_t vtx[] = {
 		{{-0.5f*size.x,-0.5f*size.y,-0.5f*size.z }, { 0, 0, 0 }, bottom_clr },
 		{{ 0.5f*size.x,-0.5f*size.y,-0.5f*size.z }, { 0, 0, 0 }, bottom_clr },
 		{{-0.5f*size.x,-0.5f*size.y, 0.5f*size.z }, { 0, 0, 0 }, bottom_clr },
@@ -19,7 +19,7 @@ void makeCube(ml_mesh* mesh, ml_vec3 size, uint32_t top_clr, uint32_t bottom_clr
 		{{ 0.5f*size.x, 0.5f*size.y, 0.5f*size.z }, { 0, 0, 0 }, top_clr }
 	};
 
-	ml_vtx_pos_n_clr tris[] = {
+	posnormalclrvert_t tris[] = {
 		// bottom
 		vtx[0], vtx[1], vtx[2], vtx[1], vtx[3], vtx[2],
 		// top
@@ -34,7 +34,7 @@ void makeCube(ml_mesh* mesh, ml_vec3 size, uint32_t top_clr, uint32_t bottom_clr
 		vtx[3], vtx[1], vtx[6], vtx[3], vtx[6], vtx[7]
 	};
 
-	ml_vec3 normals[] = {{ 0,-1, 0 }, { 0, 1, 0 }, { 0, 0, 1 },
+	vec3_t normals[] = {{ 0,-1, 0 }, { 0, 1, 0 }, { 0, 0, 1 },
 	                     { 0, 0,-1 }, {-1, 0, 0 }, { 1, 0, 0 }};
 
 	for (int i = 0; i < 6; ++i) {
@@ -50,9 +50,9 @@ void makeCube(ml_mesh* mesh, ml_vec3 size, uint32_t top_clr, uint32_t bottom_clr
 }
 
 // faceverts must be able to hold 20 * 3 verts
-static void initial_icosahedron(ml_vec3* faceverts) {
+static void initial_icosahedron(vec3_t* faceverts) {
 	int i;
-	ml_vec3 verts[12];
+	vec3_t verts[12];
 
 	double theta = 26.56505117707799 * ML_PI / 180.0; // refer paper for theta value
 	double stheta = sin(theta);
@@ -104,9 +104,9 @@ static void initial_icosahedron(ml_vec3* faceverts) {
 #undef FACE
 }
 
-static void initial_hemi_icosahedron(ml_vec3* faceverts) {
+static void initial_hemi_icosahedron(vec3_t* faceverts) {
 	int i;
-	ml_vec3 verts[12];
+	vec3_t verts[12];
 
 	double theta = 26.56505117707799 * ML_PI / 180.0; // refer paper for theta value
 	double stheta = sin(theta);
@@ -151,12 +151,12 @@ static void initial_hemi_icosahedron(ml_vec3* faceverts) {
 }
 
 
-static size_t subdivide_sphere(ml_vec3* to, ml_vec3* from, size_t nverts) {
+static size_t subdivide_sphere(vec3_t* to, vec3_t* from, size_t nverts) {
 	// for each subdivision pass, pop N/3 verts
 	// off, push the subdivided verts back
 	size_t nout = 0;
 	size_t nfaces = nverts / 3;
-	ml_vec3 v1, v2, v3, v4, v5, v6;
+	vec3_t v1, v2, v3, v4, v5, v6;
 	for (size_t i = 0; i < nfaces; ++i) {
 		v1 = from[(i*3) + 0];
 		v2 = from[(i*3) + 1];
@@ -180,16 +180,16 @@ static size_t subdivide_sphere(ml_vec3* to, ml_vec3* from, size_t nverts) {
 	return nout;
 }
 
-void makeSphere(ml_mesh* mesh, float radius, int subdivisions) {
+void make_sphere(mesh_t* mesh, float radius, int subdivisions) {
 	int i, v;
 	size_t nverts, currverts;
-	ml_vec3* verts[2];
+	vec3_t* verts[2];
 	// 0 = 60 * 1
 	// 1 = 60 * 4
 	// 2 = 60 * 4 * 4
 	nverts = 60 * pow(4, subdivisions);
-	verts[0] = malloc(nverts * sizeof(ml_vec3));
-	verts[1] = malloc(nverts * sizeof(ml_vec3));
+	verts[0] = malloc(nverts * sizeof(vec3_t));
+	verts[1] = malloc(nverts * sizeof(vec3_t));
 	initial_icosahedron(verts[0]);
 	currverts = 60;
 	v = 0;
@@ -201,16 +201,16 @@ void makeSphere(ml_mesh* mesh, float radius, int subdivisions) {
 }
 
 
-void makeHemisphere(ml_mesh* mesh, float radius, int subdivisions) {
+void make_hemisphere(mesh_t* mesh, float radius, int subdivisions) {
 	int i, v;
 	size_t nverts, currverts;
-	ml_vec3* verts[2];
+	vec3_t* verts[2];
 	// 0 = 45 * 1
 	// 1 = 45 * 4
 	// 2 = 45 * 4 * 4
 	nverts = 45 * pow(4, subdivisions);
-	verts[0] = malloc(nverts * sizeof(ml_vec3));
-	verts[1] = malloc(nverts * sizeof(ml_vec3));
+	verts[0] = malloc(nverts * sizeof(vec3_t));
+	verts[1] = malloc(nverts * sizeof(vec3_t));
 	initial_hemi_icosahedron(verts[0]);
 	currverts = 45;
 	v = 0;

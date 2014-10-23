@@ -15,80 +15,78 @@
 #define ML_MIN(a, b) (((b) < (a)) ? (b) : (a))
 #define ML_MAX(a, b) (((b) > (a)) ? (b) : (a))
 
-#define mlDeg2Rad(d) (((d) * ML_PI) / 180.0)
-#define mlRad2Deg(r) (((r) * 180.0) / ML_PI)
-#define mlSwap(a, b) do { __typeof__ (a) _swap_##__LINE__ = (a); (a) = (b); (b) = _swap_##__LINE__; } while (0)
-#define mlMax(a, b) ((b) > (a) ? (b) : (a))
-#define mlMin(a, b) ((b) < (a) ? (b) : (a))
+#define DEG2RAD(d) (((d) * ML_PI) / 180.0)
+#define RAD2DEG(r) (((r) * 180.0) / ML_PI)
+#define SWAP(a, b) do { __typeof__ (a) _swap_##__LINE__ = (a); (a) = (b); (b) = _swap_##__LINE__; } while (0)
 
-typedef struct ml_vec2 {
+typedef struct vec2 {
 	float x, y;
-} ml_vec2;
+} vec2_t;
 
-typedef struct ml_vec3 {
+typedef struct vec3 {
 	float x, y, z;
-} ml_vec3;
+} vec3_t;
 
-typedef struct ml_vec4 {
+typedef struct vec4 {
 	float x, y, z, w;
-} ml_vec4;
+} vec4_t;
 
-typedef struct ml_clr {
+typedef struct clr {
 	uint8_t a, r, g, b;
-} ml_clr;
+} clr_t;
 
-typedef struct ml_ivec2 {
+typedef struct ivec2 {
 	int x, y;
-} ml_ivec2;
+} ivec2_t;
 
-typedef struct ml_ivec3 {
+typedef struct ivec3 {
 	int x, y, z;
-} ml_ivec3;
+} ivec3_t;
 
-typedef struct ml_ivec4 {
+typedef struct ivec4 {
 	int x, y, z, w;
-} ml_ivec4;
+} ivec4_t;
 
-typedef struct ml_dvec3 {
+typedef struct dvec3 {
 	double x, y, z;
-} ml_dvec3;
+} dvec3_t;
 
-typedef struct ml_chunk {
+typedef struct chunkpos {
 	int x, z;
-} ml_chunk;
+} chunkpos_t;
 
-typedef struct ml_matrix {
+typedef struct mat44 {
 	float m[16];
-} ml_matrix;
+} mat44_t;
 
-typedef struct ml_matrix33 {
+typedef struct mat33 {
 	float m[9];
-} ml_matrix33;
+} mat33_t;
 
 
 #pragma pack(push, 4)
 
-typedef struct ml_vtx_pos_clr {
-	ml_vec3 pos;
+typedef struct posclrvert {
+	vec3_t pos;
 	uint32_t clr;
-} ml_vtx_pos_clr;
+} posclrvert_t;
 
-typedef struct ml_vtx_pos_n_clr {
-	ml_vec3 pos;
-	ml_vec3 n;
+typedef struct posnormalclrvert {
+	vec3_t pos;
+	vec3_t n;
 	uint32_t clr;
-} ml_vtx_pos_n_clr;
+} posnormalclrvert_t;
 
-typedef struct ml_vtx_pos_n {
-	ml_vec3 pos;
-	ml_vec3 n;
-} ml_vtx_pos_n;
+typedef struct posnormalvert {
+	vec3_t pos;
+	vec3_t n;
+} posnormalvert_t;
 
-typedef struct ml_vtx_ui {
-	ml_vec2 pos;
-	ml_vec2 tc;
+typedef struct uivert {
+	vec2_t pos;
+	vec2_t tc;
 	uint32_t clr;
-} ml_vtx_ui;
+} uivert_t;
 
 #pragma pack(pop)
 
@@ -96,7 +94,7 @@ typedef struct ml_vtx_ui {
 // shader and any special
 // considerations concerning
 // that shader
-typedef struct ml_material {
+typedef struct material_t {
 	GLuint program;
 	GLint projmat;
 	GLint modelview;
@@ -114,13 +112,13 @@ typedef struct ml_material {
 	GLint texcoord;
 	GLint color;
 	GLint normal;
-} ml_material;
+} material_t;
 
 
 // A mesh is a VBO plus metadata
 // that describes how it maps to
 // a material
-typedef struct ml_mesh {
+typedef struct mesh_t {
 	GLuint vbo; // vertex buffer
 	GLuint ibo; // index buffer (may be 0 if not used)
 	GLint position; // -1 if not present, else offset
@@ -132,7 +130,7 @@ typedef struct ml_mesh {
 	GLenum ibotype;
 	GLsizei count;
 	GLenum flags;
-} ml_mesh;
+} mesh_t;
 
 typedef struct ml_tex2d {
 	GLuint id;
@@ -145,15 +143,15 @@ typedef struct ml_tex2d {
 // particular mesh into a
 // a renderable object
 typedef struct ml_renderable {
-	const ml_material* material;
-	const ml_mesh* mesh;
+	const material_t* material;
+	const mesh_t* mesh;
 	GLuint vao;
 } ml_renderable;
 
-typedef struct ml_matrixstack {
+typedef struct mtxstack_t {
 	int top;
-	ml_matrix* stack;
-} ml_matrixstack;
+	mat44_t* stack;
+} mtxstack_t;
 
 enum ml_CollisionResult {
 	ML_OUTSIDE,
@@ -161,10 +159,10 @@ enum ml_CollisionResult {
 	ML_INTERSECT
 };
 
-typedef struct ml_frustum {
-	ml_vec4 planes[6];
-	ml_vec4 absplanes[6];
-} ml_frustum;
+typedef struct frustum_t {
+	vec4_t planes[6];
+	vec4_t absplanes[6];
+} frustum_t;
 
 static inline bool
 mlFIsValid(float f) {
@@ -191,9 +189,9 @@ mlClampd(double t, double lo, double hi) {
 	return (t < lo) ? lo : ((t > hi) ? hi : t);
 }
 
-static inline ml_vec3
-mlClampVec3(ml_vec3 t, float lo, float hi) {
-	ml_vec3 ret = { mlClamp(t.x, lo, hi),
+static inline vec3_t
+mlClampVec3(vec3_t t, float lo, float hi) {
+	vec3_t ret = { mlClamp(t.x, lo, hi),
 	                mlClamp(t.y, lo, hi),
 	                mlClamp(t.z, lo, hi) };
 	return ret;
@@ -208,21 +206,21 @@ mlWrap(float t, float lo, float hi) {
     return t;
 }
 
-static inline ml_vec2
+static inline vec2_t
 mlMakeVec2(float x, float y) {
-	ml_vec2 v = { x, y };
+	vec2_t v = { x, y };
 	return v;
 }
 
-static inline ml_vec3
+static inline vec3_t
 mlMakeVec3(float x, float y, float z) {
-	ml_vec3 v = { x, y, z };
+	vec3_t v = { x, y, z };
 	return v;
 }
 
-static inline ml_vec4
+static inline vec4_t
 mlMakeVec4(float x, float y, float z, float w) {
-	ml_vec4 v = { x, y, z, w };
+	vec4_t v = { x, y, z, w };
 	return v;
 }
 
@@ -230,138 +228,138 @@ mlMakeVec4(float x, float y, float z, float w) {
 #define mlVec3Assign(v, a, b, c) { (v).x = (a); (v).y = (b); (v).z = (c); }
 #define mlVec4Assign(v, a, b, c, d) { (v).x = (a); (v).y = (b); (v).z = (c); (v).w = (d); }
 
-void mlPerspective(ml_matrix* m, float fovy, float aspect, float zNear, float zFar);
+void mlPerspective(mat44_t* m, float fovy, float aspect, float zNear, float zFar);
 
-void mlSetIdentity(ml_matrix* m);
+void mlSetIdentity(mat44_t* m);
 
-void mlLookAt(ml_matrix* m,
+void mlLookAt(mat44_t* m,
               float eyeX, float eyeY, float eyeZ,
               float atX, float atY, float atZ,
               float upX, float upY, float upZ);
 
-void mlCopyMatrix(ml_matrix* to, const ml_matrix* from);
+void mlCopyMatrix(mat44_t* to, const mat44_t* from);
 
-void mlFPSRotation(float pitch, float yaw, ml_vec3* x, ml_vec3* y, ml_vec3* z);
-void mlFPSMatrix(ml_matrix* to, ml_vec3 eye, float pitch, float yaw);
+void mlFPSRotation(float pitch, float yaw, vec3_t* x, vec3_t* y, vec3_t* z);
+void mlFPSMatrix(mat44_t* to, vec3_t eye, float pitch, float yaw);
 
-void mlMulMatrix(ml_matrix* to, const ml_matrix* by);
+void mlMulMatrix(mat44_t* to, const mat44_t* by);
 
-ml_vec4 mlMulMatVec(const ml_matrix* m, const ml_vec4* v);
-ml_vec3 mlMulMatVec3(const ml_matrix* m, const ml_vec3* v);
-ml_vec3 mlVec3RotateBy(const ml_matrix* m, const ml_vec3* v);
+vec4_t mlMulMatVec(const mat44_t* m, const vec4_t* v);
+vec3_t mlMulMatVec3(const mat44_t* m, const vec3_t* v);
+vec3_t mlVec3RotateBy(const mat44_t* m, const vec3_t* v);
 
-void mlTranslate(ml_matrix* m, float x, float y, float z);
-void mlRotate(ml_matrix* m, float angle, float x, float y, float z);
+void mlTranslate(mat44_t* m, float x, float y, float z);
+void mlRotate(mat44_t* m, float angle, float x, float y, float z);
 
-void mlGetRotationMatrix(ml_matrix33* to, const ml_matrix* from);
-ml_vec3 mlMulMat33Vec3(const ml_matrix33* m, const ml_vec3* v);
+void mlGetRotationMatrix(mat33_t* to, const mat44_t* from);
+vec3_t mlMulMat33Vec3(const mat33_t* m, const vec3_t* v);
 
-void mlTranspose(ml_matrix* m);
-void mlTranspose33(ml_matrix33* m);
-bool mlInvertMatrix(ml_matrix* to, const ml_matrix* from);
-void mlInvertOrthoMatrix(ml_matrix* to, const ml_matrix* from);
+void mlTranspose(mat44_t* m);
+void mlTranspose33(mat33_t* m);
+bool mlInvertMatrix(mat44_t* to, const mat44_t* from);
+void mlInvertOrthoMatrix(mat44_t* to, const mat44_t* from);
 
-static inline ml_vec3 mlGetXAxis(const ml_matrix* from) {
-	return *(ml_vec3*)&from->m[0];
+static inline vec3_t mlGetXAxis(const mat44_t* from) {
+	return *(vec3_t*)&from->m[0];
 }
 
-static inline ml_vec3 mlGetYAxis(const ml_matrix* from) {
-	return *(ml_vec3*)&from->m[4];
+static inline vec3_t mlGetYAxis(const mat44_t* from) {
+	return *(vec3_t*)&from->m[4];
 }
 
-static inline ml_vec3 mlGetZAxis(const ml_matrix* from) {
-	return *(ml_vec3*)&from->m[8];
+static inline vec3_t mlGetZAxis(const mat44_t* from) {
+	return *(vec3_t*)&from->m[8];
 }
 
 
 static inline float
-mlVec3Dot(const ml_vec3 a, const ml_vec3 b) {
+mlVec3Dot(const vec3_t a, const vec3_t b) {
 	return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
-static inline ml_vec3
-mlVec3Cross(const ml_vec3 a, const ml_vec3 b) {
-	ml_vec3 to;
+static inline vec3_t
+mlVec3Cross(const vec3_t a, const vec3_t b) {
+	vec3_t to;
 	to.x = a.y*b.z - a.z*b.y;
 	to.y = a.z*b.x - a.x*b.z;
 	to.z = a.x*b.y - a.y*b.x;
 	return to;
 }
 
-static inline ml_vec2
-mlVec2Add(const ml_vec2 a, const ml_vec2 b) {
-	ml_vec2 to = { a.x + b.x, a.y + b.y };
+static inline vec2_t
+mlVec2Add(const vec2_t a, const vec2_t b) {
+	vec2_t to = { a.x + b.x, a.y + b.y };
 	return to;
 }
 
-static inline ml_vec2
-mlVec2AddScalar(ml_vec2 tc, float by) {
+static inline vec2_t
+mlVec2AddScalar(vec2_t tc, float by) {
 	tc.x += by;
 	tc.y += by;
 	return tc;
 }
 
-static inline ml_vec3
-mlVec3Add(const ml_vec3 a, const ml_vec3 b) {
-	ml_vec3 to = { a.x + b.x, a.y + b.y, a.z + b.z };
+static inline vec3_t
+mlVec3Add(const vec3_t a, const vec3_t b) {
+	vec3_t to = { a.x + b.x, a.y + b.y, a.z + b.z };
 	return to;
 }
 
-static inline ml_vec4
-mlVec4Add(const ml_vec4 a, const ml_vec4 b) {
-	ml_vec4 to = { a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w };
+static inline vec4_t
+mlVec4Add(const vec4_t a, const vec4_t b) {
+	vec4_t to = { a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w };
 	return to;
 }
 
-static inline ml_vec3
-mlVec3Sub(const ml_vec3 a, const ml_vec3 b) {
-	ml_vec3 to = { a.x - b.x, a.y - b.y, a.z - b.z };
+static inline vec3_t
+mlVec3Sub(const vec3_t a, const vec3_t b) {
+	vec3_t to = { a.x - b.x, a.y - b.y, a.z - b.z };
 	return to;
 }
 
-static inline ml_vec3
-mlVec3Scalef(const ml_vec3 a, float f) {
-	ml_vec3 to = { a.x * f, a.y * f, a.z * f };
+static inline vec3_t
+mlVec3Scalef(const vec3_t a, float f) {
+	vec3_t to = { a.x * f, a.y * f, a.z * f };
 	return to;
 }
 
-static inline ml_vec4
-mlVec4Scalef(const ml_vec4 a, float f) {
-	ml_vec4 to = { a.x * f, a.y * f, a.z * f, a.w * f };
+static inline vec4_t
+mlVec4Scalef(const vec4_t a, float f) {
+	vec4_t to = { a.x * f, a.y * f, a.z * f, a.w * f };
 	return to;
 }
 
 static inline float
-mlVec3Length2(const ml_vec3 v) {
+mlVec3Length2(const vec3_t v) {
 	return v.x*v.x + v.y*v.y + v.z*v.z;
 }
 
 static inline float
-mlVec3Length(const ml_vec3 v) {
+mlVec3Length(const vec3_t v) {
 	return sqrtf(v.x*v.x + v.y*v.y + v.z*v.z);
 }
 
-static inline ml_vec3
-mlVec3Normalize(ml_vec3 v) {
+static inline vec3_t
+mlVec3Normalize(vec3_t v) {
 	float invlen = 1.f / mlVec3Length(v);
 	return mlVec3Scalef(v, invlen);
 }
 
-static inline ml_vec3
-mlVec3Invert(const ml_vec3 v) {
-	ml_vec3 to = { -v.x, -v.y, -v.z };
+static inline vec3_t
+mlVec3Invert(const vec3_t v) {
+	vec3_t to = { -v.x, -v.y, -v.z };
 	return to;
 }
 
-static inline ml_vec4
-mlVec4Abs(const ml_vec4 v) {
-	ml_vec4 to = { fabs(v.x), fabs(v.y), fabs(v.z), fabs(v.w) };
+static inline vec4_t
+mlVec4Abs(const vec4_t v) {
+	vec4_t to = { fabs(v.x), fabs(v.y), fabs(v.z), fabs(v.w) };
 	return to;
 }
 
-static inline ml_vec4
-mlNormalizePlane(ml_vec4 plane) {
-	ml_vec3 n = {plane.x, plane.y, plane.z};
+static inline vec4_t
+mlNormalizePlane(vec4_t plane) {
+	vec3_t n = {plane.x, plane.y, plane.z};
 	float len = mlVec3Length(n);
 	n = mlVec3Scalef(n, 1.f / len);
 	plane.x = n.x;
@@ -394,31 +392,31 @@ glCheck(int line) {
 }
 
 static inline void
-mlUniformMatrix(GLint index, ml_matrix* mat) {
+mlUniformMatrix(GLint index, mat44_t* mat) {
 	if (index != -1)
 		glUniformMatrix4fv(index, 1, GL_FALSE, mat->m);
 }
 
 static inline void
-mlUniformMatrix33(GLint index, ml_matrix33* mat) {
+mlUniformMatrix33(GLint index, mat33_t* mat) {
 	if (index != -1)
 		glUniformMatrix3fv(index, 1, GL_FALSE, mat->m);
 }
 
 static inline void
-mlUniformVec2(GLint index, ml_vec2* v) {
+mlUniformVec2(GLint index, vec2_t* v) {
 	if (index != -1)
 		glUniform2fv(index, 1, (GLfloat*)v);
 }
 
 static inline void
-mlUniformVec3(GLint index, ml_vec3* v) {
+mlUniformVec3(GLint index, vec3_t* v) {
 	if (index != -1)
 		glUniform3fv(index, 1, (GLfloat*)v);
 }
 
 static inline void
-mlUniformVec4(GLint index, ml_vec4* v) {
+mlUniformVec4(GLint index, vec4_t* v) {
 	if (index != -1)
 		glUniform4fv(index, 1, (GLfloat*)v);
 }
@@ -430,7 +428,7 @@ mlUniform1i(GLint index, int i) {
 }
 
 static inline void
-mlBindMatrix(GLint index, ml_matrix* mat) {
+mlBindMatrix(GLint index, mat44_t* mat) {
 	if (index != -1)
 		glUniformMatrix4fv(index, 1, GL_FALSE, mat->m);
 }
@@ -443,7 +441,7 @@ mlDrawBegin(ml_renderable* renderable) {
 
 static inline void
 mlDrawEnd(ml_renderable* renderable) {
-	const ml_mesh* mesh = renderable->mesh;
+	const mesh_t* mesh = renderable->mesh;
 	if (mesh->ibo > 0)
 		glDrawElements(mesh->mode, mesh->count, mesh->ibotype, 0);
 	else
@@ -456,8 +454,8 @@ GLuint mlCompileShader(GLenum type, const char* source);
 
 GLuint mlLinkProgram(GLuint vsh, GLuint fsh);
 
-void mlCreateMaterial(ml_material* material, const char* vsource, const char* fsource);
-void mlDestroyMaterial(ml_material* material);
+void mlCreateMaterial(material_t* material, const char* vsource, const char* fsource);
+void mlDestroyMaterial(material_t* material);
 
 enum ML_MeshFlags {
 	ML_POS_2F  = 0x01,
@@ -471,80 +469,80 @@ enum ML_MeshFlags {
 	ML_CLR_4UB = 0x100
 };
 
-void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags, GLenum usage);
-void mlCreateIndexedMesh(ml_mesh* mesh, size_t n, void* data, size_t ilen, GLenum indextype, void* indices, GLenum flags);
-void mlDestroyMesh(ml_mesh* mesh);
-void mlUpdateMesh(ml_mesh *mesh, GLintptr offset, GLsizeiptr n, void* data);
+void mlCreateMesh(mesh_t* mesh, size_t n, void* data, GLenum flags, GLenum usage);
+void mlCreateIndexedMesh(mesh_t* mesh, size_t n, void* data, size_t ilen, GLenum indextype, void* indices, GLenum flags);
+void mlDestroyMesh(mesh_t* mesh);
+void mlUpdateMesh(mesh_t *mesh, GLintptr offset, GLsizeiptr n, void* data);
 
-void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, const ml_mesh* mesh);
+void mlCreateRenderable(ml_renderable* renderable, const material_t* material, const mesh_t* mesh);
 void mlDestroyRenderable(ml_renderable* renderable);
-void mlMapMeshToMaterial(const ml_mesh* mesh, const ml_material* material);
+void mlMapMeshToMaterial(const mesh_t* mesh, const material_t* material);
 
 // Matrix stack
 
 // Allocate a stack with max size. Pushes the identity
 // matrix to the bottom of the stack.
-void mlInitMatrixStack(ml_matrixstack* stack, size_t size);
+void mlInitMatrixStack(mtxstack_t* stack, size_t size);
 
-void mlDestroyMatrixStack(ml_matrixstack* stack);
+void mlDestroyMatrixStack(mtxstack_t* stack);
 
 // Push a copy of the top matrix to the stack
-void mlPushMatrix(ml_matrixstack* stack);
+void mlPushMatrix(mtxstack_t* stack);
 
 // Assign the given matrix to the top of the stack
-void mlLoadMatrix(ml_matrixstack* stack, ml_matrix* m);
+void mlLoadMatrix(mtxstack_t* stack, mat44_t* m);
 
 // Push an identity matrix to the stack
-void mlPushIdentity(ml_matrixstack* stack);
+void mlPushIdentity(mtxstack_t* stack);
 
 // Set the top of the stack to the identity
-void mlLoadIdentity(ml_matrixstack* stack);
+void mlLoadIdentity(mtxstack_t* stack);
 
-void mlPopMatrix(ml_matrixstack* stack);
+void mlPopMatrix(mtxstack_t* stack);
 
-ml_matrix* mlGetMatrix(ml_matrixstack* stack);
+mat44_t* mlGetMatrix(mtxstack_t* stack);
 
 void mlLoadTexture2D(ml_tex2d* tex, const char* filename);
 void mlDestroyTexture2D(ml_tex2d* tex);
 void mlBindTexture2D(ml_tex2d* tex, int index);
 
 static inline
-ml_clr mlRGB(uint8_t r, uint8_t g, uint8_t b)
+clr_t mlRGB(uint8_t r, uint8_t g, uint8_t b)
 {
-	ml_clr c = { 0xff, r, g, b };
+	clr_t c = { 0xff, r, g, b };
 	return c;
 }
 
 static inline
-ml_clr mlARGB(uint8_t a, uint8_t r, uint8_t g, uint8_t b)
+clr_t mlARGB(uint8_t a, uint8_t r, uint8_t g, uint8_t b)
 {
-	ml_clr c = { a, r, g, b };
+	clr_t c = { a, r, g, b };
 	return c;
 }
 
 static inline
-ml_clr mlRGBA(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+clr_t mlRGBA(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
-	ml_clr c = { a, r, g, b };
+	clr_t c = { a, r, g, b };
 	return c;
 }
 
-void mlGetFrustum(ml_frustum* frustum, ml_matrix* projection, ml_matrix* view);
+void mlGetFrustum(frustum_t* frustum, mat44_t* projection, mat44_t* view);
 
-int mlTestFrustumAABB(ml_frustum* frustum, ml_vec3 center, ml_vec3 extent);
-int mlTestFrustumAABB_XZ(ml_frustum* frustum, ml_vec3 center, ml_vec3 extent);
-int mlTestFrustumAABB_Y(ml_frustum* frustum, ml_vec3 center, ml_vec3 extent);
-bool mlTestRayAABB(ml_vec3 origin, ml_vec3 dir, ml_vec3 center, ml_vec3 extent);
-bool mlTestSphereAABB(ml_vec3 pos, float radius, ml_vec3 center, ml_vec3 extent);
-bool mlTestSphereAABB_Hit(ml_vec3 pos, float radius, ml_vec3 center, ml_vec3 extent, ml_vec3* hit);
+int mlTestFrustumAABB(frustum_t* frustum, vec3_t center, vec3_t extent);
+int mlTestFrustumAABB_XZ(frustum_t* frustum, vec3_t center, vec3_t extent);
+int mlTestFrustumAABB_Y(frustum_t* frustum, vec3_t center, vec3_t extent);
+bool mlTestRayAABB(vec3_t origin, vec3_t dir, vec3_t center, vec3_t extent);
+bool mlTestSphereAABB(vec3_t pos, float radius, vec3_t center, vec3_t extent);
+bool mlTestSphereAABB_Hit(vec3_t pos, float radius, vec3_t center, vec3_t extent, vec3_t* hit);
 
-bool mlTestSegmentAABB(ml_vec3 pos, ml_vec3 delta, ml_vec3 padding, ml_vec3 center, ml_vec3 extent,
-	float* time, ml_vec3* hit, ml_vec3* hitdelta, ml_vec3* normal);
-bool mlTestAABBAABB_2(ml_vec3 center, ml_vec3 extent, ml_vec3 center2, ml_vec3 extent2, ml_vec3 *hitpoint, ml_vec3 *hitdelta, ml_vec3 *hitnormal);
+bool mlTestSegmentAABB(vec3_t pos, vec3_t delta, vec3_t padding, vec3_t center, vec3_t extent,
+	float* time, vec3_t* hit, vec3_t* hitdelta, vec3_t* normal);
+bool mlTestAABBAABB_2(vec3_t center, vec3_t extent, vec3_t center2, vec3_t extent2, vec3_t *hitpoint, vec3_t *hitdelta, vec3_t *hitnormal);
 
-static inline int mlTestPlaneAABB(ml_vec4 plane, ml_vec3 center, ml_vec3 extent)
+static inline int mlTestPlaneAABB(vec4_t plane, vec3_t center, vec3_t extent)
 {
-	ml_vec4 absplane = { fabs(plane.x), fabs(plane.y), fabs(plane.z), fabs(plane.w) };
+	vec4_t absplane = { fabs(plane.x), fabs(plane.y), fabs(plane.z), fabs(plane.w) };
 	float d = center.x * plane.x + center.y * plane.y + center.z * plane.z + plane.w;
 	float r = extent.x * absplane.x + extent.y * absplane.y + extent.z * absplane.z + absplane.w;
 	if (d + r <= 0) return ML_OUTSIDE;
@@ -552,14 +550,14 @@ static inline int mlTestPlaneAABB(ml_vec4 plane, ml_vec3 center, ml_vec3 extent)
 	return ML_INSIDE;
 }
 
-static inline bool mlTestAABBAABB(ml_vec3 center1, ml_vec3 extent1, ml_vec3 center2, ml_vec3 extent2)
+static inline bool mlTestAABBAABB(vec3_t center1, vec3_t extent1, vec3_t center2, vec3_t extent2)
 {
 	return (fabs(center1.x - center2.x) < extent1.x + extent2.x) &&
 		(fabs(center1.y - center2.y) < extent1.y + extent2.y) &&
 		(fabs(center1.z - center2.z) < extent1.z + extent2.z);
 }
 
-static inline bool mlTestPointAABB(ml_vec3 point, ml_vec3 center, ml_vec3 extent)
+static inline bool mlTestPointAABB(vec3_t point, vec3_t center, vec3_t extent)
 {
 	return (fabs(center.x - point.x) < extent.x) &&
 		(fabs(center.y - point.y) < extent.y) &&
@@ -567,10 +565,10 @@ static inline bool mlTestPointAABB(ml_vec3 point, ml_vec3 center, ml_vec3 extent
 }
 
 typedef struct aabb_t {
-	ml_vec3 center;
-	ml_vec3 extent;
+	vec3_t center;
+	vec3_t extent;
 } aabb_t;
 
-bool intersect_moving_aabb_aabb(aabb_t a, aabb_t b, ml_vec3 va, ml_vec3 vb, float* tfirst, float* tlast);
+bool intersect_moving_aabb_aabb(aabb_t a, aabb_t b, vec3_t va, vec3_t vb, float* tfirst, float* tlast);
 
 // TODO: GL state stack - track state as a stack of uint64_ts...

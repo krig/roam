@@ -58,9 +58,9 @@ void player_move(float dt)
 	if (game.input.move_crouch)
 		speed *= CROUCHSPEED;
 
-	ml_matrix m;
-	ml_vec3 move = { right, 0, forward };
-	ml_vec3 dmove;
+	mat44_t m;
+	vec3_t move = { right, 0, forward };
+	vec3_t dmove;
 	move = mlVec3Normalize(move);
 	mlSetIdentity(&m);
 	mlRotate(&m, game.camera.yaw, 0, 1.f, 0);
@@ -76,7 +76,7 @@ void player_move(float dt)
 static
 void player_jump(float dt)
 {
-	game.player.jumpcount = mlMax(0.f, game.player.jumpcount - dt);
+	game.player.jumpcount = ML_MAX(0.f, game.player.jumpcount - dt);
 	if (!game.input.move_jump)
 		return;
 
@@ -110,9 +110,9 @@ void player_crouch(float dt)
 }
 
 static
-void player_dumb_collide(ml_dvec3* pos, ml_vec3* move, ml_vec3* vel)
+void player_dumb_collide(dvec3_t* pos, vec3_t* move, vec3_t* vel)
 {
-	ml_ivec3 preblock = { round(pos->x), round(pos->y), round(pos->z) };
+	ivec3_t preblock = { round(pos->x), round(pos->y), round(pos->z) };
 
 	int groundblock = preblock.y;
         while (blockType(preblock.x, groundblock, preblock.z) != BLOCK_AIR)
@@ -129,44 +129,44 @@ void player_dumb_collide(ml_dvec3* pos, ml_vec3* move, ml_vec3* vel)
 }
 
 static
-void player_collide(ml_dvec3* pos, ml_vec3* move, ml_vec3* vel)
+void player_collide(dvec3_t* pos, vec3_t* move, vec3_t* vel)
 {
 	/*
-	  	ml_ivec3 preblock = { round(pos.x), round(pos.y), round(pos.z) };
+	  	ivec3_t preblock = { round(pos.x), round(pos.y), round(pos.z) };
 
 	{
 		float offs = game.player.crouching ? CROUCHOFFSET : CAMOFFSET;
 		float ext = game.player.crouching ? CROUCHEXTENT : PLAYEREXTENT;
-		ml_vec3 pcenter = { pos.x, pos.y + offs, pos.z };
-		ml_vec3 pextent = { 0.4f, ext, 0.4f };
+		vec3_t pcenter = { pos.x, pos.y + offs, pos.z };
+		vec3_t pextent = { 0.4f, ext, 0.4f };
 
 		size_t n = 0;
-		ml_ivec3 cand[8] = {
+		ivec3_t cand[8] = {
 			preblock,
-			ml_ivec3_offset(preblock, mlSign(vel.x), 0, 0),
-			ml_ivec3_offset(preblock, 0, 0, mlSign(vel.z)),
-			ml_ivec3_offset(preblock, mlSign(vel.x), 0, mlSign(vel.z)),
-			ml_ivec3_offset(preblock, mlSign(vel.x), 1, 0),
-			ml_ivec3_offset(preblock, 1, 0, mlSign(vel.z)),
-			ml_ivec3_offset(preblock, mlSign(vel.x), 1, mlSign(vel.z)),
+			ivec3_t_offset(preblock, mlSign(vel.x), 0, 0),
+			ivec3_t_offset(preblock, 0, 0, mlSign(vel.z)),
+			ivec3_t_offset(preblock, mlSign(vel.x), 0, mlSign(vel.z)),
+			ivec3_t_offset(preblock, mlSign(vel.x), 1, 0),
+			ivec3_t_offset(preblock, 1, 0, mlSign(vel.z)),
+			ivec3_t_offset(preblock, mlSign(vel.x), 1, mlSign(vel.z)),
 		};
-		cand[7] = ml_ivec3_offset(preblock, 0, mlSign(vel.y) < 0 ? -1 : 2, 0);
+		cand[7] = ivec3_t_offset(preblock, 0, mlSign(vel.y) < 0 ? -1 : 2, 0);
 
-		ml_ivec3 other[8];
+		ivec3_t other[8];
 		for (int i = 0; i < 8; ++i)
 			if (blockinfo[blockTypeByCoord(cand[i])].density > WATER_DENSITY)
 				other[n++] = cand[i];
 
-		ml_vec3 hitpoint;
-		ml_vec3 hitdelta;
-		ml_vec3 normal;
-		ml_vec3 sweeppos;
+		vec3_t hitpoint;
+		vec3_t hitdelta;
+		vec3_t normal;
+		vec3_t sweeppos;
 		if (sweep_aabb_into_blocks(pcenter, pextent, vel, other, n, &hitpoint, &hitdelta, &normal, &sweeppos)) {
 			if (game.debug_mode) {
-				ml_vec3 nh = hitpoint;
+				vec3_t nh = hitpoint;
 				nh.x -= playerChunk().x * CHUNK_SIZE;
 				nh.z -= playerChunk().z * CHUNK_SIZE;
-				ml_vec3 nh2 = mlVec3Add(nh, normal);
+				vec3_t nh2 = mlVec3Add(nh, normal);
 				ui_debug_point(nh, 0xffff0000);
 				ui_debug_line(nh, nh2, 0xffff7f00);
 				nh2 = mlVec3Add(nh, vel);
@@ -182,7 +182,7 @@ void player_collide(ml_dvec3* pos, ml_vec3* move, ml_vec3* vel)
 
 void player_init()
 {
-	ml_dvec3 offs = { 0, OCEAN_LEVEL + 2, 0 };
+	dvec3_t offs = { 0, OCEAN_LEVEL + 2, 0 };
 	game.player.pos = offs;
 	mlVec3Assign(game.player.vel, 0, 0, 0);
 	game.player.jumpcount = 0;
@@ -194,7 +194,7 @@ void player_init()
 
 void player_move_to_spawn()
 {
-	ml_dvec3 p = game.player.pos;
+	dvec3_t p = game.player.pos;
 	while (blockType(p.x, p.y-2, p.z) != BLOCK_AIR ||
 		blockType(p.x, p.y-1, p.z) != BLOCK_AIR ||
 		blockType(p.x, p.y, p.z) != BLOCK_AIR ||
@@ -223,10 +223,10 @@ void player_tick(float dt)
 	if (game.camera.mode != CAMERA_FLIGHT)
 		game.player.vel.y += GRAVITY * dt;
 
-	ml_dvec3 pos = game.player.pos;
-	ml_vec3 vel = game.player.vel;
+	dvec3_t pos = game.player.pos;
+	vec3_t vel = game.player.vel;
 
-	ml_vec3 move;
+	vec3_t move;
 
 	vel = mlClampVec3(vel, -MAX_VELOCITY, MAX_VELOCITY);
 	move = mlVec3Scalef(vel, dt);
@@ -241,13 +241,13 @@ void player_tick(float dt)
 
 
 	// offset camera from position
-	ml_vec3 offset = {0, 0, 0};
+	vec3_t offset = {0, 0, 0};
 	switch (game.camera.mode) {
 	case CAMERA_FLIGHT:
 		offset.y = CAMOFFSET;
 		break;
 	case CAMERA_3RDPERSON: {
-		ml_vec3 x, y, z;
+		vec3_t x, y, z;
 		mlFPSRotation(game.camera.pitch, game.camera.yaw, &x, &y, &z);
 		offset = mlVec3Scalef(z, 6.f);
 	} break;
