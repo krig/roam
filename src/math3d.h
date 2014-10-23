@@ -19,6 +19,14 @@
 #define RAD2DEG(r) (((r) * 180.0) / ML_PI)
 #define SWAP(a, b) do { __typeof__ (a) _swap_##__LINE__ = (a); (a) = (b); (b) = _swap_##__LINE__; } while (0)
 
+
+enum ml_CollisionResult {
+	ML_OUTSIDE,
+	ML_INSIDE,
+	ML_INTERSECT
+};
+
+
 typedef struct vec2 {
 	float x, y;
 } vec2_t;
@@ -63,6 +71,16 @@ typedef struct mat33 {
 	float m[9];
 } mat33_t;
 
+typedef struct frustum {
+	vec4_t planes[6];
+	vec4_t absplanes[6];
+} frustum_t;
+
+typedef struct aabb_t {
+	vec3_t center;
+	vec3_t extent;
+} aabb_t;
+
 
 #pragma pack(push, 4)
 
@@ -90,11 +108,12 @@ typedef struct uivert {
 
 #pragma pack(pop)
 
+
 // A material identifies a
 // shader and any special
 // considerations concerning
 // that shader
-typedef struct material_t {
+typedef struct material {
 	GLuint program;
 	GLint projmat;
 	GLint modelview;
@@ -118,7 +137,7 @@ typedef struct material_t {
 // A mesh is a VBO plus metadata
 // that describes how it maps to
 // a material
-typedef struct mesh_t {
+typedef struct mesh {
 	GLuint vbo; // vertex buffer
 	GLuint ibo; // index buffer (may be 0 if not used)
 	GLint position; // -1 if not present, else offset
@@ -148,30 +167,14 @@ typedef struct ml_renderable {
 	GLuint vao;
 } ml_renderable;
 
-typedef struct mtxstack_t {
+typedef struct mtxstack {
 	int top;
 	mat44_t* stack;
 } mtxstack_t;
 
-enum ml_CollisionResult {
-	ML_OUTSIDE,
-	ML_INSIDE,
-	ML_INTERSECT
-};
-
-typedef struct frustum_t {
-	vec4_t planes[6];
-	vec4_t absplanes[6];
-} frustum_t;
-
 static inline bool
 mlFIsValid(float f) {
 	return (f >= -FLT_MAX && f <= FLT_MAX);
-}
-
-static inline float
-mlAbs(float x) {
-	return (x >= 0) ? x : -x;
 }
 
 static inline float
@@ -563,11 +566,6 @@ static inline bool mlTestPointAABB(vec3_t point, vec3_t center, vec3_t extent)
 		(fabs(center.y - point.y) < extent.y) &&
 		(fabs(center.z - point.z) < extent.z);
 }
-
-typedef struct aabb_t {
-	vec3_t center;
-	vec3_t extent;
-} aabb_t;
 
 bool intersect_moving_aabb_aabb(aabb_t a, aabb_t b, vec3_t va, vec3_t vb, float* tfirst, float* tlast);
 
