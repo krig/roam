@@ -160,8 +160,13 @@ void gameUpdateMap() {
 }
 
 #define MAX_ALPHAS ((VIEW_DISTANCE*2)*(VIEW_DISTANCE*2))
-static ml_mesh* alphas[MAX_ALPHAS];
-static ml_vec3 alphaoffsets[MAX_ALPHAS];
+
+struct alpha_t {
+	ml_mesh* mesh;
+	ml_vec3 offset;
+};
+
+static struct alpha_t alphas[MAX_ALPHAS];
 static size_t nalphas;
 
 void gameDrawMap(ml_frustum* frustum) {
@@ -216,8 +221,8 @@ void gameDrawMap(ml_frustum* frustum) {
 			mlUniformVec3(material->chunk_offset, &offset);
 
 			if (chunk->alpha.vbo != 0 && nalphas < MAX_ALPHAS) {
-				alphas[nalphas] = &(chunk->alpha);
-				alphaoffsets[nalphas] = offset;
+				alphas[nalphas].mesh = &(chunk->alpha);
+				alphas[nalphas].offset = offset;
 				nalphas++;
 			}
 
@@ -241,10 +246,31 @@ void gameDrawMap(ml_frustum* frustum) {
 	glDisable(GL_TEXTURE_2D);
 }
 
+static
+int alpha_sort(const void* va, const void* vb)
+{
+	struct alpha_t *a = (struct alpha_t *)va;
+	struct alpha_t *b = (struct alpha_t *)vb;
+	int ret = 0;
+	float da = fabs(a->offset.x + a->offset.z);
+	float db = fabs(b->offset.x + b->offset.z);
+	if (da < db)
+		ret = -1;
+	if (da > db)
+		ret = 1;
+	return ret;
+}
+
 void gameDrawAlphaPass() {
+	size_t i;
 	ml_material* material;
+	struct alpha_t* alpha;
 	if (nalphas == 0)
 		return;
+
+	// TODO: alphasort faces in chunk
+	qsort(alphas, nalphas, sizeof(struct alpha_t), alpha_sort);
+
 	material = game.materials + MAT_CHUNK_ALPHA;
 	glEnable(GL_TEXTURE_2D);
 	mlBindTexture2D(&blocks_texture, 0);
@@ -259,10 +285,10 @@ void gameDrawAlphaPass() {
 	mlUniformVec3(material->amb_light, &game.amb_light);
 	mlUniformVec4(material->fog_color, &game.fog_color);
 
-	for (size_t i = 0; i < nalphas; ++i) {
-		mlUniformVec3(material->chunk_offset, alphaoffsets + i);
-		mlMapMeshToMaterial(alphas[i], material);
-		glDrawArrays(alphas[i]->mode, 0, alphas[i]->count);
+	for (i = 0, alpha = alphas; i < nalphas; ++i, ++alpha) {
+		mlUniformVec3(material->chunk_offset, &alpha->offset);
+		mlMapMeshToMaterial(alpha->mesh, material);
+		glDrawArrays(alpha->mesh->mode, 0, alpha->mesh->count);
 	}
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
