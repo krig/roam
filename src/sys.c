@@ -1,5 +1,9 @@
 #include "common.h"
 #include <time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 
 uint64_t sys_urandom()
 {
@@ -23,4 +27,14 @@ char* sys_readfile(const char* filename)
 	data[flen] = '\0';
 	fclose(f);
 	return data;
+}
+
+int sys_isfile(const char* filename)
+{
+	int ret;
+	struct stat tmp;
+	ret = stat(filename, &tmp);
+	if (ret == -1)
+		return 0;
+	return 1;
 }

@@ -220,6 +220,8 @@ void     m_set_material(mesh_t* mesh, material_t* material);
 void     m_tex2d_load(tex2d_t* tex, const char* filename);
 void     m_tex2d_destroy(tex2d_t* tex);
 void     m_tex2d_bind(tex2d_t* tex, int index);
+void     m_save_screenshot(const char* filename);
+
 
 // Matrix stack
 
@@ -251,7 +253,6 @@ bool     intersect_moving_aabb_aabb(aabb_t a, aabb_t b, vec3_t va, vec3_t vb, fl
 
 // inline functions
 
-#define M_CHECKGL_ENABLED 1
 #if M_CHECKGL_ENABLED
 #define M_CHECKGL(call) do { call; m_checkgl(__FILE__, __LINE__, #call); } while (0)
 static inline

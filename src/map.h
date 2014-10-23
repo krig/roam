@@ -52,6 +52,10 @@ enum ChunkMeshState {
 	CHUNK_MESH_S3
 };
 
+enum ChunkFlags {
+	BLOCK_CHANGED,
+};
+
 typedef struct game_chunk {
 	int x; // actual coordinates of chunk
 	int z;

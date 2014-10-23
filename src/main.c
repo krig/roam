@@ -1,3 +1,4 @@
+#include <time.h>
 #include "common.h"
 #include "math3d.h"
 #include "shaders.h"
@@ -142,6 +143,22 @@ bool handle_event(SDL_Event* event)
 			alpha_sort_faces = !alpha_sort_faces;
 			printf("sort faces: %d\n", alpha_sort_faces);
 			ui_add_console_line(stb_sprintf("sort faces: %d", alpha_sort_faces));
+		}
+		else if (sym == SDLK_F10) {
+			char name[512];
+			char date[64];
+			static int cnt = 0;
+			time_t t;
+			struct tm *tmp;
+			t = time(NULL);
+			tmp = localtime(&t);
+			strftime(date, sizeof(date), "%Y-%m-%d", tmp);
+			do {
+				snprintf(name, sizeof(name), "roam-%s-%d.png", date, cnt);
+				++cnt;
+			} while (sys_isfile(name));
+			m_save_screenshot(name);
+			ui_add_console_line(stb_sprintf("Saved %s.", name));
 		}
 		else if (sym == SDLK_BACKQUOTE)
 			ui_console_toggle(true);

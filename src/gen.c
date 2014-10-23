@@ -104,6 +104,31 @@ void gen_noisemap(game_chunk* chunk)
 	}
 }
 
+// light propagation has to happen
+// after all block generation is completed
+
+// propagate light from x,y,z
+// so (x,y,z) is the light "source"
+//   push (x,y,z) to process queue
+//   check its neighbours
+//   if neighbour is !solid and...
+//      has lightlevel < this - 2,
+//       increase their lightlevel
+//       add that neighbour to propagation queue
+//   loop until queue is empty
+//   neighbour data can be packed into uint8[3]
+// TODO: per-thread queue, queue retesselation of
+// lit chunks as they are modified
+
+void propagate_light(int x, int y, int z)
+{
+	// push light propagation to queue
+}
+
+void process_light_propagation()
+{
+}
+
 void gen_loadchunk(game_chunk* chunk)
 {
 	gen_testmap(chunk);

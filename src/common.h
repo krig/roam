@@ -11,6 +11,18 @@
 #include <float.h>
 #include <assert.h>
 
+#define M_CHECKGL_ENABLED 0
+
+
+// System functions
+
+char*    sys_readfile(const char* filename);
+int      sys_isfile(const char* filename);
+uint64_t sys_urandom(void);
+
+
+// Common utility functions
+
 static inline
 void fatal_error(const char* msg, ...)
 {
@@ -46,7 +58,3 @@ unsigned strmcat(char *target, const char *source, unsigned length)
 	while(*target && length) target++, length--;
 	return (target - origin) + strmcpy(target, source, length);
 }
-
-char* sys_readfile(const char* filename);
-
-uint64_t sys_urandom(void);

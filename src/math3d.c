@@ -1,7 +1,9 @@
 #include "common.h"
 #include "math3d.h"
 #define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image.h"
+#include "stb_image_write.h"
 
 const vec3_t m_up = {0, 1, 0};
 const vec3_t m_right = {1, 0, 0};
@@ -849,6 +851,40 @@ void m_tex2d_load(tex2d_t* tex, const char* filename)
 
 	stbi_image_free(data);
 	M_CHECKGL(glBindTexture(GL_TEXTURE_2D, 0));
+}
+
+void m_save_screenshot(const char* filename)
+{
+	int ok, x, y, w, h;
+	uint8_t* data;
+
+	int viewport[4] = {0};
+	M_CHECKGL(glGetIntegerv(GL_VIEWPORT, viewport));
+	if (viewport[2] == 0 || viewport[3] == 0) {
+		puts("Failed to get viewport information.");
+		return;
+	}
+	printf("viewport: %d,%d - %d,%d\n", viewport[0], viewport[1], viewport[2], viewport[3]);
+
+	data = (uint8_t*)malloc(viewport[2] * viewport[3] * 3);
+	M_CHECKGL(glReadBuffer(GL_FRONT));
+	M_CHECKGL(glReadPixels(viewport[0], viewport[1], viewport[2], viewport[3], GL_RGB, GL_UNSIGNED_BYTE, data));
+
+	// need to flip the image data
+	w = viewport[2]*3;
+	h = viewport[3];
+	for (y = 0; y < h/2; ++y)
+		for (x = 0; x < w; ++x) {
+			uint8_t p = data[y * w + x];
+			data[y * w + x] = data[(h - y - 1) * w + x];
+			data[(h - y - 1) * w + x] = p;
+		}
+
+	ok = stbi_write_png(filename, viewport[2], viewport[3], 3, data, 0);
+	free(data);
+	if (!ok) {
+		printf("Failed to write to %s\n", filename);
+	}
 }
 
 void m_tex2d_destroy(tex2d_t* tex)

@@ -407,6 +407,7 @@ void ui_add_console_line(const char* txt)
 {
 	strmcpy(console_scrollback[console_scrollback_pos], txt, MAX_CONSOLE_INPUT);
 	console_scrollback_pos = (console_scrollback_pos + 1) % CONSOLE_SCROLLBACK;
+	printf("> %s\n", txt);
 }
 
 void ui_execute_console_command(char* cmd)

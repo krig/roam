@@ -403,22 +403,6 @@ void map_update_block(ivec3_t block, uint32_t value)
 	}
 }
 
-// propagate light from x,y,z
-// so (x,y,z) is the light "source"
-//   push (x,y,z) to process queue
-//   check its neighbours
-//   if neighbour is !solid and...
-//      has lightlevel < this - 2,
-//       increase their lightlevel
-//       add that neighbour to propagation queue
-//   loop until queue is empty
-//   neighbour data can be packed into uint8[3]
-// TODO: per-thread queue, queue retesselation of
-// lit chunks as they are modified
-void propagate_light(int x, int y, int z) {
-}
-
-
 // TODO: chunk saving/loading
 // TODO: asynchronous
 // as a test, just fill in the designated chunk
@@ -583,7 +567,11 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 				density = blockinfo[t].density;
 				if (t == BLOCK_AIR) {
 					++nprocessed;
-					continue;
+					// in sunlight, no more blocks above
+					if ((t & 0xf0000000) == 0xf)
+						break;
+					else
+						continue;
 				}
 
 				if (blockinfo[t].alpha) {
