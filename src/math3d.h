@@ -26,6 +26,18 @@ enum ml_CollisionResult {
 	ML_INTERSECT
 };
 
+enum ml_MeshFlags {
+	ML_POS_2F  = 0x01,
+	ML_POS_3F  = 0x02,
+	ML_POS_4UB = 0x04,
+	ML_POS_10_2 = 0x08,
+	ML_N_3F    = 0x10,
+	ML_N_4B   = 0x20,
+	ML_TC_2F   = 0x40,
+	ML_TC_2US  = 0x80,
+	ML_CLR_4UB = 0x100
+};
+
 
 typedef struct vec2 {
 	float x, y;
@@ -431,12 +443,6 @@ mlUniform1i(GLint index, int i) {
 }
 
 static inline void
-mlBindMatrix(GLint index, mat44_t* mat) {
-	if (index != -1)
-		glUniformMatrix4fv(index, 1, GL_FALSE, mat->m);
-}
-
-static inline void
 mlDrawBegin(ml_renderable* renderable) {
 	glUseProgram(renderable->material->program);
 	glBindVertexArray(renderable->vao);
@@ -459,18 +465,6 @@ GLuint mlLinkProgram(GLuint vsh, GLuint fsh);
 
 void mlCreateMaterial(material_t* material, const char* vsource, const char* fsource);
 void mlDestroyMaterial(material_t* material);
-
-enum ML_MeshFlags {
-	ML_POS_2F  = 0x01,
-	ML_POS_3F  = 0x02,
-	ML_POS_4UB = 0x04,
-	ML_POS_10_2 = 0x08,
-	ML_N_3F    = 0x10,
-	ML_N_4B   = 0x20,
-	ML_TC_2F   = 0x40,
-	ML_TC_2US  = 0x80,
-	ML_CLR_4UB = 0x100
-};
 
 void mlCreateMesh(mesh_t* mesh, size_t n, void* data, GLenum flags, GLenum usage);
 void mlCreateIndexedMesh(mesh_t* mesh, size_t n, void* data, size_t ilen, GLenum indextype, void* indices, GLenum flags);
