@@ -1,8 +1,6 @@
 #pragma once
 
-struct camera_t;
-
-struct player_t {
+struct player {
 	dvec3_t pos;
 	vec3_t vel;
 	float jumpcount;
@@ -12,7 +10,7 @@ struct player_t {
 	bool crouching;
 };
 
-struct inputstate_t {
+struct inputstate {
 	ivec3_t picked_block;
 	ivec3_t prepicked_block;
 	bool enable_ground;

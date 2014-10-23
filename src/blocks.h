@@ -20,7 +20,7 @@ enum blockflags_t {
 #define WATER_DENSITY 1
 #define SOLID_DENSITY 2
 
-struct blockinfo_t {
+struct blockinfo {
 	const char* name; // short description
 	// image atlas index
 	// 0 = fill with previous
@@ -37,7 +37,7 @@ struct blockinfo_t {
 	// maybe this has to be hardcoded in the tesselator for each blocktype
 };
 
-extern struct blockinfo_t blockinfo[];
+extern struct blockinfo blockinfo[];
 
 enum block_types {
 	BLOCK_AIR,

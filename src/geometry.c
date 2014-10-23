@@ -46,7 +46,7 @@ void make_cube(mesh_t* mesh, vec3_t size, uint32_t top_clr, uint32_t bottom_clr)
 		tris[i*6 + 5].n = normals[i];
 	}
 
-	mlCreateMesh(mesh, 36, tris, ML_POS_3F | ML_N_3F | ML_CLR_4UB, GL_STATIC_DRAW);
+	m_create_mesh(mesh, 36, tris, ML_POS_3F | ML_N_3F | ML_CLR_4UB, GL_STATIC_DRAW);
 }
 
 // faceverts must be able to hold 20 * 3 verts
@@ -59,24 +59,24 @@ static void initial_icosahedron(vec3_t* faceverts) {
 	double ctheta = cos(theta);
 
 	// lower vertex
-	mlVec3Assign(verts[0], 0, 0, -1.f);
+	m_setvec3(verts[0], 0, 0, -1.f);
 
 	// lower pentagon
 	double phi = ML_PI / 5.0;
 	for (i = 1; i < 6; ++i) {
-		mlVec3Assign(verts[i], ctheta * cos(phi), ctheta * sin(phi), -stheta);
+		m_setvec3(verts[i], ctheta * cos(phi), ctheta * sin(phi), -stheta);
 		phi += 2.0 * ML_PI / 5.0;
 	}
 
 	// upper pentagon
 	phi = 0.0;
 	for (i = 6; i < 11; ++i) {
-		mlVec3Assign(verts[i], ctheta * cos(phi), ctheta * sin(phi), stheta);
+		m_setvec3(verts[i], ctheta * cos(phi), ctheta * sin(phi), stheta);
 		phi += 2.0 * ML_PI / 5.0;
 	}
 
 	// upper vertex
-	mlVec3Assign(verts[11], 0, 0, 1.f);
+	m_setvec3(verts[11], 0, 0, 1.f);
 
 	i = 0;
 #undef FACE
@@ -115,19 +115,19 @@ static void initial_hemi_icosahedron(vec3_t* faceverts) {
 
 	// lower pentagon
 	for (i = 1; i < 6; ++i) {
-		mlVec3Assign(verts[i], ctheta * cos(phi), -stheta, ctheta * sin(phi));
+		m_setvec3(verts[i], ctheta * cos(phi), -stheta, ctheta * sin(phi));
 		phi += 2.0 * ML_PI / 5.0;
 	}
 
 	// upper pentagon
 	phi = 0.0;
 	for (i = 6; i < 11; ++i) {
-		mlVec3Assign(verts[i], ctheta * cos(phi), stheta, ctheta * sin(phi));
+		m_setvec3(verts[i], ctheta * cos(phi), stheta, ctheta * sin(phi));
 		phi += 2.0 * ML_PI / 5.0;
 	}
 
 	// upper vertex
-	mlVec3Assign(verts[11], 0, 1.f, 0.f);
+	m_setvec3(verts[11], 0, 1.f, 0.f);
 
 	i = 0;
 #undef FACE
@@ -161,9 +161,9 @@ static size_t subdivide_sphere(vec3_t* to, vec3_t* from, size_t nverts) {
 		v1 = from[(i*3) + 0];
 		v2 = from[(i*3) + 1];
 		v3 = from[(i*3) + 2];
-		v4 = mlVec3Normalize(mlVec3Add(v1, v2));
-		v5 = mlVec3Normalize(mlVec3Add(v2, v3));
-		v6 = mlVec3Normalize(mlVec3Add(v3, v1));
+		v4 = m_vec3normalize(m_vec3add(v1, v2));
+		v5 = m_vec3normalize(m_vec3add(v2, v3));
+		v6 = m_vec3normalize(m_vec3add(v3, v1));
 		to[nout++] = v1;
 		to[nout++] = v4;
 		to[nout++] = v6;
@@ -197,7 +197,7 @@ void make_sphere(mesh_t* mesh, float radius, int subdivisions) {
 		currverts = subdivide_sphere(verts[(v + 1) % 2], verts[v], currverts);
 		v = (v + 1) % 2;
 	}
-	mlCreateMesh(mesh, currverts, verts[subdivisions % 2], ML_POS_3F, GL_STATIC_DRAW);
+	m_create_mesh(mesh, currverts, verts[subdivisions % 2], ML_POS_3F, GL_STATIC_DRAW);
 }
 
 
@@ -218,5 +218,5 @@ void make_hemisphere(mesh_t* mesh, float radius, int subdivisions) {
 		currverts = subdivide_sphere(verts[(v + 1) % 2], verts[v], currverts);
 		v = (v + 1) % 2;
 	}
-	mlCreateMesh(mesh, currverts, verts[subdivisions % 2], ML_POS_3F, GL_STATIC_DRAW);
+	m_create_mesh(mesh, currverts, verts[subdivisions % 2], ML_POS_3F, GL_STATIC_DRAW);
 }

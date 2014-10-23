@@ -7,7 +7,7 @@
 
 // UI drawing
 static material_t* ui_material = NULL;
-static ml_tex2d ui_font;
+static tex2d_t ui_font;
 static GLint ui_screensize_index = -1;
 static GLint ui_tex0_index = -1;
 static GLuint ui_vao = 0;
@@ -51,7 +51,7 @@ void ui_init(material_t* uimat, material_t* debugmat)
 	debug_modelview_index = glGetUniformLocation(debugmat->program, "modelview");
 	printf("projmat: %d, modelview: %d\n", debug_projmat_index, debug_modelview_index);
 
-	mlLoadTexture2D(&ui_font, "data/font.png");
+	m_tex2d_load(&ui_font, "data/font.png");
 
 	glGenBuffers(1, &ui_vbo);
 	glGenVertexArrays(1, &ui_vao);
@@ -81,7 +81,7 @@ void ui_init(material_t* uimat, material_t* debugmat)
 
 void ui_exit()
 {
-	mlDestroyTexture2D(&ui_font);
+	m_tex2d_destroy(&ui_font);
 	glDeleteBuffers(1, &ui_vbo);
 	glDeleteVertexArrays(1, &ui_vao);
 	glDeleteBuffers(1, &debug_vbo);
@@ -91,9 +91,9 @@ void ui_exit()
 void ui_tick(float dt)
 {
 	if (console_enabled)
-		console_fade = mlClamp(console_fade + dt*1.5f, 0, 1.f);
+		console_fade = m_clamp(console_fade + dt*1.5f, 0, 1.f);
 	else
-		console_fade = mlClamp(console_fade - dt*1.5f, 0, 1.f);
+		console_fade = m_clamp(console_fade - dt*1.5f, 0, 1.f);
 }
 
 bool ui_console_enabled()
@@ -142,7 +142,7 @@ void ui_draw(SDL_Point* viewport)
 		glDisable(GL_DEPTH_TEST);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glUseProgram(ui_material->program);
-		mlBindTexture2D(&ui_font, 0);
+		m_tex2d_bind(&ui_font, 0);
 		glUniform2fv(ui_screensize_index, 1, (float*)&screensize);
 		glUniform1i(ui_tex0_index, 0);
 		glBindVertexArray(ui_vao);
@@ -290,8 +290,8 @@ void ui_debug_line(vec3_t p1, vec3_t p2, uint32_t clr)
 
 void ui_debug_aabb(vec3_t center, vec3_t extent, uint32_t clr)
 {
-	vec3_t maxp = mlVec3Add(center, extent);
-	vec3_t minp = mlVec3Sub(center, extent);
+	vec3_t maxp = m_vec3add(center, extent);
+	vec3_t minp = m_vec3sub(center, extent);
 	vec3_t corners[8] = {
 		{ minp.x, minp.y, minp.z },
 		{ maxp.x, minp.y, minp.z },
@@ -324,11 +324,11 @@ void ui_debug_block(ivec3_t block, uint32_t clr)
 	vec3_t pos;
 	vec3_t ext;
 	chunkpos_t camera = playerChunk();
-	mlVec3Assign(pos,
+	m_setvec3(pos,
 	             block.x - camera.x*CHUNK_SIZE,
 	             block.y,
 	             block.z - camera.z*CHUNK_SIZE);
-	mlVec3Assign(ext, 0.5f, 0.5f, 0.5f);
+	m_setvec3(ext, 0.5f, 0.5f, 0.5f);
 	ui_debug_aabb(pos, ext, clr);
 }
 
@@ -380,8 +380,8 @@ void ui_draw_debug(mtxstack_t* projection, mtxstack_t* modelview)
 		glDepthMask(GL_FALSE);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glUseProgram(debug_material->program);
-		mlUniformMatrix(debug_projmat_index, mlGetMatrix(projection));
-		mlUniformMatrix(debug_modelview_index, mlGetMatrix(modelview));
+		m_uniform_mat44(debug_projmat_index, m_getmatrix(projection));
+		m_uniform_mat44(debug_modelview_index, m_getmatrix(modelview));
 		glBindVertexArray(debug_vao);
 		glBindBuffer(GL_ARRAY_BUFFER, debug_vbo);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(posclrvert_t)*debug_linevertcount, debug_lines, GL_DYNAMIC_DRAW);

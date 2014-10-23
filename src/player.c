@@ -23,8 +23,8 @@ void player_look(float dt)
 	const float ysens = 1.f / ML_TWO_PI;
 	float dyaw = game.input.mouse_xrel * dt * xsens;
 	float dpitch = game.input.mouse_yrel * dt * ysens;
-	game.camera.yaw = mlWrap(game.camera.yaw - dyaw, 0.f, ML_TWO_PI);
-	game.camera.pitch = mlClamp(game.camera.pitch - dpitch, -ML_PI_2, ML_PI_2);
+	game.camera.yaw = m_wrap(game.camera.yaw - dyaw, 0.f, ML_TWO_PI);
+	game.camera.pitch = m_clamp(game.camera.pitch - dpitch, -ML_PI_2, ML_PI_2);
 	game.input.mouse_xrel = 0;
 	game.input.mouse_yrel = 0;
 }
@@ -61,11 +61,11 @@ void player_move(float dt)
 	mat44_t m;
 	vec3_t move = { right, 0, forward };
 	vec3_t dmove;
-	move = mlVec3Normalize(move);
-	mlSetIdentity(&m);
-	mlRotate(&m, game.camera.yaw, 0, 1.f, 0);
-	dmove = mlMulMatVec3(&m, &move);
-	dmove = mlVec3Scalef(dmove, speed);
+	move = m_vec3normalize(move);
+	m_setidentity(&m);
+	m_rotate(&m, game.camera.yaw, 0, 1.f, 0);
+	dmove = m_matmulvec3(&m, &move);
+	dmove = m_vec3scale(dmove, speed);
 
 	if ((game.camera.mode == CAMERA_FLIGHT) || game.player.onground) {
 		game.player.vel.x += dmove.x * dt;
@@ -106,7 +106,7 @@ void player_crouch(float dt)
 		game.player.vel.y -= FLYUPDOWN * dt;
 	if (!game.input.move_crouch)
 		dt = -dt;
-	game.player.crouch_fade = mlClamp(game.player.crouch_fade + dt*5.f, 0.f, 1.f);
+	game.player.crouch_fade = m_clamp(game.player.crouch_fade + dt*5.f, 0.f, 1.f);
 }
 
 static
@@ -143,14 +143,14 @@ void player_collide(dvec3_t* pos, vec3_t* move, vec3_t* vel)
 		size_t n = 0;
 		ivec3_t cand[8] = {
 			preblock,
-			ivec3_t_offset(preblock, mlSign(vel.x), 0, 0),
-			ivec3_t_offset(preblock, 0, 0, mlSign(vel.z)),
-			ivec3_t_offset(preblock, mlSign(vel.x), 0, mlSign(vel.z)),
-			ivec3_t_offset(preblock, mlSign(vel.x), 1, 0),
-			ivec3_t_offset(preblock, 1, 0, mlSign(vel.z)),
-			ivec3_t_offset(preblock, mlSign(vel.x), 1, mlSign(vel.z)),
+			ivec3_t_offset(preblock, m_sign(vel.x), 0, 0),
+			ivec3_t_offset(preblock, 0, 0, m_sign(vel.z)),
+			ivec3_t_offset(preblock, m_sign(vel.x), 0, m_sign(vel.z)),
+			ivec3_t_offset(preblock, m_sign(vel.x), 1, 0),
+			ivec3_t_offset(preblock, 1, 0, m_sign(vel.z)),
+			ivec3_t_offset(preblock, m_sign(vel.x), 1, m_sign(vel.z)),
 		};
-		cand[7] = ivec3_t_offset(preblock, 0, mlSign(vel.y) < 0 ? -1 : 2, 0);
+		cand[7] = ivec3_t_offset(preblock, 0, m_sign(vel.y) < 0 ? -1 : 2, 0);
 
 		ivec3_t other[8];
 		for (int i = 0; i < 8; ++i)
@@ -166,10 +166,10 @@ void player_collide(dvec3_t* pos, vec3_t* move, vec3_t* vel)
 				vec3_t nh = hitpoint;
 				nh.x -= playerChunk().x * CHUNK_SIZE;
 				nh.z -= playerChunk().z * CHUNK_SIZE;
-				vec3_t nh2 = mlVec3Add(nh, normal);
+				vec3_t nh2 = m_vec3add(nh, normal);
 				ui_debug_point(nh, 0xffff0000);
 				ui_debug_line(nh, nh2, 0xffff7f00);
-				nh2 = mlVec3Add(nh, vel);
+				nh2 = m_vec3add(nh, vel);
 				ui_debug_line(nh, nh2, 0x6f444444);
 			}
 		}
@@ -184,7 +184,7 @@ void player_init()
 {
 	dvec3_t offs = { 0, OCEAN_LEVEL + 2, 0 };
 	game.player.pos = offs;
-	mlVec3Assign(game.player.vel, 0, 0, 0);
+	m_setvec3(game.player.vel, 0, 0, 0);
 	game.player.jumpcount = 0;
 	game.player.crouch_fade = 0;
 	game.player.onground = false;
@@ -228,8 +228,8 @@ void player_tick(float dt)
 
 	vec3_t move;
 
-	vel = mlClampVec3(vel, -MAX_VELOCITY, MAX_VELOCITY);
-	move = mlVec3Scalef(vel, dt);
+	vel = m_clampVec3(vel, -MAX_VELOCITY, MAX_VELOCITY);
+	move = m_vec3scale(vel, dt);
 
 	// collide
 	if (game.collisions_on)
@@ -248,8 +248,8 @@ void player_tick(float dt)
 		break;
 	case CAMERA_3RDPERSON: {
 		vec3_t x, y, z;
-		mlFPSRotation(game.camera.pitch, game.camera.yaw, &x, &y, &z);
-		offset = mlVec3Scalef(z, 6.f);
+		m_fps_rotation(game.camera.pitch, game.camera.yaw, &x, &y, &z);
+		offset = m_vec3scale(z, 6.f);
 	} break;
 	default: {
 		float d = enCubicInOut(game.player.crouch_fade);
@@ -263,7 +263,7 @@ void player_tick(float dt)
 		friction += 0.03f;
 	if (game.camera.mode == CAMERA_FLIGHT)
 		friction = 0.2f;
-	game.player.vel = mlVec3Scalef(vel, 1.f - friction);
+	game.player.vel = m_vec3scale(vel, 1.f - friction);
 	game.player.pos = pos;
 	game.camera.pos.x = pos.x + offset.x;
 	game.camera.pos.y = pos.y + offset.y;

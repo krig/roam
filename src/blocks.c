@@ -3,7 +3,7 @@
 #include "images.h"
 #include "blocks.h"
 
-struct blockinfo_t blockinfo[] = {
+struct blockinfo blockinfo[] = {
 	{ .name = "air", .img = { 0 } },
 	{ .name = "grass", .img = { IMG_GREEN_GRASS }, .density = SOLID_DENSITY },
 	{ .name = "wet grass", .img = { IMG_WET_GRASS, IMG_WET_DIRT, IMG_WET_GRASS_SIDE }, .density = SOLID_DENSITY },
@@ -34,7 +34,7 @@ struct blockinfo_t blockinfo[] = {
 
 void blocks_init()
 {
-	for (int i = 0; i < sizeof(blockinfo)/sizeof(struct blockinfo_t); ++i) {
+	for (int i = 0; i < sizeof(blockinfo)/sizeof(struct blockinfo); ++i) {
 		int prev = IMG_BLACKROCK;
 		for (int m = 0; m < 6; ++m) {
 			if (blockinfo[i].img[m] == IMG_INVALID)

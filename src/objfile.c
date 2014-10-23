@@ -4,8 +4,9 @@
 
 #define LINEBUF_SIZE 1024
 
-static bool
-readLine(char* to, const char** data) {
+static
+bool read_line(char* to, const char** data)
+{
 	char* wp = to;
 	const char* buf = *data;
 	while (wp == to) {
@@ -35,8 +36,9 @@ readLine(char* to, const char** data) {
 /*
   Based on stb.h: stb_strtok_raw()
  */
-static char*
-strtok_x(char* output, char* tokens, const char* delim) {
+static
+char* strtok_x(char* output, char* tokens, const char* delim)
+{
 	while (*tokens && strchr(delim, *tokens) != NULL)
 		tokens++;
 	while (*tokens && strchr(delim, *tokens) == NULL)
@@ -47,8 +49,9 @@ strtok_x(char* output, char* tokens, const char* delim) {
 
 // this data
 
-static void
-pushVertex(obj_mesh* m, float* v, size_t n) {
+static
+void push_vert(obj_t* m, float* v, size_t n)
+{
 	if (n != 3)
 		fatal_error("Only 3D vertices allowed in obj: n = %zu", n);
 	while (m->nverts + n > m->vcap) {
@@ -59,8 +62,9 @@ pushVertex(obj_mesh* m, float* v, size_t n) {
 	m->nverts += n;
 }
 
-static void
-pushFace(obj_mesh* m, uint32_t* f, size_t n) {
+static
+void push_face(obj_t* m, uint32_t* f, size_t n)
+{
 	if (n != 3)
 		fatal_error("Only triangles allowed in obj: n = %zu", n);
 	while (m->nindices + n > m->fcap) {
@@ -71,7 +75,8 @@ pushFace(obj_mesh* m, uint32_t* f, size_t n) {
 	m->nindices += n;
 }
 
-void objLoad(obj_mesh* mesh, const char* data, float vscale) {
+void obj_load(obj_t* mesh, const char* data, float vscale)
+{
 	char linebuf[LINEBUF_SIZE];
 	char tokbuf[LINEBUF_SIZE];
 	const char* delim = " \t\r\n";
@@ -79,13 +84,13 @@ void objLoad(obj_mesh* mesh, const char* data, float vscale) {
 	uint32_t tmpindex[3];
 	size_t i;
 
-	memset(mesh, 0, sizeof(obj_mesh));
+	memset(mesh, 0, sizeof(obj_t));
 	mesh->vcap = 1024;
 	mesh->fcap = 1024;
 	mesh->verts = malloc(mesh->vcap * sizeof(float));
 	mesh->indices = malloc(mesh->fcap * sizeof(uint32_t));
 
-	while (readLine(linebuf, &data)) {
+	while (read_line(linebuf, &data)) {
 		char* tok = strtok_x(tokbuf, linebuf, delim);
 		if (strcmp(tokbuf, "v") == 0) {
 			// vertex
@@ -96,7 +101,7 @@ void objLoad(obj_mesh* mesh, const char* data, float vscale) {
 				if (i > 4)
 					fatal_error("Too many dimensions (%d) in .obj vertex", i);
 			} while (*tok != '\0');
-			pushVertex(mesh, tmpvert, i);
+			push_vert(mesh, tmpvert, i);
 		} else if (strcmp(tokbuf, "f") == 0) {
 			i = 0;
 			do {
@@ -106,7 +111,7 @@ void objLoad(obj_mesh* mesh, const char* data, float vscale) {
 				if (i > 3)
 					fatal_error("Too many vertices in face (%d)", i);
 			} while (*tok != '\0');
-			pushFace(mesh, tmpindex, i);
+			push_face(mesh, tmpindex, i);
 		} else {
 			// TODO: vt, vn, f v/vt/vn
 			fatal_error("Unhandled token: '%s'", tokbuf);
@@ -114,7 +119,16 @@ void objLoad(obj_mesh* mesh, const char* data, float vscale) {
 	}
 }
 
-void objGenNormalsFn(obj_mesh* obj, void** vertexdata, size_t* vertexsize, GLenum* meshflags) {
+void obj_free(obj_t* mesh)
+{
+	free(mesh->verts);
+	free(mesh->indices);
+	memset(mesh, 0, sizeof(obj_t));
+}
+
+
+void obj_normals(obj_t* obj, void** vertexdata, size_t* vertexsize, GLenum* meshflags)
+{
 	size_t i;
 	size_t nvertices = obj->nverts / 3;
 	posnormalvert_t* verts = malloc(sizeof(posnormalvert_t) * nvertices);
@@ -132,7 +146,7 @@ void objGenNormalsFn(obj_mesh* obj, void** vertexdata, size_t* vertexsize, GLenu
 		vec3_t t1 = verts[obj->indices[i + 0]].pos;
 		vec3_t t2 = verts[obj->indices[i + 1]].pos;
 		vec3_t t3 = verts[obj->indices[i + 2]].pos;
-		vec3_t n = mlVec3Normalize(mlVec3Cross(mlVec3Sub(t2, t1), mlVec3Sub(t3, t1)));
+		vec3_t n = m_vec3normalize(m_vec3cross(m_vec3sub(t2, t1), m_vec3sub(t3, t1)));
 		verts[obj->indices[i + 0]].n = n;
 		verts[obj->indices[i + 1]].n = n;
 		verts[obj->indices[i + 2]].n = n;
@@ -143,14 +157,15 @@ void objGenNormalsFn(obj_mesh* obj, void** vertexdata, size_t* vertexsize, GLenu
 	*meshflags = ML_POS_3F | ML_N_3F;
 }
 
-void objCreateMesh(mesh_t* mesh, obj_mesh* obj, objCreateMeshGenFn fn) {
+void obj_createmesh(mesh_t* mesh, obj_t* obj, obj_meshgenfn fn)
+{
 
 	void* vtxdata;
 	GLenum meshflags;
 	size_t vertexsize;
 	(*fn)(obj, &vtxdata, &vertexsize, &meshflags);
 
-	mlCreateIndexedMesh(mesh,
+	m_create_indexed_mesh(mesh,
 	                    obj->nverts / 3,
 	                    vtxdata,
 	                    obj->nindices,

@@ -4,7 +4,7 @@
 #include "gen.h"
 #include "rnd.h"
 #include "noise.h"
-#include "voxelmap.h"
+#include "map.h"
 
 static
 void gen_testmap(game_chunk* chunk)

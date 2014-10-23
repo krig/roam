@@ -2,8 +2,6 @@
  * To be included only in main.c
  */
 
-#include "voxelmap.h"
-
 static const char* basic_vshader = "#version 130\n"
 	"uniform mat4 projmat;\n"
 	"uniform mat4 modelview;\n"

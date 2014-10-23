@@ -1,14 +1,14 @@
 #pragma once
 // shared data for the game
 
-#include "voxelmap.h"
+#include "map.h"
 #include "player.h"
 
 
 #define DAY_LENGTH 1200.0 /* seconds */
 
 
-enum E_Materials {
+enum Materials {
 	MAT_BASIC,
 	MAT_UI,
 	MAT_DEBUG,
@@ -19,23 +19,23 @@ enum E_Materials {
 };
 
 
-typedef enum cameramode_t {
+enum CameraMode {
 	CAMERA_FPS,
 	CAMERA_3RDPERSON,
 	CAMERA_FLIGHT,
 	NUM_CAMERA_MODES
-} cameramode_t;
-
-
-struct camera_t {
-	dvec3_t pos;
-	float pitch;
-	float yaw;
-	cameramode_t mode;
 };
 
 
-struct controls_t {
+struct camera {
+	dvec3_t pos;
+	float pitch;
+	float yaw;
+	int mode;
+};
+
+
+struct controls {
 	int left;
 	int right;
 	int forward;
@@ -51,15 +51,15 @@ struct controls_t {
 };
 
 
-struct game_t {
-	struct camera_t camera;
-	struct player_t player;
-	struct controls_t controls;
-	struct inputstate_t input;
+struct game {
+	struct camera camera;
+	struct player player;
+	struct controls controls;
+	struct inputstate input;
 	material_t materials[MAX_MATERIALS];
 	mtxstack_t projection;
 	mtxstack_t modelview;
-	struct game_map_t map;
+	struct game_map map;
 
 	int day; // increases after every day/night cycle
 	double time_of_day;
@@ -80,7 +80,7 @@ struct game_t {
 };
 
 
-extern struct game_t game;
+extern struct game game;
 
 
 

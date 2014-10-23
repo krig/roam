@@ -15,9 +15,9 @@
 #define ML_MIN(a, b) (((b) < (a)) ? (b) : (a))
 #define ML_MAX(a, b) (((b) > (a)) ? (b) : (a))
 
-#define DEG2RAD(d) (((d) * ML_PI) / 180.0)
-#define RAD2DEG(r) (((r) * 180.0) / ML_PI)
-#define SWAP(a, b) do { __typeof__ (a) _swap_##__LINE__ = (a); (a) = (b); (b) = _swap_##__LINE__; } while (0)
+#define ML_DEG2RAD(d) (((d) * ML_PI) / 180.0)
+#define ML_RAD2DEG(r) (((r) * 180.0) / ML_PI)
+#define ML_SWAP(a, b) do { __typeof__ (a) _swap_##__LINE__ = (a); (a) = (b); (b) = _swap_##__LINE__; } while (0)
 
 
 enum ml_CollisionResult {
@@ -163,232 +163,105 @@ typedef struct mesh {
 	GLenum flags;
 } mesh_t;
 
-typedef struct ml_tex2d {
+
+typedef struct tex2d_t {
 	GLuint id;
 	uint16_t w;
 	uint16_t h;
-} ml_tex2d;
+} tex2d_t;
+
 
 // a renderable combines a
 // particular material and a
 // particular mesh into a
 // a renderable object
-typedef struct ml_renderable {
+typedef struct renderobj_t {
 	const material_t* material;
 	const mesh_t* mesh;
 	GLuint vao;
-} ml_renderable;
+} renderobj_t;
+
 
 typedef struct mtxstack {
 	int top;
 	mat44_t* stack;
 } mtxstack_t;
 
-static inline bool
-mlFIsValid(float f) {
-	return (f >= -FLT_MAX && f <= FLT_MAX);
-}
 
-static inline float
-mlSign(float x) {
-	return (x >= 0) ? 1.f : -1.f;
-}
+// 3D math
 
-static inline float
-mlClamp(float t, float lo, float hi) {
-	return (t < lo) ? lo : ((t > hi) ? hi : t);
-}
-
-static inline double
-mlClampd(double t, double lo, double hi) {
-	return (t < lo) ? lo : ((t > hi) ? hi : t);
-}
-
-static inline vec3_t
-mlClampVec3(vec3_t t, float lo, float hi) {
-	vec3_t ret = { mlClamp(t.x, lo, hi),
-	                mlClamp(t.y, lo, hi),
-	                mlClamp(t.z, lo, hi) };
-	return ret;
-}
-
-static inline float
-mlWrap(float t, float lo, float hi) {
-    while (t < lo)
-	    t = hi - (lo - t);
-    while (t > hi)
-	    t = lo + (hi - t);
-    return t;
-}
-
-static inline vec2_t
-mlMakeVec2(float x, float y) {
-	vec2_t v = { x, y };
-	return v;
-}
-
-static inline vec3_t
-mlMakeVec3(float x, float y, float z) {
-	vec3_t v = { x, y, z };
-	return v;
-}
-
-static inline vec4_t
-mlMakeVec4(float x, float y, float z, float w) {
-	vec4_t v = { x, y, z, w };
-	return v;
-}
-
-#define mlVec2Assign(v, a, b) { (v).x = (a); (v).y = (b); }
-#define mlVec3Assign(v, a, b, c) { (v).x = (a); (v).y = (b); (v).z = (c); }
-#define mlVec4Assign(v, a, b, c, d) { (v).x = (a); (v).y = (b); (v).z = (c); (v).w = (d); }
-
-void mlPerspective(mat44_t* m, float fovy, float aspect, float zNear, float zFar);
-
-void mlSetIdentity(mat44_t* m);
-
-void mlLookAt(mat44_t* m,
-              float eyeX, float eyeY, float eyeZ,
-              float atX, float atY, float atZ,
-              float upX, float upY, float upZ);
-
-void mlCopyMatrix(mat44_t* to, const mat44_t* from);
-
-void mlFPSRotation(float pitch, float yaw, vec3_t* x, vec3_t* y, vec3_t* z);
-void mlFPSMatrix(mat44_t* to, vec3_t eye, float pitch, float yaw);
-
-void mlMulMatrix(mat44_t* to, const mat44_t* by);
-
-vec4_t mlMulMatVec(const mat44_t* m, const vec4_t* v);
-vec3_t mlMulMatVec3(const mat44_t* m, const vec3_t* v);
-vec3_t mlVec3RotateBy(const mat44_t* m, const vec3_t* v);
-
-void mlTranslate(mat44_t* m, float x, float y, float z);
-void mlRotate(mat44_t* m, float angle, float x, float y, float z);
-
-void mlGetRotationMatrix(mat33_t* to, const mat44_t* from);
-vec3_t mlMulMat33Vec3(const mat33_t* m, const vec3_t* v);
-
-void mlTranspose(mat44_t* m);
-void mlTranspose33(mat33_t* m);
-bool mlInvertMatrix(mat44_t* to, const mat44_t* from);
-void mlInvertOrthoMatrix(mat44_t* to, const mat44_t* from);
-
-static inline vec3_t mlGetXAxis(const mat44_t* from) {
-	return *(vec3_t*)&from->m[0];
-}
-
-static inline vec3_t mlGetYAxis(const mat44_t* from) {
-	return *(vec3_t*)&from->m[4];
-}
-
-static inline vec3_t mlGetZAxis(const mat44_t* from) {
-	return *(vec3_t*)&from->m[8];
-}
+void     m_perspective(mat44_t* m, float fovy, float aspect, float zNear, float zFar);
+void     m_setidentity(mat44_t* m);
+void     m_lookat(mat44_t* m, float eyeX, float eyeY, float eyeZ, float atX, float atY, float atZ, float upX, float upY, float upZ);
+void     m_copymat(mat44_t* to, const mat44_t* from);
+void     m_fps_rotation(float pitch, float yaw, vec3_t* x, vec3_t* y, vec3_t* z);
+void     m_fpsmatrix(mat44_t* to, vec3_t eye, float pitch, float yaw);
+void     m_matmul(mat44_t* to, const mat44_t* by);
+vec4_t   m_matmulvec(const mat44_t* m, const vec4_t* v);
+vec3_t   m_matmulvec3(const mat44_t* m, const vec3_t* v);
+vec3_t   m_rotatevec3(const mat44_t* m, const vec3_t* v);
+void     m_translate(mat44_t* m, float x, float y, float z);
+void     m_rotate(mat44_t* m, float angle, float x, float y, float z);
+void     m_getmat33(mat33_t* to, const mat44_t* from);
+vec3_t   m_matmul33(const mat33_t* m, const vec3_t* v);
+void     m_transpose(mat44_t* m);
+void     m_transpose33(mat33_t* m);
+bool     m_invert(mat44_t* to, const mat44_t* from);
+void     m_invert_orthonormal(mat44_t* to, const mat44_t* from);
+void     m_makefrustum(frustum_t* frustum, mat44_t* projection, mat44_t* view);
 
 
-static inline float
-mlVec3Dot(const vec3_t a, const vec3_t b) {
-	return a.x * b.x + a.y * b.y + a.z * b.z;
-}
+// GL helpers
 
-static inline vec3_t
-mlVec3Cross(const vec3_t a, const vec3_t b) {
-	vec3_t to;
-	to.x = a.y*b.z - a.z*b.y;
-	to.y = a.z*b.x - a.x*b.z;
-	to.z = a.x*b.y - a.y*b.x;
-	return to;
-}
+GLuint   m_compile_shader(GLenum type, const char* source);
+GLuint   m_link_program(GLuint vsh, GLuint fsh);
+void     m_create_material(material_t* material, const char* vsource, const char* fsource);
+void     m_destroy_material(material_t* material);
+void     m_create_mesh(mesh_t* mesh, size_t n, void* data, GLenum flags, GLenum usage);
+void     m_create_indexed_mesh(mesh_t* mesh, size_t n, void* data, size_t ilen, GLenum indextype, void* indices, GLenum flags);
+void     m_destroy_mesh(mesh_t* mesh);
+void     m_update_mesh(mesh_t *mesh, GLintptr offset, GLsizeiptr n, void* data);
+void     m_create_renderobj(renderobj_t* renderable, const material_t* material, const mesh_t* mesh);
+void     m_destroy_renderobj(renderobj_t* renderable);
+void     m_apply_material(const mesh_t* mesh, const material_t* material);
+void     m_tex2d_load(tex2d_t* tex, const char* filename);
+void     m_tex2d_destroy(tex2d_t* tex);
+void     m_tex2d_bind(tex2d_t* tex, int index);
 
-static inline vec2_t
-mlVec2Add(const vec2_t a, const vec2_t b) {
-	vec2_t to = { a.x + b.x, a.y + b.y };
-	return to;
-}
+// Matrix stack
 
-static inline vec2_t
-mlVec2AddScalar(vec2_t tc, float by) {
-	tc.x += by;
-	tc.y += by;
-	return tc;
-}
+void     m_mtxstack_init(mtxstack_t* stack, size_t size);
+void     m_mtxstack_destroy(mtxstack_t* stack);
+void     m_pushmatrix(mtxstack_t* stack);
+void     m_loadmatrix(mtxstack_t* stack, mat44_t* m);
+void     m_pushidentity(mtxstack_t* stack);
+void     m_loadidentity(mtxstack_t* stack);
+void     m_popmatrix(mtxstack_t* stack);
+mat44_t* m_getmatrix(mtxstack_t* stack);
 
-static inline vec3_t
-mlVec3Add(const vec3_t a, const vec3_t b) {
-	vec3_t to = { a.x + b.x, a.y + b.y, a.z + b.z };
-	return to;
-}
 
-static inline vec4_t
-mlVec4Add(const vec4_t a, const vec4_t b) {
-	vec4_t to = { a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w };
-	return to;
-}
+// Collision routines
 
-static inline vec3_t
-mlVec3Sub(const vec3_t a, const vec3_t b) {
-	vec3_t to = { a.x - b.x, a.y - b.y, a.z - b.z };
-	return to;
-}
+int      collide_frustum_aabb(frustum_t* frustum, vec3_t center, vec3_t extent);
+int      collide_frustum_aabb_xz(frustum_t* frustum, vec3_t center, vec3_t extent);
+int      collide_frustum_aabb_y(frustum_t* frustum, vec3_t center, vec3_t extent);
+bool     collide_ray_aabb(vec3_t origin, vec3_t dir, vec3_t center, vec3_t extent);
+bool     collide_sphere_aabb(vec3_t pos, float radius, vec3_t center, vec3_t extent);
+bool     collide_sphere_aabb_full(vec3_t pos, float radius, vec3_t center, vec3_t extent, vec3_t* hit);
+bool     collide_segment_aabb(vec3_t pos, vec3_t delta, vec3_t padding,
+                              vec3_t center, vec3_t extent,
+                              float* time, vec3_t* hit, vec3_t* hitdelta, vec3_t* normal);
+bool     collide_aabb_aabb_full(vec3_t center, vec3_t extent,
+                                vec3_t center2, vec3_t extent2, vec3_t *hitpoint, vec3_t *hitdelta, vec3_t *hitnormal);
+bool     intersect_moving_aabb_aabb(aabb_t a, aabb_t b, vec3_t va, vec3_t vb, float* tfirst, float* tlast);
 
-static inline vec3_t
-mlVec3Scalef(const vec3_t a, float f) {
-	vec3_t to = { a.x * f, a.y * f, a.z * f };
-	return to;
-}
 
-static inline vec4_t
-mlVec4Scalef(const vec4_t a, float f) {
-	vec4_t to = { a.x * f, a.y * f, a.z * f, a.w * f };
-	return to;
-}
+// inline functions
 
-static inline float
-mlVec3Length2(const vec3_t v) {
-	return v.x*v.x + v.y*v.y + v.z*v.z;
-}
-
-static inline float
-mlVec3Length(const vec3_t v) {
-	return sqrtf(v.x*v.x + v.y*v.y + v.z*v.z);
-}
-
-static inline vec3_t
-mlVec3Normalize(vec3_t v) {
-	float invlen = 1.f / mlVec3Length(v);
-	return mlVec3Scalef(v, invlen);
-}
-
-static inline vec3_t
-mlVec3Invert(const vec3_t v) {
-	vec3_t to = { -v.x, -v.y, -v.z };
-	return to;
-}
-
-static inline vec4_t
-mlVec4Abs(const vec4_t v) {
-	vec4_t to = { fabs(v.x), fabs(v.y), fabs(v.z), fabs(v.w) };
-	return to;
-}
-
-static inline vec4_t
-mlNormalizePlane(vec4_t plane) {
-	vec3_t n = {plane.x, plane.y, plane.z};
-	float len = mlVec3Length(n);
-	n = mlVec3Scalef(n, 1.f / len);
-	plane.x = n.x;
-	plane.y = n.y;
-	plane.z = n.z;
-	plane.w = plane.w / len;
-	return plane;
-}
-
-/*
-  TODO: disable in debug
- */
 static inline void
-glCheck(int line) {
+m_checkgl(int line)
+{
+#ifndef NDEBUG
 	GLenum err;
 	char* msg;
 	do {
@@ -404,52 +277,109 @@ glCheck(int line) {
 		if (err != GL_NO_ERROR)
 			fprintf(stderr, "GL error (%d): (0x%x) %s\n", line, err, msg);
 	} while (err != GL_NO_ERROR);
+#endif
+}
+
+static inline bool
+m_fisvalid(float f)
+{
+	return (f >= -FLT_MAX && f <= FLT_MAX);
+}
+
+static inline float
+m_sign(float x) {
+	return (x >= 0) ? 1.f : -1.f;
+}
+
+static inline float
+m_clamp(float t, float lo, float hi) {
+	return (t < lo) ? lo : ((t > hi) ? hi : t);
+}
+
+static inline double
+m_clampd(double t, double lo, double hi) {
+	return (t < lo) ? lo : ((t > hi) ? hi : t);
+}
+
+static inline vec3_t
+m_clampVec3(vec3_t t, float lo, float hi) {
+	vec3_t ret = { m_clamp(t.x, lo, hi),
+	                m_clamp(t.y, lo, hi),
+	                m_clamp(t.z, lo, hi) };
+	return ret;
+}
+
+static inline float
+m_wrap(float t, float lo, float hi) {
+    while (t < lo)
+	    t = hi - (lo - t);
+    while (t > hi)
+	    t = lo + (hi - t);
+    return t;
+}
+
+static inline vec2_t
+m_makevec2(float x, float y) {
+	vec2_t v = { x, y };
+	return v;
+}
+
+static inline vec3_t
+m_makevec3(float x, float y, float z) {
+	vec3_t v = { x, y, z };
+	return v;
+}
+
+static inline vec4_t
+m_makevec4(float x, float y, float z, float w) {
+	vec4_t v = { x, y, z, w };
+	return v;
 }
 
 static inline void
-mlUniformMatrix(GLint index, mat44_t* mat) {
+m_uniform_mat44(GLint index, mat44_t* mat) {
 	if (index != -1)
 		glUniformMatrix4fv(index, 1, GL_FALSE, mat->m);
 }
 
 static inline void
-mlUniformMatrix33(GLint index, mat33_t* mat) {
+m_uniform_mat33(GLint index, mat33_t* mat) {
 	if (index != -1)
 		glUniformMatrix3fv(index, 1, GL_FALSE, mat->m);
 }
 
 static inline void
-mlUniformVec2(GLint index, vec2_t* v) {
+m_uniform_vec2(GLint index, vec2_t* v) {
 	if (index != -1)
 		glUniform2fv(index, 1, (GLfloat*)v);
 }
 
 static inline void
-mlUniformVec3(GLint index, vec3_t* v) {
+m_uniform_vec3(GLint index, vec3_t* v) {
 	if (index != -1)
 		glUniform3fv(index, 1, (GLfloat*)v);
 }
 
 static inline void
-mlUniformVec4(GLint index, vec4_t* v) {
+m_uniform_vec4(GLint index, vec4_t* v) {
 	if (index != -1)
 		glUniform4fv(index, 1, (GLfloat*)v);
 }
 
 static inline void
-mlUniform1i(GLint index, int i) {
+m_uniform_i(GLint index, int i) {
 	if (index != -1)
 		glUniform1i(index, i);
 }
 
 static inline void
-mlDrawBegin(ml_renderable* renderable) {
+m_draw_begin(renderobj_t* renderable) {
 	glUseProgram(renderable->material->program);
 	glBindVertexArray(renderable->vao);
 }
 
 static inline void
-mlDrawEnd(ml_renderable* renderable) {
+m_draw_end(renderobj_t* renderable) {
 	const mesh_t* mesh = renderable->mesh;
 	if (mesh->ibo > 0)
 		glDrawElements(mesh->mode, mesh->count, mesh->ibotype, 0);
@@ -459,85 +389,143 @@ mlDrawEnd(ml_renderable* renderable) {
 	glUseProgram(0);
 }
 
-GLuint mlCompileShader(GLenum type, const char* source);
+static inline vec3_t m_xaxis44(const mat44_t* from) {
+	return *(vec3_t*)&from->m[0];
+}
 
-GLuint mlLinkProgram(GLuint vsh, GLuint fsh);
+static inline vec3_t m_yaxis44(const mat44_t* from) {
+	return *(vec3_t*)&from->m[4];
+}
 
-void mlCreateMaterial(material_t* material, const char* vsource, const char* fsource);
-void mlDestroyMaterial(material_t* material);
+static inline vec3_t m_zaxis44(const mat44_t* from) {
+	return *(vec3_t*)&from->m[8];
+}
 
-void mlCreateMesh(mesh_t* mesh, size_t n, void* data, GLenum flags, GLenum usage);
-void mlCreateIndexedMesh(mesh_t* mesh, size_t n, void* data, size_t ilen, GLenum indextype, void* indices, GLenum flags);
-void mlDestroyMesh(mesh_t* mesh);
-void mlUpdateMesh(mesh_t *mesh, GLintptr offset, GLsizeiptr n, void* data);
 
-void mlCreateRenderable(ml_renderable* renderable, const material_t* material, const mesh_t* mesh);
-void mlDestroyRenderable(ml_renderable* renderable);
-void mlMapMeshToMaterial(const mesh_t* mesh, const material_t* material);
+#define m_setvec2(v, a, b) { (v).x = (a); (v).y = (b); }
+#define m_setvec3(v, a, b, c) { (v).x = (a); (v).y = (b); (v).z = (c); }
+#define m_setvec4(v, a, b, c, d) { (v).x = (a); (v).y = (b); (v).z = (c); (v).w = (d); }
 
-// Matrix stack
+static inline float
+m_vec3dot(const vec3_t a, const vec3_t b) {
+	return a.x * b.x + a.y * b.y + a.z * b.z;
+}
 
-// Allocate a stack with max size. Pushes the identity
-// matrix to the bottom of the stack.
-void mlInitMatrixStack(mtxstack_t* stack, size_t size);
+static inline vec3_t
+m_vec3cross(const vec3_t a, const vec3_t b) {
+	vec3_t to;
+	to.x = a.y*b.z - a.z*b.y;
+	to.y = a.z*b.x - a.x*b.z;
+	to.z = a.x*b.y - a.y*b.x;
+	return to;
+}
 
-void mlDestroyMatrixStack(mtxstack_t* stack);
+static inline vec2_t
+m_vec2add(const vec2_t a, const vec2_t b) {
+	vec2_t to = { a.x + b.x, a.y + b.y };
+	return to;
+}
 
-// Push a copy of the top matrix to the stack
-void mlPushMatrix(mtxstack_t* stack);
+static inline vec2_t
+m_vec2scale(vec2_t tc, float by) {
+	tc.x += by;
+	tc.y += by;
+	return tc;
+}
 
-// Assign the given matrix to the top of the stack
-void mlLoadMatrix(mtxstack_t* stack, mat44_t* m);
+static inline vec3_t
+m_vec3add(const vec3_t a, const vec3_t b) {
+	vec3_t to = { a.x + b.x, a.y + b.y, a.z + b.z };
+	return to;
+}
 
-// Push an identity matrix to the stack
-void mlPushIdentity(mtxstack_t* stack);
+static inline vec4_t
+m_vec4add(const vec4_t a, const vec4_t b) {
+	vec4_t to = { a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w };
+	return to;
+}
 
-// Set the top of the stack to the identity
-void mlLoadIdentity(mtxstack_t* stack);
+static inline vec3_t
+m_vec3sub(const vec3_t a, const vec3_t b) {
+	vec3_t to = { a.x - b.x, a.y - b.y, a.z - b.z };
+	return to;
+}
 
-void mlPopMatrix(mtxstack_t* stack);
+static inline vec3_t
+m_vec3scale(const vec3_t a, float f) {
+	vec3_t to = { a.x * f, a.y * f, a.z * f };
+	return to;
+}
 
-mat44_t* mlGetMatrix(mtxstack_t* stack);
+static inline vec4_t
+m_vec4scale(const vec4_t a, float f) {
+	vec4_t to = { a.x * f, a.y * f, a.z * f, a.w * f };
+	return to;
+}
 
-void mlLoadTexture2D(ml_tex2d* tex, const char* filename);
-void mlDestroyTexture2D(ml_tex2d* tex);
-void mlBindTexture2D(ml_tex2d* tex, int index);
+static inline float
+m_vec3len2(const vec3_t v) {
+	return v.x*v.x + v.y*v.y + v.z*v.z;
+}
+
+static inline float
+m_vec3len(const vec3_t v) {
+	return sqrtf(v.x*v.x + v.y*v.y + v.z*v.z);
+}
+
+static inline vec3_t
+m_vec3normalize(vec3_t v) {
+	float invlen = 1.f / m_vec3len(v);
+	return m_vec3scale(v, invlen);
+}
+
+static inline vec3_t
+m_vec3invert(const vec3_t v) {
+	vec3_t to = { -v.x, -v.y, -v.z };
+	return to;
+}
+
+static inline vec4_t
+m_vec4abs(const vec4_t v) {
+	vec4_t to = { fabs(v.x), fabs(v.y), fabs(v.z), fabs(v.w) };
+	return to;
+}
+
+static inline vec4_t
+m_normalize_plane(vec4_t plane) {
+	vec3_t n = {plane.x, plane.y, plane.z};
+	float len = m_vec3len(n);
+	n = m_vec3scale(n, 1.f / len);
+	plane.x = n.x;
+	plane.y = n.y;
+	plane.z = n.z;
+	plane.w = plane.w / len;
+	return plane;
+}
 
 static inline
-clr_t mlRGB(uint8_t r, uint8_t g, uint8_t b)
+clr_t m_makergb(uint8_t r, uint8_t g, uint8_t b)
 {
 	clr_t c = { 0xff, r, g, b };
 	return c;
 }
 
 static inline
-clr_t mlARGB(uint8_t a, uint8_t r, uint8_t g, uint8_t b)
+clr_t m_makeargb(uint8_t a, uint8_t r, uint8_t g, uint8_t b)
 {
 	clr_t c = { a, r, g, b };
 	return c;
 }
 
 static inline
-clr_t mlRGBA(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+clr_t m_makergba(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
 	clr_t c = { a, r, g, b };
 	return c;
 }
 
-void mlGetFrustum(frustum_t* frustum, mat44_t* projection, mat44_t* view);
-
-int mlTestFrustumAABB(frustum_t* frustum, vec3_t center, vec3_t extent);
-int mlTestFrustumAABB_XZ(frustum_t* frustum, vec3_t center, vec3_t extent);
-int mlTestFrustumAABB_Y(frustum_t* frustum, vec3_t center, vec3_t extent);
-bool mlTestRayAABB(vec3_t origin, vec3_t dir, vec3_t center, vec3_t extent);
-bool mlTestSphereAABB(vec3_t pos, float radius, vec3_t center, vec3_t extent);
-bool mlTestSphereAABB_Hit(vec3_t pos, float radius, vec3_t center, vec3_t extent, vec3_t* hit);
-
-bool mlTestSegmentAABB(vec3_t pos, vec3_t delta, vec3_t padding, vec3_t center, vec3_t extent,
-	float* time, vec3_t* hit, vec3_t* hitdelta, vec3_t* normal);
-bool mlTestAABBAABB_2(vec3_t center, vec3_t extent, vec3_t center2, vec3_t extent2, vec3_t *hitpoint, vec3_t *hitdelta, vec3_t *hitnormal);
-
-static inline int mlTestPlaneAABB(vec4_t plane, vec3_t center, vec3_t extent)
+static inline
+int collide_plane_aabb(vec4_t plane, vec3_t center, vec3_t extent)
 {
 	vec4_t absplane = { fabs(plane.x), fabs(plane.y), fabs(plane.z), fabs(plane.w) };
 	float d = center.x * plane.x + center.y * plane.y + center.z * plane.z + plane.w;
@@ -547,20 +535,20 @@ static inline int mlTestPlaneAABB(vec4_t plane, vec3_t center, vec3_t extent)
 	return ML_INSIDE;
 }
 
-static inline bool mlTestAABBAABB(vec3_t center1, vec3_t extent1, vec3_t center2, vec3_t extent2)
+static inline
+bool collide_aabb_aabb(vec3_t center1, vec3_t extent1, vec3_t center2, vec3_t extent2)
 {
 	return (fabs(center1.x - center2.x) < extent1.x + extent2.x) &&
 		(fabs(center1.y - center2.y) < extent1.y + extent2.y) &&
 		(fabs(center1.z - center2.z) < extent1.z + extent2.z);
 }
 
-static inline bool mlTestPointAABB(vec3_t point, vec3_t center, vec3_t extent)
+static inline
+bool collide_point_aabb(vec3_t point, vec3_t center, vec3_t extent)
 {
 	return (fabs(center.x - point.x) < extent.x) &&
 		(fabs(center.y - point.y) < extent.y) &&
 		(fabs(center.z - point.z) < extent.z);
 }
-
-bool intersect_moving_aabb_aabb(aabb_t a, aabb_t b, vec3_t va, vec3_t vb, float* tfirst, float* tlast);
 
 // TODO: GL state stack - track state as a stack of uint64_ts...

@@ -1,7 +1,7 @@
 #include "common.h"
 #include "math3d.h"
 #include "game.h"
-#include "voxelmap.h"
+#include "map.h"
 #include "noise.h"
 #include "images.h"
 #include "blocks.h"
@@ -43,14 +43,14 @@ void gen_block_tcs()
 	vec2_t tcoffs[4] = {{0, bw}, {bw, bw}, {bw, 0}, {0, 0} };
 	for (int t = 0; t < NUM_BLOCKTYPES; ++t) {
 		for (int i = 0; i < 6; ++i) {
-			vec2_t tl = mlVec2AddScalar(imgTC(blockinfo[t].img[i]), IMG_TC_BIAS);
+			vec2_t tl = m_vec2scale(imgTC(blockinfo[t].img[i]), IMG_TC_BIAS);
 			for (int j = 0; j < 4; ++j)
-				BLOCKTC(t, i, j) = make_tc2us(mlVec2Add(tl, tcoffs[j]));
+				BLOCKTC(t, i, j) = make_tc2us(m_vec2add(tl, tcoffs[j]));
 		}
 	}
 }
 
-extern ml_tex2d blocks_texture;
+extern tex2d_t blocks_texture;
 uint32_t* map_blocks = NULL;
 static chunkpos_t map_chunk;
 
@@ -88,7 +88,7 @@ void map_init()
 	gen_block_tcs();
 
 	printf("* Allocate and build initial map...\n");
-	memset(&game.map, 0, sizeof(struct game_map_t));
+	memset(&game.map, 0, sizeof(struct game_map));
 	map_blocks = (uint32_t*)malloc(sizeof(uint32_t)*MAP_BUFFER_SIZE);
 	memset(map_blocks, 0, sizeof(uint32_t)*MAP_BUFFER_SIZE);
 
@@ -188,14 +188,14 @@ void map_draw(frustum_t* frustum)
 	glDisable(GL_BLEND);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_TEXTURE_2D);
-	mlBindTexture2D(&blocks_texture, 0);
+	m_tex2d_bind(&blocks_texture, 0);
 	glUseProgram(material->program);
 
 	glUniform1i(material->tex0, 0);
-	mlUniformMatrix(material->projmat, mlGetMatrix(&game.projection));
-	mlUniformMatrix(material->modelview, mlGetMatrix(&game.modelview));
-	mlUniformVec3(material->amb_light, &game.amb_light);
-	mlUniformVec4(material->fog_color, &game.fog_color);
+	m_uniform_mat44(material->projmat, m_getmatrix(&game.projection));
+	m_uniform_mat44(material->modelview, m_getmatrix(&game.modelview));
+	m_uniform_vec3(material->amb_light, &game.amb_light);
+	m_uniform_vec4(material->fog_color, &game.fog_color);
 
 	float chunk_radius = (float)CHUNK_SIZE*0.5f;
 	vec3_t offset, center, extent;
@@ -216,10 +216,10 @@ void map_draw(frustum_t* frustum)
 			x = chunk->x - camera.x;
 			z = chunk->z - camera.z;
 
-			mlVec3Assign(offset, (float)(x*CHUNK_SIZE) - 0.5f, -0.5f, (float)(z*CHUNK_SIZE) - 0.5f);
-			mlVec3Assign(center, offset.x + chunk_radius, MAP_BLOCK_HEIGHT*0.5f, offset.z + chunk_radius);
-			mlVec3Assign(extent, chunk_radius, MAP_BLOCK_HEIGHT*0.5f, chunk_radius);
-			if (mlTestFrustumAABB_XZ(frustum, center, extent) == ML_OUTSIDE)
+			m_setvec3(offset, (float)(x*CHUNK_SIZE) - 0.5f, -0.5f, (float)(z*CHUNK_SIZE) - 0.5f);
+			m_setvec3(center, offset.x + chunk_radius, MAP_BLOCK_HEIGHT*0.5f, offset.z + chunk_radius);
+			m_setvec3(extent, chunk_radius, MAP_BLOCK_HEIGHT*0.5f, chunk_radius);
+			if (collide_frustum_aabb_xz(frustum, center, extent) == ML_OUTSIDE)
 				continue;
 
 			if (game.debug_mode && chunk->dirty) {
@@ -229,7 +229,7 @@ void map_draw(frustum_t* frustum)
 
 			extent.y = chunk_radius;
 
-			mlUniformVec3(material->chunk_offset, &offset);
+			m_uniform_vec3(material->chunk_offset, &offset);
 
 			if (chunk->alpha.vbo != 0 && nalphas < MAX_ALPHAS) {
 				alphas[nalphas].chunk = chunk;
@@ -242,9 +242,9 @@ void map_draw(frustum_t* frustum)
 				if (mesh->vbo == 0)
 					continue;
 				center.y = (float)(CHUNK_SIZE*j) - 0.5f + chunk_radius;
-				if (mlTestFrustumAABB_Y(frustum, center, extent) == ML_OUTSIDE)
+				if (collide_frustum_aabb_y(frustum, center, extent) == ML_OUTSIDE)
 					continue;
-				mlMapMeshToMaterial(mesh, material);
+				m_apply_material(mesh, material);
 				glDrawArrays(mesh->mode, 0, mesh->count);
 			}
 		}
@@ -294,10 +294,10 @@ int cmp_alpha_faces(block_face_t* a, block_face_t* b)
 
 	vec3_t ca = avg3(a->vtx[0].pos, a->vtx[1].pos, a->vtx[2].pos);
 	vec3_t cb = avg3(b->vtx[0].pos, b->vtx[1].pos, b->vtx[2].pos);
-	ca = mlVec3Sub(ca, offset);
-	cb = mlVec3Sub(cb, offset);
-	float da = mlVec3Dot(ca, ca);
-	float db = mlVec3Dot(cb, cb);
+	ca = m_vec3sub(ca, offset);
+	cb = m_vec3sub(cb, offset);
+	float da = m_vec3dot(ca, ca);
+	float db = m_vec3dot(cb, cb);
 
 	if (da > db)
 		ret = -1;
@@ -320,17 +320,17 @@ void map_draw_alphapass()
 
 	material = game.materials + MAT_CHUNK_ALPHA;
 	glEnable(GL_TEXTURE_2D);
-	mlBindTexture2D(&blocks_texture, 0);
+	m_tex2d_bind(&blocks_texture, 0);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(GL_FALSE);
 	glUseProgram(material->program);
 	glUniform1i(material->tex0, 0);
-	mlUniformMatrix(material->projmat, mlGetMatrix(&game.projection));
-	mlUniformMatrix(material->modelview, mlGetMatrix(&game.modelview));
-	mlUniformVec3(material->amb_light, &game.amb_light);
-	mlUniformVec4(material->fog_color, &game.fog_color);
+	m_uniform_mat44(material->projmat, m_getmatrix(&game.projection));
+	m_uniform_mat44(material->modelview, m_getmatrix(&game.modelview));
+	m_uniform_vec3(material->amb_light, &game.amb_light);
+	m_uniform_vec4(material->fog_color, &game.fog_color);
 
 	for (i = 0, alpha = alphas; i < nalphas; ++i, ++alpha) {
 		game_chunk* chunk = alpha->chunk;
@@ -340,12 +340,12 @@ void map_draw_alphapass()
 		alpha_offset_cmpval.z = game.player.pos.z + alpha->offset.z;
 		if (alpha_sort_faces) {
 			qsort(chunk->alphadata, chunk->alphadata_size, sizeof(block_face_t), (int(*)(const void*, const void*))cmp_alpha_faces);
-			mlUpdateMesh(mesh, 0,
+			m_update_mesh(mesh, 0,
 				chunk->alphadata_size * sizeof(block_face_t),
 				chunk->alphadata);
 		}
-		mlUniformVec3(material->chunk_offset, &alpha->offset);
-		mlMapMeshToMaterial(mesh, material);
+		m_uniform_vec3(material->chunk_offset, &alpha->offset);
+		m_apply_material(mesh, material);
 		glDrawArrays(mesh->mode, 0, mesh->count);
 	}
 
@@ -445,8 +445,8 @@ void chunk_load(int x, int z) {
 void map_unload_chunk_ptr(game_chunk* chunk)
 {
 	for (int i = 0; i < MAP_CHUNK_HEIGHT; ++i)
-		mlDestroyMesh(chunk->solid + i);
-	mlDestroyMesh(&chunk->alpha);
+		m_destroy_mesh(chunk->solid + i);
+	m_destroy_mesh(&chunk->alpha);
 	chunk->alphadata_size = 0;
 	chunk->dirty = true;
 	//printf("unloaded chunk: [%d, %d] [%d, %d]\n", x, z, bufx, bufz);
@@ -504,7 +504,7 @@ void chunk_build_mesh(int x, int z)
 				chunk->alphadata_capacity = nalphafaces;
 			}
 			memcpy(chunk->alphadata, alpha_buffer, alphai * sizeof(block_vtx_t));
-			mlCreateMesh(alpha, alphai, alpha_buffer, ML_POS_3F | ML_TC_2US | ML_CLR_4UB, GL_DYNAMIC_DRAW);
+			m_create_mesh(alpha, alphai, alpha_buffer, ML_POS_3F | ML_TC_2US | ML_CLR_4UB, GL_DYNAMIC_DRAW);
 		}
 	}
 }
@@ -544,7 +544,7 @@ uint32_t avglight(uint32_t b0, uint32_t b1, uint32_t b2, uint32_t b3)
 }
 
 // TODO: calculate index of surrounding blocks directly without going through blockType
-#define POS(x, y, z) mlMakeVec3(x, y, z)
+#define POS(x, y, z) m_makevec3(x, y, z)
 #define BNONSOLID(t) (blockinfo[(n[(t)] & 0xff)].density < density)
 //#define BNONSOLID(t) ((n[(t)] & 0xff) == BLOCK_AIR)
 #define BLOCKAT(x, y, z) (map_blocks[blockIndex((x), (y), (z))])
@@ -796,7 +796,7 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 	}
 
 	if (vi > 0)
-		mlCreateMesh(mesh, vi, verts, ML_POS_3F | ML_TC_2US | ML_CLR_4UB, GL_STATIC_DRAW);
+		m_create_mesh(mesh, vi, verts, ML_POS_3F | ML_TC_2US | ML_CLR_4UB, GL_STATIC_DRAW);
 	return (vi > 0);
 }
 

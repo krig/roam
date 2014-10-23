@@ -1,26 +1,19 @@
 #pragma once
 
-typedef struct obj_mesh {
+typedef struct obj_t {
 	float* verts;
 	uint32_t* indices;
 	size_t nverts;
 	size_t vcap;
 	size_t nindices;
 	size_t fcap;
-} obj_mesh;
+} obj_t;
 
-void objLoad(obj_mesh* mesh, const char* data, float vscale);
+typedef void (*obj_meshgenfn)(obj_t* obj, void** vertexdata, size_t* vertexsize, GLenum* meshflags);
 
-typedef void (*objCreateMeshGenFn)(obj_mesh* obj, void** vertexdata, size_t* vertexsize, GLenum* meshflags);
 
-void objGenNormalsFn(obj_mesh* obj, void** vertexdata, size_t* vertexsize, GLenum* meshflags);
-
-void objCreateMesh(mesh_t* mesh, obj_mesh* obj, objCreateMeshGenFn fn);
-
-static inline void
-objFree(obj_mesh* mesh) {
-	free(mesh->verts);
-	free(mesh->indices);
-	memset(mesh, 0, sizeof(obj_mesh));
-}
+void obj_load(obj_t* mesh, const char* data, float vscale);
+void obj_free(obj_t* mesh);
+void obj_normals(obj_t* obj, void** vertexdata, size_t* vertexsize, GLenum* meshflags);
+void obj_createmesh(mesh_t* mesh, obj_t* obj, obj_meshgenfn fn);
 

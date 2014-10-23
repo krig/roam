@@ -4,31 +4,34 @@
 #include "ui.h"
 #include "objfile.h"
 #include "noise.h"
-#include "voxelmap.h"
+#include "map.h"
 #include "game.h"
 #include "geometry.h"
 #include "u8.h"
 #include "sky.h"
 #include "stb.h"
 
+
 static SDL_Window* window;
 static SDL_GLContext context;
 static bool mouse_captured = false;
+struct game game;
+tex2d_t blocks_texture;
+extern bool alpha_sort_chunks;
+extern bool alpha_sort_faces;
 
-struct game_t game;
-
-ml_tex2d blocks_texture;
 
 static void reset_inputstate(void);
+
 
 static
 void game_init()
 {
-	mlLoadTexture2D(&blocks_texture, "data/blocks8-v1.png");
+	m_tex2d_load(&blocks_texture, "data/blocks8-v1.png");
 
 	game.camera.pitch = 0;
 	game.camera.yaw = 0;
-	mlVec3Assign(game.camera.pos, 0, 0, 0);
+	m_setvec3(game.camera.pos, 0, 0, 0);
 	game.fast_day_mode = false;
 	game.debug_mode = true;
 	game.collisions_on = true;
@@ -36,7 +39,7 @@ void game_init()
 	game.enable_ground = true;
 	game.wireframe = false;
 
-	struct controls_t default_controls = {
+	struct controls default_controls = {
 		.left = SDLK_a,
 		.right = SDLK_d,
 		.forward = SDLK_w,
@@ -55,12 +58,12 @@ void game_init()
 	reset_inputstate();
 
 	printf("* Load materials + UI\n");
-	mlCreateMaterial(&game.materials[MAT_BASIC], basic_vshader, basic_fshader);
-	mlCreateMaterial(&game.materials[MAT_UI], ui_vshader, ui_fshader);
-	mlCreateMaterial(&game.materials[MAT_DEBUG], debug_vshader, debug_fshader);
-	mlCreateMaterial(&game.materials[MAT_CHUNK], chunk_vshader, chunk_fshader);
-	mlCreateMaterial(&game.materials[MAT_CHUNK_ALPHA], chunk_vshader, chunkalpha_fshader);
-	mlCreateMaterial(&game.materials[MAT_SKY], sky_vshader, sky_fshader);
+	m_create_material(&game.materials[MAT_BASIC], basic_vshader, basic_fshader);
+	m_create_material(&game.materials[MAT_UI], ui_vshader, ui_fshader);
+	m_create_material(&game.materials[MAT_DEBUG], debug_vshader, debug_fshader);
+	m_create_material(&game.materials[MAT_CHUNK], chunk_vshader, chunk_fshader);
+	m_create_material(&game.materials[MAT_CHUNK_ALPHA], chunk_vshader, chunkalpha_fshader);
+	m_create_material(&game.materials[MAT_SKY], sky_vshader, sky_fshader);
 	ui_init(game.materials + MAT_UI, game.materials + MAT_DEBUG);
 
 	game.day = 0;
@@ -70,12 +73,9 @@ void game_init()
 	player_init();
 	map_init();
 	player_move_to_spawn();
-	glCheck(__LINE__);
+	m_checkgl(__LINE__);
 
 	mouse_captured = false;
-	//SDL_SetRelativeMouseMode(SDL_TRUE);
-	//SDL_SetWindowGrab(window, SDL_TRUE);
-
 }
 
 
@@ -86,17 +86,17 @@ void game_exit()
 	sky_exit();
 	ui_exit();
 	for (int i = 0; i < MAX_MATERIALS; ++i)
-		mlDestroyMaterial(game.materials + i);
-	mlDestroyMatrixStack(&game.projection);
-	mlDestroyMatrixStack(&game.modelview);
-	mlDestroyTexture2D(&blocks_texture);
+		m_destroy_material(game.materials + i);
+	m_mtxstack_destroy(&game.projection);
+	m_mtxstack_destroy(&game.modelview);
+	m_tex2d_destroy(&blocks_texture);
 }
 
 
 static
 void reset_inputstate(void)
 {
-	memset(&game.input, 0, sizeof(struct inputstate_t));
+	memset(&game.input, 0, sizeof(struct inputstate));
 }
 
 static
@@ -106,9 +106,6 @@ void capture_mouse(bool capture)
 	SDL_SetWindowGrab(window, capture ? SDL_TRUE : SDL_FALSE);
 	mouse_captured = capture;
 }
-
-extern bool alpha_sort_chunks;
-extern bool alpha_sort_faces;
 
 static
 bool handle_event(SDL_Event* event)
@@ -231,6 +228,9 @@ bool handle_event(SDL_Event* event)
 	return true;
 }
 
+
+
+
 /*
 static inline
 ivec3_t ivec3_t_offset(ivec3_t v, int x, int y, int z) {
@@ -240,7 +240,7 @@ ivec3_t ivec3_t_offset(ivec3_t v, int x, int y, int z) {
 
 static inline
 vec3_t ivec3_t_to_vec3(ivec3_t v) {
-	return mlMakeVec3(v.x, v.y, v.z);
+	return m_makevec3(v.x, v.y, v.z);
 }
 
 // sweep box 2 into box 1
@@ -250,18 +250,18 @@ bool sweep_aabb(vec3_t center, vec3_t extent, vec3_t center2, vec3_t extent2, ve
 {
 	bool hit = false;
 	if (delta.x == 0 && delta.y == 0 && delta.z == 0) {
-		hit = mlTestAABBAABB_2(center, extent, center2, extent2, hitpoint, hitdelta, hitnormal);
+		hit = collide_aabb_aabb_full(center, extent, center2, extent2, hitpoint, hitdelta, hitnormal);
 		if (hit) {
 			*time = 0;
 			*sweep_pos = center2;
 		}
 	} else {
-		hit = mlTestSegmentAABB(center2, delta, extent2, center, extent, time, hitpoint, hitdelta, hitnormal);
+		hit = collide_segment_aabb(center2, delta, extent2, center, extent, time, hitpoint, hitdelta, hitnormal);
 		if (hit) {
 			sweep_pos->x = center2.x + delta.x * *time;
 			sweep_pos->y = center2.y + delta.y * *time;
 			sweep_pos->z = center2.z + delta.z * *time;
-			vec3_t dir = mlVec3Normalize(delta);
+			vec3_t dir = m_vec3normalize(delta);
 			hitpoint->x += dir.x * extent2.x;
 			hitpoint->y += dir.y * extent2.y;
 			hitpoint->z += dir.z * extent2.z;
@@ -326,7 +326,7 @@ void game_draw(SDL_Point* viewport, float frametime)
 {
 	mat44_t view;
 	frustum_t frustum;
-	glCheck(__LINE__);
+	m_checkgl(__LINE__);
 
 	glEnable(GL_DEPTH_TEST);
 	glLogicOp(GL_INVERT);
@@ -344,10 +344,10 @@ void game_draw(SDL_Point* viewport, float frametime)
 	vec3_t viewcenter = playerChunkCameraOffset();
 
 	if (game.camera.mode != CAMERA_3RDPERSON) {
-		mlFPSMatrix(&view, viewcenter, game.camera.pitch, game.camera.yaw);
+		m_fpsmatrix(&view, viewcenter, game.camera.pitch, game.camera.yaw);
 	}
 	else {
-		mlLookAt(&view,
+		m_lookat(&view,
 		         viewcenter.x, viewcenter.y, viewcenter.z,
 		         game.player.pos.x - camera.x*CHUNK_SIZE,
 		         game.player.pos.y,
@@ -355,8 +355,8 @@ void game_draw(SDL_Point* viewport, float frametime)
 		         0, 1.f, 0);
 	}
 
-	mlCopyMatrix(mlGetMatrix(&game.modelview), &view);
-	mlGetFrustum(&frustum, mlGetMatrix(&game.projection), &view);
+	m_copymat(m_getmatrix(&game.modelview), &view);
+	m_makefrustum(&frustum, m_getmatrix(&game.projection), &view);
 
 	// crosshair
 	ui_rect(viewport->x/2 - 1, viewport->y/2 - 5, 2, 10, 0x4fffffff);
@@ -380,7 +380,7 @@ void game_draw(SDL_Point* viewport, float frametime)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	mat44_t invview;
-	mlInvertOrthoMatrix(&invview, &view);
+	m_invert_orthonormal(&invview, &view);
 
 
 	{
@@ -406,10 +406,10 @@ void game_draw(SDL_Point* viewport, float frametime)
 		vec3_t xaxis = { 0.025, 0, 0 };
 		vec3_t yaxis = { 0, 0.025, 0 };
 		vec3_t zaxis = { 0, 0, 0.025 };
-		origo = mlMulMatVec3(&invview, &origo);
-		xaxis = mlVec3Add(origo, xaxis);
-		yaxis = mlVec3Add(origo, yaxis);
-		zaxis = mlVec3Add(origo, zaxis);
+		origo = m_matmulvec3(&invview, &origo);
+		xaxis = m_vec3add(origo, xaxis);
+		yaxis = m_vec3add(origo, yaxis);
+		zaxis = m_vec3add(origo, zaxis);
 		ui_debug_line(origo, xaxis, 0xff00ff00);
 		ui_debug_line(origo, yaxis, 0xffff0000);
 		ui_debug_line(origo, zaxis, 0xff0000ff);
@@ -447,11 +447,11 @@ int main(int argc, char* argv[])
 
 	if (argc == 3 && strcmp(argv[1], "objtest") == 0) {
 		char* fdata = sys_readfile(argv[2]);
-		obj_mesh obj;
-		objLoad(&obj, fdata, 0.1f);
+		obj_t obj;
+		obj_load(&obj, fdata, 0.1f);
 		printf("loaded %s: %zu verts, %zu faces\n", argv[2], obj.nverts / 3, obj.nindices / 3);
 		free(fdata);
-		objFree(&obj);
+		obj_free(&obj);
 		exit(0);
 	}
 
@@ -501,15 +501,15 @@ int main(int argc, char* argv[])
 	//SDL_GL_GetDrawableSize(window, &sz.x, &sz.y);
 	glViewport(0, 0, sz.x, sz.y);
 
-	mlInitMatrixStack(&game.projection, 3);
-	mlInitMatrixStack(&game.modelview, 16);
+	m_mtxstack_init(&game.projection, 3);
+	m_mtxstack_init(&game.modelview, 16);
 
-	mlPerspective(mlGetMatrix(&game.projection), DEG2RAD(70.f),
+	m_perspective(m_getmatrix(&game.projection), ML_DEG2RAD(70.f),
 	              (float)sz.x / (float)sz.y,
 	              0.1f, 1024.f);
 
 	game_init();
-	glCheck(__LINE__);
+	m_checkgl(__LINE__);
 
 	int64_t startms, nowms;
 	float frametime;
@@ -529,7 +529,7 @@ int main(int argc, char* argv[])
 					//SDL_GL_GetDrawableSize(window, &sz.x, &sz.y);
 					SDL_GetWindowSize(window, &sz.x, &sz.y);
 					glViewport(0, 0, sz.x, sz.y);
-					mlPerspective(mlGetMatrix(&game.projection), DEG2RAD(70.f),
+					m_perspective(m_getmatrix(&game.projection), ML_DEG2RAD(70.f),
 					              (float)sz.x / (float)sz.y,
 					              0.1f, 1024.f);
 				} else if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
@@ -552,7 +552,7 @@ int main(int argc, char* argv[])
 		game_draw(&sz, frametime);
 
 		SDL_GL_SwapWindow(window);
-		glCheck(__LINE__);
+		m_checkgl(__LINE__);
 	}
 
 exit:

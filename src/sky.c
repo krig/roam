@@ -5,22 +5,22 @@
 #include "geometry.h"
 
 static mesh_t sky_mesh;
-static ml_renderable sky_renderable;
+static renderobj_t sky_renderable;
 
 
 void sky_init()
 {
 	material_t* material = game.materials + MAT_SKY;
 	make_hemisphere(&sky_mesh, 5.f, 4);
-	mlCreateRenderable(&sky_renderable, material, &sky_mesh);
+	m_create_renderobj(&sky_renderable, material, &sky_mesh);
 	sky_tick(0);
 }
 
 
 void sky_exit()
 {
-	mlDestroyMesh(&sky_mesh);
-	mlDestroyRenderable(&sky_renderable);
+	m_destroy_mesh(&sky_mesh);
+	m_destroy_renderobj(&sky_renderable);
 }
 
 
@@ -33,22 +33,22 @@ void sky_draw()
 	mat44_t skyview;
 	vec3_t origo = {0, 0, 0};
 	if (game.camera.mode != CAMERA_3RDPERSON) {
-		mlFPSMatrix(&skyview, origo, game.camera.pitch, game.camera.yaw);
+		m_fpsmatrix(&skyview, origo, game.camera.pitch, game.camera.yaw);
 	} else {
-		mlLookAt(&skyview, 0, 0, 0,
+		m_lookat(&skyview, 0, 0, 0,
 		         game.player.pos.x - game.camera.pos.x,
 		         game.player.pos.y - game.camera.pos.y,
 		         game.player.pos.z - game.camera.pos.z,
 		         0, 1.f, 0);
 	}
-	mlDrawBegin(&sky_renderable);
-	mlUniformMatrix(material->projmat, mlGetMatrix(&game.projection));
-	mlUniformMatrix(material->modelview, &skyview);
-	mlUniformVec3(material->sun_dir, &game.light_dir);
-	mlUniformVec3(material->sun_color, &game.sun_color);
-	mlUniformVec3(material->sky_dark, &game.sky_dark);
-	mlUniformVec3(material->sky_light, &game.sky_light);
-	mlDrawEnd(&sky_renderable);
+	m_draw_begin(&sky_renderable);
+	m_uniform_mat44(material->projmat, m_getmatrix(&game.projection));
+	m_uniform_mat44(material->modelview, &skyview);
+	m_uniform_vec3(material->sun_dir, &game.light_dir);
+	m_uniform_vec3(material->sun_color, &game.sun_color);
+	m_uniform_vec3(material->sky_dark, &game.sky_dark);
+	m_uniform_vec3(material->sky_light, &game.sky_light);
+	m_draw_end(&sky_renderable);
 	glDepthFunc(GL_LESS);
 	glDepthRange(0, 1);
 	glCullFace(GL_BACK);
@@ -181,7 +181,7 @@ void sky_tick(float dt)
 	vec3_t fogc = sun_mix(fog, day_amt, dusk_amt, night_amt, dawn_amt);
 	float fogd = fogdensity[0]*day_amt + fogdensity[1]*dusk_amt + fogdensity[2]*night_amt + fogdensity[3]*dawn_amt;
 
-	mlVec4Assign(game.fog_color, fogc.x, fogc.y, fogc.z, fogd);
-	mlVec3Assign(game.light_dir, cos(t * ML_TWO_PI), -sin(t * ML_TWO_PI), 0);
-	game.light_dir = mlVec3Normalize(game.light_dir);
+	m_setvec4(game.fog_color, fogc.x, fogc.y, fogc.z, fogd);
+	m_setvec3(game.light_dir, cos(t * ML_TWO_PI), -sin(t * ML_TWO_PI), 0);
+	game.light_dir = m_vec3normalize(game.light_dir);
 }
