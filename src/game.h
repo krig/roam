@@ -59,7 +59,7 @@ struct game_t {
 	ml_material materials[MAX_MATERIALS];
 	ml_matrixstack projection;
 	ml_matrixstack modelview;
-	game_map map;
+	struct game_map_t map;
 
 	int day; // increases after every day/night cycle
 	double time_of_day;

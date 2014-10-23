@@ -82,7 +82,7 @@ void gameInitMap() {
 	gen_block_tcs();
 
 	printf("* Allocate and build initial map...\n");
-	memset(&game.map, 0, sizeof(game_map));
+	memset(&game.map, 0, sizeof(struct game_map_t));
 	map_blocks = (uint32_t*)malloc(sizeof(uint32_t)*MAP_BUFFER_SIZE);
 	memset(map_blocks, 0, sizeof(uint32_t)*MAP_BUFFER_SIZE);
 

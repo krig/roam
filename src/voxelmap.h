@@ -69,12 +69,12 @@ typedef struct game_chunk {
 // M: metadata 0-255
 // T: blocktype 0-255
 
-typedef struct game_map {
+struct game_map_t {
 	game_chunk chunks[MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH];
 	// caches the block data for the area around the player
 	// blocks = [blockid | meta | sunlightlevel | torchlightlevel ]
 	unsigned long seed;
-} game_map;
+};
 
 extern uint32_t* map_blocks;
 
