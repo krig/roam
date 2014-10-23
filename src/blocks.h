@@ -1,6 +1,10 @@
 #pragma once
 
-enum blocktexidx_t {
+#define AIR_DENSITY 0
+#define WATER_DENSITY 1
+#define SOLID_DENSITY 2
+
+enum BlockTex {
 	BLOCK_TEX_TOP,
 	BLOCK_TEX_BOTTOM,
 	BLOCK_TEX_LEFT,
@@ -9,37 +13,14 @@ enum blocktexidx_t {
 	BLOCK_TEX_BACK
 };
 
-enum blockflags_t {
+enum BlockFlags {
 	BLOCK_SOLID = 1,
 	BLOCK_ALPHA = 2, // draw in alpha pass
 	BLOCK_MESH = 4, // custom mesh shape
 	BLOCK_TWOSIDED = 4 // render without backface culling
 };
 
-#define AIR_DENSITY 0
-#define WATER_DENSITY 1
-#define SOLID_DENSITY 2
-
-struct blockinfo {
-	const char* name; // short description
-	// image atlas index
-	// 0 = fill with previous
-	int img[6];
-
-	int density;
-
-	bool alpha; // render in alpha pass
-	bool backfaces; // render in backface pass
-
-	uint32_t light; // light emitted by block (rgb)
-
-	// todo: custom shape?
-	// maybe this has to be hardcoded in the tesselator for each blocktype
-};
-
-extern struct blockinfo blockinfo[];
-
-enum block_types {
+enum BlockTypes {
 	BLOCK_AIR,
 	BLOCK_GRASS,
 	BLOCK_WET_GRASS,
@@ -68,5 +49,26 @@ enum block_types {
 	BLOCK_TEST_ALPHA,
 	NUM_BLOCKTYPES
 };
+
+
+struct blockinfo {
+	const char* name; // short description
+	// image atlas index
+	// 0 = fill with previous
+	int img[6];
+
+	int density;
+
+	bool alpha; // render in alpha pass
+	bool backfaces; // render in backface pass
+
+	uint32_t light; // light emitted by block (rgb)
+
+	// todo: custom shape?
+	// maybe this has to be hardcoded in the tesselator for each blocktype
+};
+
+extern struct blockinfo blockinfo[];
+
 
 void blocks_init(void);

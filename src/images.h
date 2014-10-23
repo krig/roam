@@ -7,7 +7,7 @@
 #define IMG_TC_BIAS (1.0/4000.0)
 #define IMG_AT(c, r) (IMG_ATLAS_ROW*(r) + (c + 1))
 
-enum img_types {
+enum ImageTypes {
 	IMG_INVALID,
 	IMG_GREEN_GRASS = IMG_AT(0, 0),
 	IMG_WET_GRASS = IMG_AT(1, 0),

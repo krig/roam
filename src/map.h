@@ -38,26 +38,26 @@ typedef struct block_face_t {
 
 #pragma pack(pop)
 
-enum CHUNK_GEN_STATE {
+enum ChunkGenState {
 	CHUNK_GEN_S0, /* no blocks generated for this chunk yet */
 	CHUNK_GEN_S1, /* base terrain blocks generated */
 	CHUNK_GEN_S2, /* structures / plants generated */
 	CHUNK_GEN_S3, /* light fully propagated */
 };
 
-enum CHUNK_TESS_STATE {
-	CHUNK_TESS_S0, /* no mesh generated */
-	CHUNK_TESS_S1, /* gen-state 1 mesh generated */
-	CHUNK_TESS_S2, /* gen-state 2 mesh generated */
-	CHUNK_TESS_S3
+enum ChunkMeshState {
+	CHUNK_MESH_S0, /* no mesh generated */
+	CHUNK_MESH_S1, /* gen-state 1 mesh generated */
+	CHUNK_MESH_S2, /* gen-state 2 mesh generated */
+	CHUNK_MESH_S3
 };
 
 typedef struct game_chunk {
 	int x; // actual coordinates of chunk
 	int z;
 	bool dirty;
-	uint32_t sgen;
-	uint32_t stess;
+	uint32_t genstate;
+	uint32_t meshstate;
 	mesh_t solid[MAP_CHUNK_HEIGHT];
 	mesh_t alpha; // sort before rendering - should not be a mesh? no backface culling?
 	block_face_t* alphadata;
