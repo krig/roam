@@ -85,7 +85,7 @@ extern struct game game;
 
 
 static inline
-chunkpos_t cameraChunk()
+chunkpos_t camera_chunk()
 {
 	chunkpos_t c = { floor(round(game.camera.pos.x) / CHUNK_SIZE),
 	               floor(round(game.camera.pos.z) / CHUNK_SIZE) };
@@ -93,7 +93,7 @@ chunkpos_t cameraChunk()
 }
 
 static inline
-ivec3_t cameraBlock()
+ivec3_t camera_block()
 {
 	ivec3_t b = { round(game.camera.pos.x),
 	               round(game.camera.pos.y),
@@ -102,7 +102,7 @@ ivec3_t cameraBlock()
 }
 
 static inline
-chunkpos_t playerChunk()
+chunkpos_t player_chunk()
 {
 	chunkpos_t c = { floor(round(game.player.pos.x) / CHUNK_SIZE),
 	               floor(round(game.player.pos.z) / CHUNK_SIZE) };
@@ -110,7 +110,7 @@ chunkpos_t playerChunk()
 }
 
 static inline
-ivec3_t playerBlock()
+ivec3_t player_block()
 {
 	ivec3_t b = { round(game.player.pos.x),
 	               round(game.player.pos.y),
@@ -119,19 +119,16 @@ ivec3_t playerBlock()
 }
 
 static inline
-bool blockCompare(ivec3_t a, ivec3_t b)
+bool block_eq(ivec3_t a, ivec3_t b)
 {
 	return (a.x == b.x && a.y == b.y && a.z == b.z);
 }
 
 static inline
-vec3_t playerChunkCameraOffset()
+vec3_t camera_offset()
 {
-	chunkpos_t c = playerChunk();
-	vec3_t ret = {
-		game.camera.pos.x - (double)(c.x * CHUNK_SIZE),
-		game.camera.pos.y,
-		game.camera.pos.z - (double)(c.z * CHUNK_SIZE)
-	};
-	return ret;
+	chunkpos_t c = player_chunk();
+	return m_vec3(game.camera.pos.x - (double)(c.x * CHUNK_SIZE),
+	                  game.camera.pos.y,
+	                  game.camera.pos.z - (double)(c.z * CHUNK_SIZE));
 }

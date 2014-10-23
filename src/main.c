@@ -205,12 +205,12 @@ bool handle_event(SDL_Event* event)
 				game.input.prepicked_block.y,
 				game.input.prepicked_block.z);
 
-			ivec3_t feet = playerBlock();
+			ivec3_t feet = player_block();
 			ivec3_t head = feet;
 			head.y += 1;
 			if (blockTypeByCoord(game.input.prepicked_block) == BLOCK_AIR &&
-			    !blockCompare(head, game.input.prepicked_block) &&
-			    !blockCompare(feet, game.input.prepicked_block)) {
+			    !block_eq(head, game.input.prepicked_block) &&
+			    !block_eq(feet, game.input.prepicked_block)) {
 				printf("can create.\n");
 				map_update_block(game.input.prepicked_block, BLOCK_TEST_ALPHA);
 			}
@@ -240,7 +240,7 @@ ivec3_t ivec3_t_offset(ivec3_t v, int x, int y, int z) {
 
 static inline
 vec3_t ivec3_t_to_vec3(ivec3_t v) {
-	return m_makevec3(v.x, v.y, v.z);
+	return m_vec3(v.x, v.y, v.z);
 }
 
 // sweep box 2 into box 1
@@ -340,19 +340,17 @@ void game_draw(SDL_Point* viewport, float frametime)
 	if (game.wireframe)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-	chunkpos_t camera = playerChunk();
-	vec3_t viewcenter = playerChunkCameraOffset();
+	chunkpos_t camera = player_chunk();
+	vec3_t viewcenter = camera_offset();
 
 	if (game.camera.mode != CAMERA_3RDPERSON) {
 		m_fpsmatrix(&view, viewcenter, game.camera.pitch, game.camera.yaw);
 	}
 	else {
 		m_lookat(&view,
-		         viewcenter.x, viewcenter.y, viewcenter.z,
-		         game.player.pos.x - camera.x*CHUNK_SIZE,
-		         game.player.pos.y,
-		         game.player.pos.z - camera.z*CHUNK_SIZE,
-		         0, 1.f, 0);
+		         viewcenter,
+		         camera_offset(),
+		         m_up);
 	}
 
 	m_copymat(m_getmatrix(&game.modelview), &view);

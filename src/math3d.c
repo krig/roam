@@ -3,6 +3,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+const vec3_t m_up = {0, 1, 0};
+const vec3_t m_right = {1, 0, 0};
+const vec3_t m_forward = {0, 0, -1};
+
+
 void m_perspective(mat44_t* m, float fovy, float aspect, float zNear, float zFar)
 {
 	m_setidentity(m);
@@ -73,17 +78,19 @@ void m_fpsmatrix(mat44_t* to, vec3_t eye, float pitch, float yaw)
 }
 
 
-void m_lookat(mat44_t* m,
-	float eyeX, float eyeY, float eyeZ,
-	float atX, float atY, float atZ,
-	float upX, float upY, float upZ)
+void m_lookat(mat44_t* m, vec3_t eye, vec3_t at, vec3_t up)
 {
 	mat44_t M;
 	vec3_t f, u, s;
 
-	m_setvec3(f, atX - eyeX, atY - eyeY, atZ - eyeZ);
+	m_setvec3(f, at.x - eye.x, at.y - eye.y, at.z - eye.z);
 	f = m_vec3normalize(f);
-	m_setvec3(u, upX, upY, upZ);
+
+	// check for when we're looking straight up or down Y
+	if (fabsf(f.x) < ML_EPSILON && fabsf(f.z) < ML_EPSILON && fabsf(up.x) < ML_EPSILON && fabsf(up.z) < ML_EPSILON)
+		m_setvec3(up, 0, 0, (f.y < 0) ? -1 : 1);
+
+	m_setvec3(u, up.x, up.y, up.z);
 	s = m_vec3normalize(m_vec3cross(f, u));
 	u = m_vec3normalize(m_vec3cross(s, f));
 
@@ -99,11 +106,10 @@ void m_lookat(mat44_t* m,
 	M.m[3] = M.m[7] = M.m[11] = M.m[12] = M.m[13] = M.m[14] = 0;
 	M.m[15] = 1.f;
 	m_copymat(m, &M);
-	m_translate(m, -eyeX, -eyeY, -eyeZ);
+	m_translate(m, -eye.x, -eye.y, -eye.z);
 }
 
-void
-m_copymat(mat44_t* to, const mat44_t* from)
+void m_copymat(mat44_t* to, const mat44_t* from)
 {
 	memcpy(to, from, sizeof(mat44_t));
 }

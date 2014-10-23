@@ -97,7 +97,7 @@ void map_init()
 	simplex_init(game.map.seed);
 	opensimplex_init(game.map.seed);
 
-	chunkpos_t camera = playerChunk();
+	chunkpos_t camera = player_chunk();
 	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
 		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x)
 			chunk_load(camera.x + x, camera.z + z);
@@ -129,7 +129,7 @@ void map_exit()
 
 void map_tick()
 {
-	chunkpos_t nc = playerChunk();
+	chunkpos_t nc = player_chunk();
 	if (nc.x != map_chunk.x || nc.z != map_chunk.z) {
 		game_chunk* chunks = game.map.chunks;
 		int cx = nc.x;
@@ -200,7 +200,7 @@ void map_draw(frustum_t* frustum)
 	float chunk_radius = (float)CHUNK_SIZE*0.5f;
 	vec3_t offset, center, extent;
 	game_chunk* chunks = game.map.chunks;
-	chunkpos_t camera = playerChunk();
+	chunkpos_t camera = player_chunk();
 
 	int dx, dz, bx, bz, x, z, j;
 	game_chunk* chunk;
@@ -544,7 +544,7 @@ uint32_t avglight(uint32_t b0, uint32_t b1, uint32_t b2, uint32_t b3)
 }
 
 // TODO: calculate index of surrounding blocks directly without going through blockType
-#define POS(x, y, z) m_makevec3(x, y, z)
+#define POS(x, y, z) m_vec3(x, y, z)
 #define BNONSOLID(t) (blockinfo[(n[(t)] & 0xff)].density < density)
 //#define BNONSOLID(t) ((n[(t)] & 0xff) == BLOCK_AIR)
 #define BLOCKAT(x, y, z) (map_blocks[blockIndex((x), (y), (z))])

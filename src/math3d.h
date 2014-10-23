@@ -192,7 +192,7 @@ typedef struct mtxstack {
 
 void     m_perspective(mat44_t* m, float fovy, float aspect, float zNear, float zFar);
 void     m_setidentity(mat44_t* m);
-void     m_lookat(mat44_t* m, float eyeX, float eyeY, float eyeZ, float atX, float atY, float atZ, float upX, float upY, float upZ);
+void     m_lookat(mat44_t* m, vec3_t eye, vec3_t at, vec3_t up);
 void     m_copymat(mat44_t* to, const mat44_t* from);
 void     m_fps_rotation(float pitch, float yaw, vec3_t* x, vec3_t* y, vec3_t* z);
 void     m_fpsmatrix(mat44_t* to, vec3_t eye, float pitch, float yaw);
@@ -258,8 +258,8 @@ bool     intersect_moving_aabb_aabb(aabb_t a, aabb_t b, vec3_t va, vec3_t vb, fl
 
 // inline functions
 
-static inline void
-m_checkgl(int line)
+static inline
+void m_checkgl(int line)
 {
 #ifndef NDEBUG
 	GLenum err;
@@ -280,37 +280,42 @@ m_checkgl(int line)
 #endif
 }
 
-static inline bool
-m_fisvalid(float f)
+static inline
+bool m_fisvalid(float f)
 {
 	return (f >= -FLT_MAX && f <= FLT_MAX);
 }
 
-static inline float
-m_sign(float x) {
+static inline
+float m_sign(float x)
+{
 	return (x >= 0) ? 1.f : -1.f;
 }
 
-static inline float
-m_clamp(float t, float lo, float hi) {
+static inline
+float m_clamp(float t, float lo, float hi)
+{
 	return (t < lo) ? lo : ((t > hi) ? hi : t);
 }
 
-static inline double
-m_clampd(double t, double lo, double hi) {
+static inline
+double m_clampd(double t, double lo, double hi)
+{
 	return (t < lo) ? lo : ((t > hi) ? hi : t);
 }
 
-static inline vec3_t
-m_clampVec3(vec3_t t, float lo, float hi) {
+static inline
+vec3_t m_clampVec3(vec3_t t, float lo, float hi)
+{
 	vec3_t ret = { m_clamp(t.x, lo, hi),
 	                m_clamp(t.y, lo, hi),
 	                m_clamp(t.z, lo, hi) };
 	return ret;
 }
 
-static inline float
-m_wrap(float t, float lo, float hi) {
+static inline
+float m_wrap(float t, float lo, float hi)
+{
     while (t < lo)
 	    t = hi - (lo - t);
     while (t > hi)
@@ -318,68 +323,86 @@ m_wrap(float t, float lo, float hi) {
     return t;
 }
 
-static inline vec2_t
-m_makevec2(float x, float y) {
+static inline
+vec2_t m_vec2(float x, float y)
+{
 	vec2_t v = { x, y };
 	return v;
 }
 
-static inline vec3_t
-m_makevec3(float x, float y, float z) {
+static inline
+vec3_t m_vec3(float x, float y, float z)
+{
 	vec3_t v = { x, y, z };
 	return v;
 }
 
-static inline vec4_t
-m_makevec4(float x, float y, float z, float w) {
+static inline
+vec4_t m_vec4(float x, float y, float z, float w)
+{
 	vec4_t v = { x, y, z, w };
 	return v;
 }
 
-static inline void
-m_uniform_mat44(GLint index, mat44_t* mat) {
+static inline
+dvec3_t m_dvec3(double x, double y, double z)
+{
+	dvec3_t v = { x, y, z };
+	return v;
+}
+
+static inline
+void m_uniform_mat44(GLint index, mat44_t* mat)
+{
 	if (index != -1)
 		glUniformMatrix4fv(index, 1, GL_FALSE, mat->m);
 }
 
-static inline void
-m_uniform_mat33(GLint index, mat33_t* mat) {
+static inline
+void m_uniform_mat33(GLint index, mat33_t* mat)
+{
 	if (index != -1)
 		glUniformMatrix3fv(index, 1, GL_FALSE, mat->m);
 }
 
-static inline void
-m_uniform_vec2(GLint index, vec2_t* v) {
+static inline
+void m_uniform_vec2(GLint index, vec2_t* v)
+{
 	if (index != -1)
 		glUniform2fv(index, 1, (GLfloat*)v);
 }
 
-static inline void
-m_uniform_vec3(GLint index, vec3_t* v) {
+static inline
+void m_uniform_vec3(GLint index, vec3_t* v)
+{
 	if (index != -1)
 		glUniform3fv(index, 1, (GLfloat*)v);
 }
 
-static inline void
-m_uniform_vec4(GLint index, vec4_t* v) {
+static inline
+void m_uniform_vec4(GLint index, vec4_t* v)
+{
 	if (index != -1)
 		glUniform4fv(index, 1, (GLfloat*)v);
 }
 
-static inline void
-m_uniform_i(GLint index, int i) {
+static inline
+void m_uniform_i(GLint index, int i)
+{
 	if (index != -1)
 		glUniform1i(index, i);
 }
 
-static inline void
-m_draw_begin(renderobj_t* renderable) {
+static inline
+void m_draw_begin(renderobj_t* renderable)
+{
 	glUseProgram(renderable->material->program);
 	glBindVertexArray(renderable->vao);
 }
 
-static inline void
-m_draw_end(renderobj_t* renderable) {
+static inline
+void m_draw_end(renderobj_t* renderable)
+{
 	const mesh_t* mesh = renderable->mesh;
 	if (mesh->ibo > 0)
 		glDrawElements(mesh->mode, mesh->count, mesh->ibotype, 0);
@@ -389,15 +412,21 @@ m_draw_end(renderobj_t* renderable) {
 	glUseProgram(0);
 }
 
-static inline vec3_t m_xaxis44(const mat44_t* from) {
+static inline
+vec3_t m_xaxis44(const mat44_t* from)
+{
 	return *(vec3_t*)&from->m[0];
 }
 
-static inline vec3_t m_yaxis44(const mat44_t* from) {
+static inline
+vec3_t m_yaxis44(const mat44_t* from)
+{
 	return *(vec3_t*)&from->m[4];
 }
 
-static inline vec3_t m_zaxis44(const mat44_t* from) {
+static inline
+vec3_t m_zaxis44(const mat44_t* from)
+{
 	return *(vec3_t*)&from->m[8];
 }
 
@@ -406,13 +435,15 @@ static inline vec3_t m_zaxis44(const mat44_t* from) {
 #define m_setvec3(v, a, b, c) { (v).x = (a); (v).y = (b); (v).z = (c); }
 #define m_setvec4(v, a, b, c, d) { (v).x = (a); (v).y = (b); (v).z = (c); (v).w = (d); }
 
-static inline float
-m_vec3dot(const vec3_t a, const vec3_t b) {
+static inline
+float m_vec3dot(const vec3_t a, const vec3_t b)
+{
 	return a.x * b.x + a.y * b.y + a.z * b.z;
 }
 
-static inline vec3_t
-m_vec3cross(const vec3_t a, const vec3_t b) {
+static inline
+vec3_t m_vec3cross(const vec3_t a, const vec3_t b)
+{
 	vec3_t to;
 	to.x = a.y*b.z - a.z*b.y;
 	to.y = a.z*b.x - a.x*b.z;
@@ -420,79 +451,92 @@ m_vec3cross(const vec3_t a, const vec3_t b) {
 	return to;
 }
 
-static inline vec2_t
-m_vec2add(const vec2_t a, const vec2_t b) {
+static inline
+vec2_t m_vec2add(const vec2_t a, const vec2_t b)
+{
 	vec2_t to = { a.x + b.x, a.y + b.y };
 	return to;
 }
 
-static inline vec2_t
-m_vec2scale(vec2_t tc, float by) {
+static inline
+vec2_t m_vec2scale(vec2_t tc, float by)
+{
 	tc.x += by;
 	tc.y += by;
 	return tc;
 }
 
-static inline vec3_t
-m_vec3add(const vec3_t a, const vec3_t b) {
+static inline
+vec3_t m_vec3add(const vec3_t a, const vec3_t b)
+{
 	vec3_t to = { a.x + b.x, a.y + b.y, a.z + b.z };
 	return to;
 }
 
-static inline vec4_t
-m_vec4add(const vec4_t a, const vec4_t b) {
+static inline
+vec4_t m_vec4add(const vec4_t a, const vec4_t b)
+{
 	vec4_t to = { a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w };
 	return to;
 }
 
-static inline vec3_t
-m_vec3sub(const vec3_t a, const vec3_t b) {
+static inline
+vec3_t m_vec3sub(const vec3_t a, const vec3_t b)
+{
 	vec3_t to = { a.x - b.x, a.y - b.y, a.z - b.z };
 	return to;
 }
 
-static inline vec3_t
-m_vec3scale(const vec3_t a, float f) {
+static inline
+vec3_t m_vec3scale(const vec3_t a, float f)
+{
 	vec3_t to = { a.x * f, a.y * f, a.z * f };
 	return to;
 }
 
-static inline vec4_t
-m_vec4scale(const vec4_t a, float f) {
+static inline
+vec4_t m_vec4scale(const vec4_t a, float f)
+{
 	vec4_t to = { a.x * f, a.y * f, a.z * f, a.w * f };
 	return to;
 }
 
-static inline float
-m_vec3len2(const vec3_t v) {
+static inline
+float m_vec3len2(const vec3_t v)
+{
 	return v.x*v.x + v.y*v.y + v.z*v.z;
 }
 
-static inline float
-m_vec3len(const vec3_t v) {
+static inline
+float m_vec3len(const vec3_t v)
+{
 	return sqrtf(v.x*v.x + v.y*v.y + v.z*v.z);
 }
 
-static inline vec3_t
-m_vec3normalize(vec3_t v) {
+static inline
+vec3_t m_vec3normalize(vec3_t v)
+{
 	float invlen = 1.f / m_vec3len(v);
 	return m_vec3scale(v, invlen);
 }
 
-static inline vec3_t
-m_vec3invert(const vec3_t v) {
+static inline
+vec3_t m_vec3invert(const vec3_t v)
+{
 	vec3_t to = { -v.x, -v.y, -v.z };
 	return to;
 }
 
-static inline vec4_t
-m_vec4abs(const vec4_t v) {
+static inline
+ vec4_t m_vec4abs(const vec4_t v)
+{
 	vec4_t to = { fabs(v.x), fabs(v.y), fabs(v.z), fabs(v.w) };
 	return to;
 }
 
-static inline vec4_t
-m_normalize_plane(vec4_t plane) {
+static inline
+vec4_t m_normalize_plane(vec4_t plane)
+{
 	vec3_t n = {plane.x, plane.y, plane.z};
 	float len = m_vec3len(n);
 	n = m_vec3scale(n, 1.f / len);
@@ -501,6 +545,18 @@ m_normalize_plane(vec4_t plane) {
 	plane.z = n.z;
 	plane.w = plane.w / len;
 	return plane;
+}
+
+static inline
+vec3_t m_dvec3tovec3(dvec3_t v)
+{
+	return m_vec3(v.x, v.y, v.z);
+}
+
+static inline
+dvec3_t m_dvec3sub(dvec3_t a, dvec3_t b)
+{
+	return m_dvec3(a.x - b.x, a.y - b.y, a.z - b.z);
 }
 
 static inline
@@ -550,5 +606,14 @@ bool collide_point_aabb(vec3_t point, vec3_t center, vec3_t extent)
 		(fabs(center.y - point.y) < extent.y) &&
 		(fabs(center.z - point.z) < extent.z);
 }
+
+
+
+// constants
+
+extern const vec3_t m_up;
+extern const vec3_t m_right;
+extern const vec3_t m_forward;
+
 
 // TODO: GL state stack - track state as a stack of uint64_ts...

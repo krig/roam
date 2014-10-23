@@ -164,8 +164,8 @@ void player_collide(dvec3_t* pos, vec3_t* move, vec3_t* vel)
 		if (sweep_aabb_into_blocks(pcenter, pextent, vel, other, n, &hitpoint, &hitdelta, &normal, &sweeppos)) {
 			if (game.debug_mode) {
 				vec3_t nh = hitpoint;
-				nh.x -= playerChunk().x * CHUNK_SIZE;
-				nh.z -= playerChunk().z * CHUNK_SIZE;
+				nh.x -= player_chunk().x * CHUNK_SIZE;
+				nh.z -= player_chunk().z * CHUNK_SIZE;
 				vec3_t nh2 = m_vec3add(nh, normal);
 				ui_debug_point(nh, 0xffff0000);
 				ui_debug_line(nh, nh2, 0xffff7f00);

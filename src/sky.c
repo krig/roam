@@ -4,23 +4,23 @@
 #include "sky.h"
 #include "geometry.h"
 
-static mesh_t sky_mesh;
-static renderobj_t sky_renderable;
+static mesh_t mesh;
+static renderobj_t renderobj;
 
 
 void sky_init()
 {
 	material_t* material = game.materials + MAT_SKY;
-	make_hemisphere(&sky_mesh, 5.f, 4);
-	m_create_renderobj(&sky_renderable, material, &sky_mesh);
+	make_hemisphere(&mesh, 5.f, 4);
+	m_create_renderobj(&renderobj, material, &mesh);
 	sky_tick(0);
 }
 
 
 void sky_exit()
 {
-	m_destroy_mesh(&sky_mesh);
-	m_destroy_renderobj(&sky_renderable);
+	m_destroy_mesh(&mesh);
+	m_destroy_renderobj(&renderobj);
 }
 
 
@@ -32,23 +32,20 @@ void sky_draw()
 	glDepthRange(1, 1);
 	mat44_t skyview;
 	vec3_t origo = {0, 0, 0};
-	if (game.camera.mode != CAMERA_3RDPERSON) {
+	if (game.camera.mode != CAMERA_3RDPERSON)
 		m_fpsmatrix(&skyview, origo, game.camera.pitch, game.camera.yaw);
-	} else {
-		m_lookat(&skyview, 0, 0, 0,
-		         game.player.pos.x - game.camera.pos.x,
-		         game.player.pos.y - game.camera.pos.y,
-		         game.player.pos.z - game.camera.pos.z,
-		         0, 1.f, 0);
+	else {
+		vec3_t at = m_dvec3tovec3(m_dvec3sub(game.player.pos, game.camera.pos));
+		m_lookat(&skyview, m_vec3(0, 0, 0), at, m_up);
 	}
-	m_draw_begin(&sky_renderable);
+	m_draw_begin(&renderobj);
 	m_uniform_mat44(material->projmat, m_getmatrix(&game.projection));
 	m_uniform_mat44(material->modelview, &skyview);
 	m_uniform_vec3(material->sun_dir, &game.light_dir);
 	m_uniform_vec3(material->sun_color, &game.sun_color);
 	m_uniform_vec3(material->sky_dark, &game.sky_dark);
 	m_uniform_vec3(material->sky_light, &game.sky_light);
-	m_draw_end(&sky_renderable);
+	m_draw_end(&renderobj);
 	glDepthFunc(GL_LESS);
 	glDepthRange(0, 1);
 	glCullFace(GL_BACK);

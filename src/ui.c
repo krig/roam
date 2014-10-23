@@ -323,7 +323,7 @@ void ui_debug_block(ivec3_t block, uint32_t clr)
 {
 	vec3_t pos;
 	vec3_t ext;
-	chunkpos_t camera = playerChunk();
+	chunkpos_t camera = player_chunk();
 	m_setvec3(pos,
 	             block.x - camera.x*CHUNK_SIZE,
 	             block.y,
