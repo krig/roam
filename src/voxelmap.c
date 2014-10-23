@@ -59,7 +59,9 @@ static ml_chunk tesselation_queue[TESSELATION_QUEUE_SIZE];
 static size_t tesselation_queue_head = 0;
 static size_t tesselation_queue_len = 0;
 
-static bool pushChunkTesselation(int x, int z) {
+static
+bool pushChunkTesselation(int x, int z)
+{
 	ml_chunk chunk = { x, z };
 	if (tesselation_queue_len >= TESSELATION_QUEUE_SIZE)
 		return false;
@@ -69,7 +71,9 @@ static bool pushChunkTesselation(int x, int z) {
 	return true;
 }
 
-static bool popChunkTesselation(ml_chunk* chunk) {
+static
+bool popChunkTesselation(ml_chunk* chunk)
+{
 	if (tesselation_queue_len == 0)
 		return false;
 	*chunk = tesselation_queue[tesselation_queue_head];
@@ -77,7 +81,9 @@ static bool popChunkTesselation(ml_chunk* chunk) {
 	return true;
 }
 
-void gameInitMap() {
+
+void map_init()
+{
 	blocks_init();
 	gen_block_tcs();
 
@@ -94,23 +100,25 @@ void gameInitMap() {
 	ml_chunk camera = playerChunk();
 	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
 		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x)
-			gameLoadChunk(camera.x + x, camera.z + z);
+			chunk_load(camera.x + x, camera.z + z);
 
 	// tesselate column
 	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z) {
 		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x) {
 			if (!pushChunkTesselation(camera.x + x, camera.z + z)) {
-				gameTesselateChunk(camera.x + x, camera.z + z);
+				chunk_build_mesh(camera.x + x, camera.z + z);
 			}
 		}
 	}
 	map_chunk = camera;
 
-	gameUpdateMap();
+	map_tick();
 	printf("* Map load complete.\n");
 }
 
-void gameFreeMap() {
+
+void map_exit()
+{
 	for (size_t i = 0; i < MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH; ++i)
 		map_unload_chunk_ptr(game.map.chunks + i);
 
@@ -118,7 +126,9 @@ void gameFreeMap() {
 	map_blocks = NULL;
 }
 
-void gameUpdateMap() {
+
+void map_tick()
+{
 	ml_chunk nc = playerChunk();
 	if (nc.x != map_chunk.x || nc.z != map_chunk.z) {
 		game_chunk* chunks = game.map.chunks;
@@ -136,8 +146,8 @@ void gameUpdateMap() {
 				game_chunk* chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
 				if (chunk->x != cx + dx ||
 				    chunk->z != cz + dz) {
-					gameUnloadChunk(chunk->x, chunk->z);
-					gameLoadChunk(cx + dx, cz + dz);
+					chunk_unload(chunk->x, chunk->z);
+					chunk_load(cx + dx, cz + dz);
 					chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
 					assert(chunk->x == (cx + dx) && chunk->z == (cz + dz));
 				}
@@ -146,7 +156,7 @@ void gameUpdateMap() {
 		for (int dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
 			for (int dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
 				if (!pushChunkTesselation(cx + dx, cz + dz)) {
-					gameTesselateChunk(cx + dx, cz + dz);
+					chunk_build_mesh(cx + dx, cz + dz);
 				}
 			}
 		}
@@ -154,7 +164,7 @@ void gameUpdateMap() {
 	ml_chunk chunk;
 	for (int i = 0; i < 5; ++i) {
 		if (popChunkTesselation(&chunk)) {
-			gameTesselateChunk(chunk.x, chunk.z);
+			chunk_build_mesh(chunk.x, chunk.z);
 		}
 	}
 }
@@ -169,7 +179,8 @@ struct alpha_t {
 static struct alpha_t alphas[MAX_ALPHAS];
 static size_t nalphas;
 
-void gameDrawMap(ml_frustum* frustum) {
+void map_draw(ml_frustum* frustum)
+{
 	// for each visible chunk...
 	// set up material etc. once.
 	ml_material* material = game.materials + MAT_CHUNK;
@@ -261,7 +272,8 @@ int alpha_sort(const void* va, const void* vb)
 	return ret;
 }
 
-void gameDrawAlphaPass() {
+void map_draw_alphapass()
+{
 	size_t i;
 	ml_material* material;
 	struct alpha_t* alpha;
@@ -298,7 +310,8 @@ void gameDrawAlphaPass() {
 	glDisable(GL_TEXTURE_2D);
 }
 
-void gameUpdateBlock(ml_ivec3 block, uint32_t value) {
+void map_update_block(ml_ivec3 block, uint32_t value)
+{
 	size_t idx = blockByCoord(block);
 
 	// relight column down (fixes sunlight)
@@ -328,27 +341,27 @@ void gameUpdateBlock(ml_ivec3 block, uint32_t value) {
 		tess[3] = true;
 	}
 	printf("reload chunk [%d, %d] [%d, %d]\n", chunk.x, chunk.z, mx, mz);
-	gameUnloadChunk(chunk.x, chunk.z);
-	gameTesselateChunk(chunk.x, chunk.z);
+	chunk_unload(chunk.x, chunk.z);
+	chunk_build_mesh(chunk.x, chunk.z);
 	if (tess[0]) {
 		printf("reload chunk [%d, %d]\n", chunk.x-1, chunk.z);
-		gameUnloadChunk(chunk.x-1, chunk.z);
-		gameTesselateChunk(chunk.x-1, chunk.z);
+		chunk_unload(chunk.x-1, chunk.z);
+		chunk_build_mesh(chunk.x-1, chunk.z);
 	}
 	if (tess[1]) {
 		printf("reload chunk [%d, %d]\n", chunk.x+1, chunk.z);
-		gameUnloadChunk(chunk.x+1, chunk.z);
-		gameTesselateChunk(chunk.x+1, chunk.z);
+		chunk_unload(chunk.x+1, chunk.z);
+		chunk_build_mesh(chunk.x+1, chunk.z);
 	}
 	if (tess[2]) {
 		printf("reload chunk [%d, %d]\n", chunk.x, chunk.z-1);
-		gameUnloadChunk(chunk.x, chunk.z-1);
-		gameTesselateChunk(chunk.x, chunk.z-1);
+		chunk_unload(chunk.x, chunk.z-1);
+		chunk_build_mesh(chunk.x, chunk.z-1);
 	}
 	if (tess[3]) {
 		printf("reload chunk [%d, %d]\n", chunk.x, chunk.z+1);
-		gameUnloadChunk(chunk.x, chunk.z+1);
-		gameTesselateChunk(chunk.x, chunk.z+1);
+		chunk_unload(chunk.x, chunk.z+1);
+		chunk_build_mesh(chunk.x, chunk.z+1);
 	}
 }
 
@@ -373,7 +386,7 @@ void propagate_light(int x, int y, int z) {
 // as a test, just fill in the designated chunk
 // and tesselate the whole thing
 
-void gameLoadChunk(int x, int z) {
+void chunk_load(int x, int z) {
 	int blockx, blockz;
 	int fillx, filly, fillz;
 	int bufx = mod(x, MAP_CHUNK_WIDTH);
@@ -453,7 +466,7 @@ void map_unload_chunk_ptr(game_chunk* chunk)
 	//printf("unloaded chunk: [%d, %d] [%d, %d]\n", x, z, bufx, bufz);
 }
 
-void gameUnloadChunk(int x, int z)
+void chunk_unload(int x, int z)
 {
 	int bufx = mod(x, MAP_CHUNK_WIDTH);
 	int bufz = mod(z, MAP_CHUNK_WIDTH);
@@ -475,9 +488,12 @@ static game_block_vtx alpha_buffer[ALPHA_BUFFER_SIZE];
 #define TESSELATION_BUFFER_SIZE (CHUNK_SIZE*CHUNK_SIZE*CHUNK_SIZE*36)
 static game_block_vtx tesselation_buffer[TESSELATION_BUFFER_SIZE];
 
-bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* alphai);
+static
+bool mesh_subchunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* alphai);
 
-void gameTesselateChunk(int x, int z) {
+
+void chunk_build_mesh(int x, int z)
+{
 	int bufx = mod(x, MAP_CHUNK_WIDTH);
 	int bufz = mod(z, MAP_CHUNK_WIDTH);
 	game_chunk* chunk = game.map.chunks + bufz*MAP_CHUNK_WIDTH + bufx;
@@ -487,7 +503,7 @@ void gameTesselateChunk(int x, int z) {
 		size_t alphai = 0;
 		ml_mesh* mesh = chunk->solid;
 		for (int y = 0; y < MAP_CHUNK_HEIGHT; ++y)
-			gameTesselateSubChunk(mesh + y, bufx, bufz, y, &alphai);
+			mesh_subchunk(mesh + y, bufx, bufz, y, &alphai);
 		chunk->dirty = false;
 		//printf("tesselated chunk: [%d, %d] [%d, %d]\n", x, z, bufx, bufz);
 		if (alphai > 0) {
@@ -500,14 +516,16 @@ void gameTesselateChunk(int x, int z) {
 // Interleave lower 16 bits of x and y in groups of 4
 // ie turn 0xabcd into 0xaabbccdd
 static
-uint32_t bitexpand16(uint32_t x) {
+uint32_t bitexpand16(uint32_t x)
+{
 	x = ((x << 12) & 0xF000000) + ((x << 8) & 0xF0000) + ((x << 4) & 0xF00) + (x & 0xF);
 	return x | (x << 4);
 }
 
 // turn 0xaabbccdd into 0xabcd
 static
-uint32_t bitcontract16(uint32_t x) {
+uint32_t bitcontract16(uint32_t x)
+{
 	return ((x >> 16) & 0xF000) + ((x >> 12) & 0xF00) + ((x >> 8) & 0xF0) + ((x & 0xF0) >> 4);
 }
 
@@ -517,7 +535,8 @@ uint32_t bitcontract16(uint32_t x) {
 // assert(avglight(0xffff0000, 0xffff0000, 0xffff0000, 0xffff0000) == 0xffff0000);
 // MC smooth lighting: average light of four blocks around vert on the positive face side
 static
-uint32_t avglight(uint32_t b0, uint32_t b1, uint32_t b2, uint32_t b3) {
+uint32_t avglight(uint32_t b0, uint32_t b1, uint32_t b2, uint32_t b3)
+{
 	static const uint32_t M[4] = { 0xf0000000, 0xf000000, 0xf00000, 0xf0000 };
 	static const uint32_t S[4] = { 28, 24, 20, 16 };
 	uint32_t ret = 0;
@@ -546,7 +565,8 @@ uint32_t avglight(uint32_t b0, uint32_t b1, uint32_t b2, uint32_t b3) {
 //  (iz-1)   (iz)     (iz+1)
 
 
-bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* alphai) {
+bool mesh_subchunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* alphai)
+{
 	int ix, iy, iz;
 	int bx, by, bz;
 	size_t vi;
@@ -784,7 +804,8 @@ bool gameTesselateSubChunk(ml_mesh* mesh, int bufx, int bufz, int cy, size_t* al
 	return (vi > 0);
 }
 
-bool gameRayTest(ml_dvec3 origin, ml_vec3 dir, int len, ml_ivec3* hit, ml_ivec3* prehit) {
+bool map_raycast(ml_dvec3 origin, ml_vec3 dir, int len, ml_ivec3* hit, ml_ivec3* prehit)
+{
 	ml_dvec3 blockf = { origin.x, origin.y, origin.z };
 	ml_ivec3 block = { round(origin.x), round(origin.y), round(origin.z) };
 	ml_ivec3 prev = {0, 0, 0};

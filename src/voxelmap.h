@@ -78,16 +78,16 @@ struct game_map_t {
 
 extern uint32_t* map_blocks;
 
-void gameFreeMap(void);
-void gameInitMap(void);
-void gameUpdateMap(void);
-void gameDrawMap(ml_frustum* frustum);
-void gameDrawAlphaPass(void);
-void gameLoadChunk(int x, int z);
-void gameUnloadChunk(int x, int z);
-void gameTesselateChunk(int x, int z);
-void gameUpdateBlock(ml_ivec3 block, uint32_t value);
-bool gameRayTest(ml_dvec3 origin, ml_vec3 dir, int len, ml_ivec3* hit, ml_ivec3* prehit);
+void map_init(void);
+void map_exit(void);
+void map_tick(void);
+void map_draw(ml_frustum* frustum);
+void map_draw_alphapass(void);
+void chunk_load(int x, int z);
+void chunk_unload(int x, int z);
+void chunk_build_mesh(int x, int z);
+void map_update_block(ml_ivec3 block, uint32_t value);
+bool map_raycast(ml_dvec3 origin, ml_vec3 dir, int len, ml_ivec3* hit, ml_ivec3* prehit);
 uint32_t blockData(int x, int y, int z);
 
 // mod which handles negative numbers

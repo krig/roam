@@ -67,7 +67,7 @@ void game_init()
 
 	sky_init();
 	player_init();
-	gameInitMap();
+	map_init();
 	player_move_to_spawn();
 	glCheck(__LINE__);
 
@@ -81,7 +81,7 @@ void game_init()
 static
 void game_exit()
 {
-	gameFreeMap();
+	map_exit();
 	sky_exit();
 	ui_exit();
 	for (int i = 0; i < MAX_MATERIALS; ++i)
@@ -184,7 +184,7 @@ bool handle_event(SDL_Event* event)
 			} else {
 				if (blockTypeByCoord(game.input.picked_block) != BLOCK_AIR) {
 					printf("can delete.\n");
-					gameUpdateBlock(game.input.picked_block, BLOCK_AIR);
+					map_update_block(game.input.picked_block, BLOCK_AIR);
 				}
 			}
 		} break;
@@ -201,7 +201,7 @@ bool handle_event(SDL_Event* event)
 			    !blockCompare(head, game.input.prepicked_block) &&
 			    !blockCompare(feet, game.input.prepicked_block)) {
 				printf("can create.\n");
-				gameUpdateBlock(game.input.prepicked_block, BLOCK_PIG);
+				map_update_block(game.input.prepicked_block, BLOCK_PIG);
 			}
 		} break;
 		} break;
@@ -298,7 +298,7 @@ void game_tick(float dt)
 {
 	player_tick(dt);
 	ui_tick(dt);
-	gameUpdateMap();
+	map_tick();
 	sky_tick(dt);
 	// update player/input
 	// update blocks
@@ -349,7 +349,7 @@ void game_draw(SDL_Point* viewport, float frametime)
 	ui_rect(viewport->x/2 - 5, viewport->y/2 - 1, 10, 2, 0x4fffffff);
 
 	if (game.enable_ground)
-		gameDrawMap(&frustum);
+		map_draw(&frustum);
 
 	if (game.wireframe)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -360,7 +360,7 @@ void game_draw(SDL_Point* viewport, float frametime)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	if (game.enable_ground)
-		gameDrawAlphaPass();
+		map_draw_alphapass();
 
 	if (game.wireframe)
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -372,7 +372,7 @@ void game_draw(SDL_Point* viewport, float frametime)
 	{
 		ml_dvec3 pp = game.camera.pos;
 		ml_vec3 v = {frustum.planes[5].x, frustum.planes[5].y, frustum.planes[5].z};
-		if (gameRayTest(pp, v, 16, &game.input.picked_block, &game.input.prepicked_block))
+		if (map_raycast(pp, v, 16, &game.input.picked_block, &game.input.prepicked_block))
 			if (game.camera.mode == CAMERA_FPS)
 				ui_debug_block(game.input.picked_block, 0xcff1c40f);
 	}
