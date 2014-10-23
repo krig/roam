@@ -76,7 +76,6 @@ void ui_init(material_t* uimat, material_t* debugmat)
 	glEnableVertexAttribArray(1);
 	glBindVertexArray(0);
 	debug_linevertcount = 0;
-
 }
 
 void ui_exit()
@@ -136,7 +135,6 @@ void ui_draw(SDL_Point* viewport)
 
 	if (ui_count > 0) {
 		vec2_t screensize = { (float)viewport->x, (float)viewport->y };
-		glEnable(GL_TEXTURE_2D);
 		glEnable(GL_BLEND);
 //		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
@@ -154,7 +152,6 @@ void ui_draw(SDL_Point* viewport)
 		glDisable(GL_BLEND);
 //		glEnable(GL_CULL_FACE);
 		glEnable(GL_DEPTH_TEST);
-		glDisable(GL_TEXTURE_2D);
 		ui_count = 0;
 	}
 }

@@ -187,11 +187,10 @@ void map_draw(frustum_t* frustum)
 
 	glDisable(GL_BLEND);
 	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_TEXTURE_2D);
 	m_tex2d_bind(&blocks_texture, 0);
-	glUseProgram(material->program);
 
-	glUniform1i(material->tex0, 0);
+	m_use(material);
+	m_uniform_i(material->tex0, 0);
 	m_uniform_mat44(material->projmat, m_getmatrix(&game.projection));
 	m_uniform_mat44(material->modelview, m_getmatrix(&game.modelview));
 	m_uniform_vec3(material->amb_light, &game.amb_light);
@@ -244,17 +243,14 @@ void map_draw(frustum_t* frustum)
 				center.y = (float)(CHUNK_SIZE*j) - 0.5f + chunk_radius;
 				if (collide_frustum_aabb_y(frustum, center, extent) == ML_OUTSIDE)
 					continue;
-				m_apply_material(mesh, material);
-				glDrawArrays(mesh->mode, 0, mesh->count);
+				m_draw(mesh);
 			}
 		}
 	}
 
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glUseProgram(0);
+	m_use(NULL);
 	glDisable(GL_BLEND);
 	glDepthMask(GL_TRUE);
-	glDisable(GL_TEXTURE_2D);
 }
 
 // sort back to front
@@ -319,14 +315,13 @@ void map_draw_alphapass()
 		qsort(alphas, nalphas, sizeof(struct alpha_t), (int(*)(const void*, const void*))cmp_alpha_chunks);
 
 	material = game.materials + MAT_CHUNK_ALPHA;
-	glEnable(GL_TEXTURE_2D);
 	m_tex2d_bind(&blocks_texture, 0);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(GL_FALSE);
-	glUseProgram(material->program);
-	glUniform1i(material->tex0, 0);
+	m_use(material);
+	m_uniform_i(material->tex0, 0);
 	m_uniform_mat44(material->projmat, m_getmatrix(&game.projection));
 	m_uniform_mat44(material->modelview, m_getmatrix(&game.modelview));
 	m_uniform_vec3(material->amb_light, &game.amb_light);
@@ -345,15 +340,12 @@ void map_draw_alphapass()
 				chunk->alphadata);
 		}
 		m_uniform_vec3(material->chunk_offset, &alpha->offset);
-		m_apply_material(mesh, material);
-		glDrawArrays(mesh->mode, 0, mesh->count);
+		m_draw(mesh);
 	}
 
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glUseProgram(0);
+	m_use(NULL);
 	glDisable(GL_BLEND);
 	glDepthMask(GL_TRUE);
-	glDisable(GL_TEXTURE_2D);
 }
 
 void map_update_block(ivec3_t block, uint32_t value)
@@ -505,6 +497,7 @@ void chunk_build_mesh(int x, int z)
 			}
 			memcpy(chunk->alphadata, alpha_buffer, alphai * sizeof(block_vtx_t));
 			m_create_mesh(alpha, alphai, alpha_buffer, ML_POS_3F | ML_TC_2US | ML_CLR_4UB, GL_DYNAMIC_DRAW);
+			m_set_material(alpha, game.materials + MAT_CHUNK_ALPHA);
 		}
 	}
 }
@@ -795,8 +788,10 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 		}
 	}
 
-	if (vi > 0)
+	if (vi > 0) {
 		m_create_mesh(mesh, vi, verts, ML_POS_3F | ML_TC_2US | ML_CLR_4UB, GL_STATIC_DRAW);
+		m_set_material(mesh, game.materials + MAT_CHUNK);
+	}
 	return (vi > 0);
 }
 

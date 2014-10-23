@@ -146,10 +146,16 @@ typedef struct material {
 } material_t;
 
 
-// A mesh is a VBO plus metadata
-// that describes how it maps to
-// a material
+// Revised concept of mesh and render object:
+// A mesh is a render object - you need a VAO
+// to render a mesh in GL 3.2+ core profile
+// anyway.
+// The mesh can be bound to different materials,
+// and it needs to be bound to a material before
+// it is rendered.
 typedef struct mesh {
+	material_t* material;
+	GLuint vao;
 	GLuint vbo; // vertex buffer
 	GLuint ibo; // index buffer (may be 0 if not used)
 	GLint position; // -1 if not present, else offset
@@ -169,18 +175,6 @@ typedef struct tex2d_t {
 	uint16_t w;
 	uint16_t h;
 } tex2d_t;
-
-
-// a renderable combines a
-// particular material and a
-// particular mesh into a
-// a renderable object
-typedef struct renderobj_t {
-	const material_t* material;
-	const mesh_t* mesh;
-	GLuint vao;
-} renderobj_t;
-
 
 typedef struct mtxstack {
 	int top;
@@ -220,10 +214,9 @@ void     m_destroy_material(material_t* material);
 void     m_create_mesh(mesh_t* mesh, size_t n, void* data, GLenum flags, GLenum usage);
 void     m_create_indexed_mesh(mesh_t* mesh, size_t n, void* data, size_t ilen, GLenum indextype, void* indices, GLenum flags);
 void     m_destroy_mesh(mesh_t* mesh);
-void     m_update_mesh(mesh_t *mesh, GLintptr offset, GLsizeiptr n, void* data);
-void     m_create_renderobj(renderobj_t* renderable, const material_t* material, const mesh_t* mesh);
-void     m_destroy_renderobj(renderobj_t* renderable);
-void     m_apply_material(const mesh_t* mesh, const material_t* material);
+void     m_update_mesh(mesh_t *mesh, GLintptr offset, GLsizeiptr n, const void* data);
+void     m_replace_mesh(mesh_t *mesh, GLsizeiptr n, const void* data, GLenum usage);
+void     m_set_material(mesh_t* mesh, material_t* material);
 void     m_tex2d_load(tex2d_t* tex, const char* filename);
 void     m_tex2d_destroy(tex2d_t* tex);
 void     m_tex2d_bind(tex2d_t* tex, int index);
@@ -258,10 +251,12 @@ bool     intersect_moving_aabb_aabb(aabb_t a, aabb_t b, vec3_t va, vec3_t vb, fl
 
 // inline functions
 
+#define M_CHECKGL_ENABLED 1
+#if M_CHECKGL_ENABLED
+#define M_CHECKGL(call) do { call; m_checkgl(__FILE__, __LINE__, #call); } while (0)
 static inline
-void m_checkgl(int line)
+void m_checkgl(const char* file, int line, const char* call)
 {
-#ifndef NDEBUG
 	GLenum err;
 	char* msg;
 	do {
@@ -274,11 +269,16 @@ void m_checkgl(int line)
 		case GL_OUT_OF_MEMORY: msg = "GL_OUT_OF_MEMORY"; break;
 		default: msg = "(other)"; break;
 		}
-		if (err != GL_NO_ERROR)
-			fprintf(stderr, "GL error (%d): (0x%x) %s\n", line, err, msg);
+		static int checked = 0;
+		if (err != GL_NO_ERROR && !checked) {
+			checked = 1;
+			fprintf(stderr, "GL error (%s:%d): (#%x) %s - %s\n", file, line, err, msg, call);
+		}
 	} while (err != GL_NO_ERROR);
-#endif
 }
+#else
+#define M_CHECKGL(call) call
+#endif
 
 static inline
 bool m_fisvalid(float f)
@@ -394,22 +394,23 @@ void m_uniform_i(GLint index, int i)
 }
 
 static inline
-void m_draw_begin(renderobj_t* renderable)
+void m_use(material_t* material)
 {
-	glUseProgram(renderable->material->program);
-	glBindVertexArray(renderable->vao);
+	if (material != NULL)
+		M_CHECKGL(glUseProgram(material->program));
+	else
+		M_CHECKGL(glUseProgram(0));
 }
 
 static inline
-void m_draw_end(renderobj_t* renderable)
+void m_draw(const mesh_t* mesh)
 {
-	const mesh_t* mesh = renderable->mesh;
+	M_CHECKGL(glBindVertexArray(mesh->vao));
 	if (mesh->ibo > 0)
-		glDrawElements(mesh->mode, mesh->count, mesh->ibotype, 0);
+		M_CHECKGL(glDrawElements(mesh->mode, mesh->count, mesh->ibotype, 0));
 	else
-		glDrawArrays(mesh->mode, 0, mesh->count);
+		M_CHECKGL(glDrawArrays(mesh->mode, 0, mesh->count));
 	glBindVertexArray(0);
-	glUseProgram(0);
 }
 
 static inline

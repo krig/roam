@@ -629,15 +629,12 @@ static inline GLsizei mesh_stride(GLenum flags)
 
 void m_create_mesh(mesh_t* mesh, size_t n, void* data, GLenum flags, GLenum usage)
 {
+	M_CHECKGL(glGenVertexArrays(1, &mesh->vao));
 	GLsizei stride = mesh_stride(flags);
-	glGenBuffers(1, &mesh->vbo);
-	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
-	glBufferData(GL_ARRAY_BUFFER, (GLsizei)n * stride, data, usage);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-	// no indices in this mesh
-	mesh->ibo = 0;
-	mesh->ibotype = 0;
+	M_CHECKGL(glGenBuffers(1, &mesh->vbo));
+	M_CHECKGL(glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo));
+	M_CHECKGL(glBufferData(GL_ARRAY_BUFFER, (GLsizei)n * stride, data, usage));
+	M_CHECKGL(glBindBuffer(GL_ARRAY_BUFFER, 0));
 
 	GLint offset = 0;
 	mesh->position = (flags & (ML_POS_2F + ML_POS_3F + ML_POS_4UB + ML_POS_10_2)) ? offset : -1;
@@ -649,23 +646,32 @@ void m_create_mesh(mesh_t* mesh, size_t n, void* data, GLenum flags, GLenum usag
 	mesh->color = (flags & ML_CLR_4UB) ? offset : -1;
 	offset += (flags & ML_CLR_4UB) ? 4 : 0;
 	mesh->stride = stride;
-	mesh->mode = GL_TRIANGLES;
+	mesh->mode = GL_TRIANGLES; // TODO: allow other modes?
 	mesh->count = (GLsizei)n;
 	mesh->flags = flags;
-	m_checkgl(__LINE__);
+	mesh->ibo = 0; // no index buffer yet
+	mesh->ibotype = 0;
+	mesh->material = NULL; // no material bound yet
 }
 
-void m_update_mesh(mesh_t* mesh, GLintptr offset, GLsizeiptr n, void* data)
+void m_update_mesh(mesh_t* mesh, GLintptr offset, GLsizeiptr n, const void* data)
 {
 	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
 	glBufferSubData(GL_ARRAY_BUFFER, offset, n, data);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
+void m_replace_mesh(mesh_t* mesh, GLsizeiptr n, const void* data, GLenum usage)
+{
+	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
+	glBufferData(GL_ARRAY_BUFFER, n, data, usage);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
 void m_create_indexed_mesh(mesh_t* mesh, size_t n, void* data, size_t ilen, GLenum indextype, void* indices, GLenum flags)
 {
 	m_create_mesh(mesh, n, data, flags, GL_STATIC_DRAW);
-	glGenBuffers(1, &mesh->ibo);
+	M_CHECKGL(glGenBuffers(1, &mesh->ibo));
 
 	GLsizei isize = 0;
 	switch (indextype) {
@@ -679,94 +685,76 @@ void m_create_indexed_mesh(mesh_t* mesh, size_t n, void* data, size_t ilen, GLen
 		fatal_error("indextype must be one of GL_UNSIGNED_[BYTE|SHORT|INT]");
 	}
 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ibo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizei)ilen * isize, indices, GL_STATIC_DRAW);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	M_CHECKGL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ibo));
+	M_CHECKGL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizei)ilen * isize, indices, GL_STATIC_DRAW));
+	M_CHECKGL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
 
 	mesh->count = (GLsizei)ilen;
 	mesh->ibotype = indextype;
-	m_checkgl(__LINE__);
 }
 
 void m_destroy_mesh(mesh_t* mesh)
 {
-	if (mesh->vbo != 0)
-		glDeleteBuffers(1, &(mesh->vbo));
-	mesh->vbo = 0;
-	if (mesh->ibo != 0)
-		glDeleteBuffers(1, &(mesh->ibo));
-	mesh->ibo = 0;
+	if (mesh->vbo != 0) { M_CHECKGL(glDeleteBuffers(1, &(mesh->vbo))); mesh->vbo = 0; }
+	if (mesh->ibo != 0) { M_CHECKGL(glDeleteBuffers(1, &(mesh->ibo))); mesh->ibo = 0; }
+	if (mesh->vao != 0) { M_CHECKGL(glDeleteVertexArrays(1, &(mesh->vao))); mesh->vao = 0; }
+	mesh->material = NULL;
 }
 
-void m_apply_material(const mesh_t* mesh, const material_t* material)
+void m_set_material(mesh_t* mesh, material_t* material)
 {
-	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
+	mesh->material = material;
+	M_CHECKGL(glBindVertexArray(mesh->vao));
+	if (mesh->ibo > 0)
+		M_CHECKGL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ibo));
+	M_CHECKGL(glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo));
 	if (material->position > -1) {
 		if (mesh->position > -1) {
 			if (mesh->flags & ML_POS_2F)
-				glVertexAttribPointer(material->position, 2, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->position));
+				M_CHECKGL(glVertexAttribPointer(material->position, 2, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->position)));
 			else if (mesh->flags & ML_POS_3F)
-				glVertexAttribPointer(material->position, 3, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->position));
+				M_CHECKGL(glVertexAttribPointer(material->position, 3, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->position)));
 			else if (mesh->flags & ML_POS_4UB)
-				glVertexAttribPointer(material->position, 4, GL_UNSIGNED_BYTE, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->position));
+				M_CHECKGL(glVertexAttribPointer(material->position, 4, GL_UNSIGNED_BYTE, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->position)));
 			else // 10_10_10_2
-				glVertexAttribPointer(material->position, 4, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->position));
-			glEnableVertexAttribArray(material->position);
+				M_CHECKGL(glVertexAttribPointer(material->position, 4, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->position)));
+			M_CHECKGL(glEnableVertexAttribArray(material->position));
 		} else {
-			glDisableVertexAttribArray(material->position);
+			M_CHECKGL(glDisableVertexAttribArray(material->position));
 		}
 	}
 	if (material->normal > -1) {
 		if (mesh->normal > -1) {
 			if (mesh->flags & ML_N_3F)
-				glVertexAttribPointer(material->normal, 3, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->normal));
+				M_CHECKGL(glVertexAttribPointer(material->normal, 3, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->normal)));
 			else // 4ub
-				glVertexAttribPointer(material->normal, 4, GL_BYTE, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->normal));
-			glEnableVertexAttribArray(material->normal);
+				M_CHECKGL(glVertexAttribPointer(material->normal, 4, GL_BYTE, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->normal)));
+			M_CHECKGL(glEnableVertexAttribArray(material->normal));
 		} else {
-			glDisableVertexAttribArray(material->normal);
+			M_CHECKGL(glDisableVertexAttribArray(material->normal));
 		}
 	}
 	if (material->texcoord > -1) {
 		if (mesh->texcoord > -1) {
 			if (mesh->flags & ML_TC_2F)
-				glVertexAttribPointer(material->texcoord, 2, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->texcoord));
+				M_CHECKGL(glVertexAttribPointer(material->texcoord, 2, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->texcoord)));
 			else // 2US
-				glVertexAttribPointer(material->texcoord, 2, GL_UNSIGNED_SHORT, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->texcoord));
-			glEnableVertexAttribArray(material->texcoord);
+				M_CHECKGL(glVertexAttribPointer(material->texcoord, 2, GL_UNSIGNED_SHORT, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->texcoord)));
+			M_CHECKGL(glEnableVertexAttribArray(material->texcoord));
 		} else {
-			glDisableVertexAttribArray(material->texcoord);
+			M_CHECKGL(glDisableVertexAttribArray(material->texcoord));
 		}
 	}
 	if (material->color > -1) {
 		if (mesh->color > -1) {
 			glVertexAttribPointer(material->color, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->color));
 			glEnableVertexAttribArray(material->color);
+
 		} else {
 			glDisableVertexAttribArray(material->color);
-			glVertexAttrib4Nub(material->color, 0xff, 0xff, 0xff, 0xff);
 		}
 	}
-}
-
-void m_create_renderobj(renderobj_t* renderable, const material_t* material, const mesh_t* mesh)
-{
-	glGenVertexArrays(1, &renderable->vao);
-	glBindVertexArray(renderable->vao);
-	renderable->material = material;
-	renderable->mesh = mesh;
-	if (mesh->ibo > 0)
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ibo);
-	m_apply_material(mesh, material);
-	glBindVertexArray(0);
-	m_checkgl(__LINE__);
-}
-
-void m_destroy_renderobj(renderobj_t* renderable)
-{
-	if (renderable->vao != 0)
-		glDeleteVertexArrays(1, &(renderable->vao));
-	renderable->vao = 0;
+	M_CHECKGL(glBindVertexArray(0));
 }
 
 void m_mtxstack_init(mtxstack_t* stack, size_t size)
@@ -833,47 +821,47 @@ void m_tex2d_load(tex2d_t* tex, const char* filename)
 		fatal_error("Failed to load image %s", filename);
 	}
 
-	glActiveTexture(GL_TEXTURE0);
-	glGenTextures(1, &tex->id);
-	glBindTexture(GL_TEXTURE_2D, tex->id);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	M_CHECKGL(glActiveTexture(GL_TEXTURE0));
+	M_CHECKGL(glGenTextures(1, &tex->id));
+	M_CHECKGL(glBindTexture(GL_TEXTURE_2D, tex->id));
+	M_CHECKGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
+	M_CHECKGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
+	M_CHECKGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+	M_CHECKGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
 	tex->w = (uint16_t)x;
 	tex->h = (uint16_t)y;
 
 	switch (n) {
 	case 4:
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		M_CHECKGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data));
 		break;
 	case 3:
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, x, y, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+		M_CHECKGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, x, y, 0, GL_RGB, GL_UNSIGNED_BYTE, data));
 		break;
 	case 1:
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, x, y, 0, GL_RED, GL_UNSIGNED_BYTE, data);
+		M_CHECKGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, x, y, 0, GL_RED, GL_UNSIGNED_BYTE, data));
 		break;
 	default:
 		fatal_error("bad pixel depth %d for %s", n, filename);
 	}
 
-	glGenerateMipmap(GL_TEXTURE_2D);
+	M_CHECKGL(glGenerateMipmap(GL_TEXTURE_2D));
 
 	stbi_image_free(data);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	M_CHECKGL(glBindTexture(GL_TEXTURE_2D, 0));
 }
 
 void m_tex2d_destroy(tex2d_t* tex)
 {
-	glDeleteTextures(1, &tex->id);
+	M_CHECKGL(glDeleteTextures(1, &tex->id));
 	memset(tex, 0, sizeof(tex2d_t));
 
 }
 
 void m_tex2d_bind(tex2d_t* tex, int index)
 {
-	glActiveTexture(GL_TEXTURE0 + index);
-	glBindTexture(GL_TEXTURE_2D, tex->id);
+	M_CHECKGL(glActiveTexture(GL_TEXTURE0 + index));
+	M_CHECKGL(glBindTexture(GL_TEXTURE_2D, tex->id));
 }
 
 /* based on code by Pierre Terdiman

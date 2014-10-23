@@ -73,7 +73,6 @@ void game_init()
 	player_init();
 	map_init();
 	player_move_to_spawn();
-	m_checkgl(__LINE__);
 
 	mouse_captured = false;
 }
@@ -326,19 +325,18 @@ void game_draw(SDL_Point* viewport, float frametime)
 {
 	mat44_t view;
 	frustum_t frustum;
-	m_checkgl(__LINE__);
 
-	glEnable(GL_DEPTH_TEST);
-	glLogicOp(GL_INVERT);
-	glDepthFunc(GL_LESS);
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
-	glClearColor(game.sky_light.x, game.sky_light.y, game.sky_light.z, 1.f);
-	glClearDepth(1.f);
-	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+	M_CHECKGL(glEnable(GL_DEPTH_TEST));
+	M_CHECKGL(glLogicOp(GL_INVERT));
+	M_CHECKGL(glDepthFunc(GL_LESS));
+	M_CHECKGL(glEnable(GL_CULL_FACE));
+	M_CHECKGL(glCullFace(GL_BACK));
+	M_CHECKGL(glClearColor(game.sky_light.x, game.sky_light.y, game.sky_light.z, 1.f));
+	M_CHECKGL(glClearDepth(1.f));
+	M_CHECKGL(glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT));
 
 	if (game.wireframe)
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		M_CHECKGL(glPolygonMode(GL_FRONT_AND_BACK, GL_LINE));
 
 	chunkpos_t camera = player_chunk();
 	vec3_t viewcenter = camera_offset();
@@ -364,18 +362,18 @@ void game_draw(SDL_Point* viewport, float frametime)
 		map_draw(&frustum);
 
 	if (game.wireframe)
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		M_CHECKGL(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
 
 	sky_draw();
 
 	if (game.wireframe)
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		M_CHECKGL(glPolygonMode(GL_FRONT_AND_BACK, GL_LINE));
 
 	if (game.enable_ground)
 		map_draw_alphapass();
 
 	if (game.wireframe)
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		M_CHECKGL(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
 
 	mat44_t invview;
 	m_invert_orthonormal(&invview, &view);
@@ -433,6 +431,7 @@ void game_draw(SDL_Point* viewport, float frametime)
 	ui_draw_debug(&game.projection, &game.modelview);
 	ui_draw(viewport);
 
+
 	//if (mouse_captured)
 	//	SDL_WarpMouseInWindow(window, viewport->x >> 1, viewport->y >> 1);
 }
@@ -453,14 +452,14 @@ int main(int argc, char* argv[])
 		exit(0);
 	}
 
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-
 	if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
 		return 1;
+
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+	SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, 1);
 
 	window = SDL_CreateWindow("roam",
 	                               SDL_WINDOWPOS_UNDEFINED,
@@ -481,23 +480,24 @@ int main(int argc, char* argv[])
 	if ((rc = glewInit()) != GLEW_OK)
 		fatal_error((const char*)glewGetErrorString(rc));
 
-	int major, minor;
-	glGetIntegerv(GL_MAJOR_VERSION, &major);
-	glGetIntegerv(GL_MINOR_VERSION, &minor);
-	printf("GL %d.%d\n", major, minor);
+	const GLubyte *version, *vendor, *renderer, *glslversion;
+	M_CHECKGL(version = glGetString(GL_VERSION));
+	#if M_CHECKGL_ENABLED
+	fprintf(stderr, "(if there was a GL error reported before, it is due to a bug in GLEW)\n");
+	#endif
+	M_CHECKGL(vendor = glGetString(GL_VENDOR));
+	M_CHECKGL(renderer = glGetString(GL_RENDERER));
+	M_CHECKGL(glslversion = glGetString(GL_SHADING_LANGUAGE_VERSION));
 
 	printf("Version: %s\n"
 	       "Vendor: %s\n"
 	       "Renderer: %s\n"
 	       "GLSL Version: %s\n",
-	       glGetString(GL_VERSION),
-	       glGetString(GL_VENDOR),
-	       glGetString(GL_RENDERER),
-	       glGetString(GL_SHADING_LANGUAGE_VERSION));
+	       version, vendor, renderer, glslversion);
 
 	SDL_GetWindowSize(window, &sz.x, &sz.y);
 	//SDL_GL_GetDrawableSize(window, &sz.x, &sz.y);
-	glViewport(0, 0, sz.x, sz.y);
+	M_CHECKGL(glViewport(0, 0, sz.x, sz.y));
 
 	m_mtxstack_init(&game.projection, 3);
 	m_mtxstack_init(&game.modelview, 16);
@@ -507,10 +507,10 @@ int main(int argc, char* argv[])
 	              0.1f, 1024.f);
 
 	game_init();
-	m_checkgl(__LINE__);
 
-	int64_t startms, nowms;
+	int64_t startms, endms, nowms;
 	float frametime;
+	game.stats.frametime = (1.f/60.f);
 	startms = (int64_t)SDL_GetTicks();
 
 	game.game_active = true;
@@ -526,7 +526,7 @@ int main(int argc, char* argv[])
 				} else if (event.window.event == SDL_WINDOWEVENT_MAXIMIZED) {
 					//SDL_GL_GetDrawableSize(window, &sz.x, &sz.y);
 					SDL_GetWindowSize(window, &sz.x, &sz.y);
-					glViewport(0, 0, sz.x, sz.y);
+					M_CHECKGL(glViewport(0, 0, sz.x, sz.y));
 					m_perspective(m_getmatrix(&game.projection), ML_DEG2RAD(70.f),
 					              (float)sz.x / (float)sz.y,
 					              0.1f, 1024.f);
@@ -541,16 +541,17 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		nowms = (int64_t)SDL_GetTicks() - startms;
+		endms = (int64_t)SDL_GetTicks();
+		nowms = endms - startms;
 		if (nowms < 1)
 			nowms = 1;
 		frametime = (float)((double)nowms / 1000.0);
 		game_tick(frametime);
 		startms = (int64_t)SDL_GetTicks();
 		game_draw(&sz, frametime);
+		game.stats.frames++;
 
 		SDL_GL_SwapWindow(window);
-		m_checkgl(__LINE__);
 	}
 
 exit:

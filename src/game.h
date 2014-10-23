@@ -50,12 +50,18 @@ struct controls {
 	int debuginfo;
 };
 
+struct statistics {
+	float frametime;
+	uint64_t frames;
+};
+
 
 struct game {
 	struct camera camera;
 	struct player player;
 	struct controls controls;
 	struct inputstate input;
+	struct statistics stats;
 	material_t materials[MAX_MATERIALS];
 	mtxstack_t projection;
 	mtxstack_t modelview;

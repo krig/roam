@@ -5,14 +5,12 @@
 #include "geometry.h"
 
 static mesh_t mesh;
-static renderobj_t renderobj;
 
 
 void sky_init()
 {
-	material_t* material = game.materials + MAT_SKY;
 	make_hemisphere(&mesh, 5.f, 4);
-	m_create_renderobj(&renderobj, material, &mesh);
+	m_set_material(&mesh, game.materials + MAT_SKY);
 	sky_tick(0);
 }
 
@@ -20,13 +18,12 @@ void sky_init()
 void sky_exit()
 {
 	m_destroy_mesh(&mesh);
-	m_destroy_renderobj(&renderobj);
 }
 
 
 void sky_draw()
 {
-	material_t* material = game.materials + MAT_SKY;
+	material_t* material = mesh.material;
 	glCullFace(GL_FRONT);
 	glDepthFunc(GL_EQUAL);
 	glDepthRange(1, 1);
@@ -38,14 +35,15 @@ void sky_draw()
 		vec3_t at = m_dvec3tovec3(m_dvec3sub(game.player.pos, game.camera.pos));
 		m_lookat(&skyview, m_vec3(0, 0, 0), at, m_up);
 	}
-	m_draw_begin(&renderobj);
+	m_use(material);
 	m_uniform_mat44(material->projmat, m_getmatrix(&game.projection));
 	m_uniform_mat44(material->modelview, &skyview);
 	m_uniform_vec3(material->sun_dir, &game.light_dir);
 	m_uniform_vec3(material->sun_color, &game.sun_color);
 	m_uniform_vec3(material->sky_dark, &game.sky_dark);
 	m_uniform_vec3(material->sky_light, &game.sky_light);
-	m_draw_end(&renderobj);
+	m_draw(&mesh);
+	m_use(NULL);
 	glDepthFunc(GL_LESS);
 	glDepthRange(0, 1);
 	glCullFace(GL_BACK);

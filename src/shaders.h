@@ -2,7 +2,7 @@
  * To be included only in main.c
  */
 
-static const char* basic_vshader = "#version 130\n"
+static const char* basic_vshader = "#version 330\n"
 	"uniform mat4 projmat;\n"
 	"uniform mat4 modelview;\n"
 	"uniform mat3 normalmat;\n"
@@ -19,7 +19,7 @@ static const char* basic_vshader = "#version 130\n"
 	"    gl_Position = projmat * modelview * vec4(position, 1);\n"
 	"}\n";
 
-static const char* basic_fshader = "#version 130\n"
+static const char* basic_fshader = "#version 330\n"
 	"precision highp float;\n"
 	"uniform vec3 amb_light;\n"
 	"uniform vec4 fog_color;\n"
@@ -40,7 +40,7 @@ static const char* basic_fshader = "#version 130\n"
 	"    fragment = vec4(fogged, 1);\n"
 	"}\n";
 
-static const char* ui_vshader = "#version 130\n"
+static const char* ui_vshader = "#version 330\n"
 	"uniform vec2 screensize;\n"
 	"in vec2 position;\n"
 	"in vec2 texcoord;\n"
@@ -55,7 +55,7 @@ static const char* ui_vshader = "#version 130\n"
 	"    gl_Position = vec4(eyepos, 0, 1);\n"
 	"}\n";
 
-static const char* ui_fshader = "#version 130\n"
+static const char* ui_fshader = "#version 330\n"
 	"precision highp float;\n"
 	"in vec2 out_texcoord;\n"
 	"in vec4 out_color;\n"
@@ -66,7 +66,7 @@ static const char* ui_fshader = "#version 130\n"
 	"}\n";
 
 
-static const char* debug_vshader = "#version 130\n"
+static const char* debug_vshader = "#version 330\n"
 	"uniform mat4 projmat;\n"
 	"uniform mat4 modelview;\n"
 	"in vec3 position;\n"
@@ -79,7 +79,7 @@ static const char* debug_vshader = "#version 130\n"
 	"    gl_Position = sspos;\n"
 	"}\n";
 
-static const char* debug_fshader = "#version 130\n"
+static const char* debug_fshader = "#version 330\n"
 	"precision highp float;\n"
 	"in vec4 out_color;\n"
 	"out vec4 fragment;\n"
@@ -87,7 +87,7 @@ static const char* debug_fshader = "#version 130\n"
 	"    fragment = out_color;\n"
 	"}\n";
 
-static const char* chunk_vshader = "#version 130\n"
+static const char* chunk_vshader = "#version 330\n"
 	"uniform mat4 projmat;\n"
 	"uniform mat4 modelview;\n"
 	"uniform vec3 chunk_offset;\n"
@@ -109,7 +109,7 @@ static const char* chunk_vshader = "#version 130\n"
 // amb_light = color and intensity of skylight
 // out_color.xyz = torchlight level (rgb)
 // out_color.w = sunlight level
-static const char* chunk_fshader = "#version 130\n"
+static const char* chunk_fshader = "#version 330\n"
 	"precision highp float;\n"
 	"uniform vec3 amb_light;\n"
 	"uniform vec4 fog_color;\n"
@@ -133,7 +133,7 @@ static const char* chunk_fshader = "#version 130\n"
 	"}\n";
 
 // TODO: color and alpha based on biome and depth
-static const char* chunkalpha_fshader = "#version 130\n"
+static const char* chunkalpha_fshader = "#version 330\n"
 	"precision highp float;\n"
 	"uniform vec3 amb_light;\n"
 	"uniform vec4 fog_color;\n"
@@ -157,7 +157,7 @@ static const char* chunkalpha_fshader = "#version 130\n"
 	"}\n";
 
 
-static const char* sky_vshader = "#version 130\n"
+static const char* sky_vshader = "#version 330\n"
 	"uniform mat4 projmat;\n"
 	"uniform mat4 modelview;\n"
 	"in vec3 position;\n"
@@ -169,7 +169,7 @@ static const char* sky_vshader = "#version 130\n"
 	"	gl_Position = projmat * modelview * vec4(position, 1.0);\n"
 	"}\n";
 
-static const char* sky_fshader = "#version 130\n"
+static const char* sky_fshader = "#version 330\n"
 	"precision highp float;\n"
 	"uniform vec3 sun_dir;\n"
 	"uniform vec3 sun_color;\n"
