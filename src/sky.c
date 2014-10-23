@@ -7,18 +7,25 @@
 static ml_mesh sky_mesh;
 static ml_renderable sky_renderable;
 
-void skyInit() {
+
+void sky_init()
+{
 	ml_material* material = game.materials + MAT_SKY;
 	makeHemisphere(&sky_mesh, 5.f, 4);
 	mlCreateRenderable(&sky_renderable, material, &sky_mesh);
+	sky_tick(0);
 }
 
-void skyExit(void) {
+
+void sky_exit()
+{
 	mlDestroyMesh(&sky_mesh);
 	mlDestroyRenderable(&sky_renderable);
 }
 
-void skyDraw() {
+
+void sky_draw()
+{
 	ml_material* material = game.materials + MAT_SKY;
 	glCullFace(GL_FRONT);
 	glDepthFunc(GL_EQUAL);
@@ -47,3 +54,134 @@ void skyDraw() {
 	glCullFace(GL_BACK);
 }
 
+static
+ml_vec3 sun_mix(const ml_vec3* colors, double day_amt, double dusk_amt, double night_amt, double dawn_amt)
+{
+	ml_vec3 c;
+	c.x = colors[0].x*day_amt + colors[1].x*dusk_amt + colors[2].x*night_amt + colors[3].x*dawn_amt;
+	c.y = colors[0].y*day_amt + colors[1].y*dusk_amt + colors[2].y*night_amt + colors[3].y*dawn_amt;
+	c.z = colors[0].z*day_amt + colors[1].z*dusk_amt + colors[2].z*night_amt + colors[3].z*dawn_amt;
+	return c;
+}
+
+static inline
+ml_vec3 mkrgb(uint32_t rgb)
+{
+	ml_vec3 c = {((float)((rgb>>16)&0xff)/255.f),
+	             ((float)((rgb>>8)&0xff)/255.f),
+	             ((float)((rgb)&0xff)/255.f) };
+	return c;
+}
+
+void sky_tick(float dt)
+{
+	double daylength = DAY_LENGTH;
+	if (game.fast_day_mode)
+		daylength = 10.0;
+	double step = (dt / daylength);
+	game.time_of_day += step;
+	while (game.time_of_day >= 1.0) {
+		game.day += 1;
+		game.time_of_day -= 1.0;
+	}
+
+	double t = game.time_of_day;
+	double day_amt, night_amt, dawn_amt, dusk_amt;
+
+	const double day_length = 0.5;
+	const double dawn_length = 0.15;
+	const double dusk_length = 0.1;
+	const double night_length = 0.25;
+
+	if (t >= 0 && t < day_length) {
+		day_amt = 1.0;
+		night_amt = dawn_amt = dusk_amt = 0;
+	} else if (t >= day_length && t < (day_length + dusk_length)) {
+		double f = (t - day_length) * (1.0 / dusk_length); // 0-1
+		dusk_amt = sin(f * ML_PI);
+		if (f < 0.5) {
+			day_amt = 1.0 - dusk_amt;
+			night_amt = 0.0;
+		} else {
+			day_amt = 0.0;
+			night_amt = 1.0 - dusk_amt;
+		}
+		dawn_amt = 0;
+	} else if (t >= (day_length + dusk_length) && t < (day_length + dusk_length + night_length)) {
+		night_amt = 1.0;
+		dawn_amt = dusk_amt = day_amt = 0;
+	} else {
+		double f = (t - (day_length + dusk_length + night_length)) * (1.0 / dawn_length); // 0-1
+		dawn_amt = sin(f * ML_PI);
+		if (f < 0.5) {
+			night_amt = 1.0 - dawn_amt;
+			day_amt = 0.0;
+		} else {
+			night_amt = 0.0;
+			day_amt = 1.0 - dawn_amt;
+		}
+		dusk_amt = 0;
+	}
+
+	//double mag = 1.0 / sqrt(day_amt*day_amt + night_amt*night_amt + dawn_amt*dawn_amt + dusk_amt*dusk_amt);
+	//day_amt *= mag;
+	//night_amt *= mag;
+	//dawn_amt *= mag;
+	//dusk_amt *= mag;
+
+	double low_light = 0.1;
+	double lightlevel = mlMax(day_amt, low_light);
+	game.light_level = lightlevel;
+
+#define MKRGB(rgb) mkrgb(0x##rgb)
+
+	// day, dusk, night, dawn
+	const ml_vec3 ambient[4] = {
+		MKRGB(ffffff),
+		MKRGB(544769),
+		MKRGB(101010),
+		MKRGB(6f2168),
+	};
+	const ml_vec3 sky_dark[4] = {
+		MKRGB(3F6CB4),
+		MKRGB(40538e),
+		MKRGB(000000),
+		MKRGB(3d2163),
+	};
+	const ml_vec3 sky_light[4] = {
+		MKRGB(00AAFF),
+		MKRGB(6a6ca5),
+		MKRGB(171b33),
+		MKRGB(e16e7a),
+	};
+	const ml_vec3 sun_color[4] = {
+		MKRGB(E8EAE7),
+		MKRGB(fdf2c9),
+		MKRGB(e2f3fa),
+		MKRGB(fefebb),
+	};
+	const ml_vec3 fog[4] = {
+		MKRGB(7ed4ff),
+		MKRGB(ad6369),
+		MKRGB(383e60),
+		MKRGB(f7847a),
+	};
+
+	const float fogdensity[4] = {
+		0.004,
+		0.004,
+		0.002,
+		0.006
+	};
+
+	game.amb_light = sun_mix(ambient, day_amt, dusk_amt, night_amt, dawn_amt);
+	game.sky_dark = sun_mix(sky_dark, day_amt, dusk_amt, night_amt, dawn_amt);
+	game.sky_light = sun_mix(sky_light, day_amt, dusk_amt, night_amt, dawn_amt);
+	game.sun_color = sun_mix(sun_color, day_amt, dusk_amt, night_amt, dawn_amt);
+	ml_vec3 fogc = sun_mix(fog, day_amt, dusk_amt, night_amt, dawn_amt);
+	float fogd = fogdensity[0]*day_amt + fogdensity[1]*dusk_amt + fogdensity[2]*night_amt + fogdensity[3]*dawn_amt;
+
+	mlVec4Assign(game.fog_color, fogc.x, fogc.y, fogc.z, fogd);
+	mlVec3Assign(game.light_dir, cos(t * ML_TWO_PI), -sin(t * ML_TWO_PI), 0);
+	game.light_dir = mlVec3Normalize(game.light_dir);
+}
