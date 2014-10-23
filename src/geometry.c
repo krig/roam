@@ -46,7 +46,7 @@ void makeCube(ml_mesh* mesh, ml_vec3 size, uint32_t top_clr, uint32_t bottom_clr
 		tris[i*6 + 5].n = normals[i];
 	}
 
-	mlCreateMesh(mesh, 36, tris, ML_POS_3F | ML_N_3F | ML_CLR_4UB);
+	mlCreateMesh(mesh, 36, tris, ML_POS_3F | ML_N_3F | ML_CLR_4UB, GL_STATIC_DRAW);
 }
 
 // faceverts must be able to hold 20 * 3 verts
@@ -197,7 +197,7 @@ void makeSphere(ml_mesh* mesh, float radius, int subdivisions) {
 		currverts = subdivide_sphere(verts[(v + 1) % 2], verts[v], currverts);
 		v = (v + 1) % 2;
 	}
-	mlCreateMesh(mesh, currverts, verts[subdivisions % 2], ML_POS_3F);
+	mlCreateMesh(mesh, currverts, verts[subdivisions % 2], ML_POS_3F, GL_STATIC_DRAW);
 }
 
 
@@ -218,5 +218,5 @@ void makeHemisphere(ml_mesh* mesh, float radius, int subdivisions) {
 		currverts = subdivide_sphere(verts[(v + 1) % 2], verts[v], currverts);
 		v = (v + 1) % 2;
 	}
-	mlCreateMesh(mesh, currverts, verts[subdivisions % 2], ML_POS_3F);
+	mlCreateMesh(mesh, currverts, verts[subdivisions % 2], ML_POS_3F, GL_STATIC_DRAW);
 }

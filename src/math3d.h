@@ -471,9 +471,10 @@ enum ML_MeshFlags {
 	ML_CLR_4UB = 0x100
 };
 
-void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags);
+void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags, GLenum usage);
 void mlCreateIndexedMesh(ml_mesh* mesh, size_t n, void* data, size_t ilen, GLenum indextype, void* indices, GLenum flags);
 void mlDestroyMesh(ml_mesh* mesh);
+void mlUpdateMesh(ml_mesh *mesh, GLintptr offset, GLsizeiptr n, void* data);
 
 void mlCreateRenderable(ml_renderable* renderable, const ml_material* material, const ml_mesh* mesh);
 void mlDestroyRenderable(ml_renderable* renderable);

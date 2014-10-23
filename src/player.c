@@ -5,14 +5,14 @@
 #include "easing.h"
 
 // TODO: make these tweakable from console
-#define FLYSPEED 10.f
-#define RUNSPEED 5.f
-#define SPRINTSPEED 2.f
+#define FLYSPEED 50.f
+#define RUNSPEED 4.f
+#define SPRINTSPEED 1.5f
 #define CROUCHSPEED 0.5f
 #define JUMPCOUNT 0.2f
 #define CROUCHJUMP 0.8f
 #define JUMPFORCE 10.f
-#define FLYUPDOWN 10.f
+#define FLYUPDOWN 45.f
 #define MAX_VELOCITY 54.f
 #define GRAVITY -10.f
 
@@ -30,7 +30,7 @@ void player_look(float dt)
 }
 
 static
-void player_move(void)
+void player_move(float dt)
 {
 	float right;
 	float forward;
@@ -68,8 +68,8 @@ void player_move(void)
 	dmove = mlVec3Scalef(dmove, speed);
 
 	if ((game.camera.mode == CAMERA_FLIGHT) || game.player.onground) {
-		game.player.vel.x += dmove.x;
-		game.player.vel.z += dmove.z;
+		game.player.vel.x += dmove.x * dt;
+		game.player.vel.z += dmove.z * dt;
 	}
 }
 
@@ -80,10 +80,11 @@ void player_jump(float dt)
 	if (!game.input.move_jump)
 		return;
 
+	game.player.vel.y += FLYUPDOWN * dt;
+
 	switch (game.camera.mode) {
 	case CAMERA_FLIGHT:
 		game.player.jumpcount = JUMPCOUNT;
-		game.player.vel.y += FLYUPDOWN * dt;
 		break;
 	default:
 		if (game.player.onground && game.player.jumpcount <= 0.f) {
@@ -102,7 +103,7 @@ static
 void player_crouch(float dt)
 {
 	if (game.input.move_crouch && game.camera.mode == CAMERA_FLIGHT)
-		game.player.vel.y -= -FLYUPDOWN * dt;
+		game.player.vel.y -= FLYUPDOWN * dt;
 	if (!game.input.move_crouch)
 		dt = -dt;
 	game.player.crouch_fade = mlClamp(game.player.crouch_fade + dt*5.f, 0.f, 1.f);
@@ -215,7 +216,7 @@ void player_tick(float dt)
 	game.player.crouching = game.input.move_crouch;
 	// accumulate frame impulses from input, gravity
 	// and other physics events
-	player_move();
+	player_move(dt);
 	player_jump(dt);
 	player_crouch(dt);
 	player_look(dt);
@@ -260,6 +261,8 @@ void player_tick(float dt)
 	float friction = 0.014f;
 	if (game.player.onground)
 		friction += 0.03f;
+	if (game.camera.mode == CAMERA_FLIGHT)
+		friction = 0.2f;
 	game.player.vel = mlVec3Scalef(vel, 1.f - friction);
 	game.player.pos = pos;
 	game.camera.pos.x = pos.x + offset.x;

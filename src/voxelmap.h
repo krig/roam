@@ -26,11 +26,15 @@ typedef struct tc2us_t {
 	uint16_t v;
 } tc2us_t;
 
-typedef struct game_block_vtx {
+typedef struct block_vtx_t {
 	ml_vec3 pos;
 	tc2us_t tc;
 	uint32_t clr;
-} game_block_vtx;
+} block_vtx_t;
+
+typedef struct block_face_t {
+	block_vtx_t vtx[3];
+} block_face_t;
 
 #pragma pack(pop)
 
@@ -56,6 +60,9 @@ typedef struct game_chunk {
 	uint32_t stess;
 	ml_mesh solid[MAP_CHUNK_HEIGHT];
 	ml_mesh alpha; // sort before rendering - should not be a mesh? no backface culling?
+	block_face_t* alphadata;
+	size_t alphadata_size;
+	size_t alphadata_capacity;
 	ml_mesh twosided; // render twosided (same shader as solid meshes but different render state)
 	// add per-chunk state information here (things like command blocks..., entities)
 } game_chunk;

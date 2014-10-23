@@ -594,11 +594,11 @@ static inline GLsizei mesh_stride(GLenum flags) {
 		((flags & ML_TC_2US) ? 4 : 0);
 }
 
-void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags) {
+void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags, GLenum usage) {
 	GLsizei stride = mesh_stride(flags);
 	glGenBuffers(1, &mesh->vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
-	glBufferData(GL_ARRAY_BUFFER, (GLsizei)n * stride, data, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, (GLsizei)n * stride, data, usage);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	// no indices in this mesh
@@ -621,8 +621,14 @@ void mlCreateMesh(ml_mesh* mesh, size_t n, void* data, GLenum flags) {
 	glCheck(__LINE__);
 }
 
+void mlUpdateMesh(ml_mesh* mesh, GLintptr offset, GLsizeiptr n, void* data) {
+	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
+	glBufferSubData(GL_ARRAY_BUFFER, offset, n, data);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
 void mlCreateIndexedMesh(ml_mesh* mesh, size_t n, void* data, size_t ilen, GLenum indextype, void* indices, GLenum flags) {
-	mlCreateMesh(mesh, n, data, flags);
+	mlCreateMesh(mesh, n, data, flags, GL_STATIC_DRAW);
 	glGenBuffers(1, &mesh->ibo);
 
 	GLsizei isize = 0;

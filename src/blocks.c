@@ -29,6 +29,7 @@ struct blockinfo_t blockinfo[] = {
 	{ .name = "black rock", .img = { IMG_BLACKROCK }, .density = SOLID_DENSITY },
 	{ .name = "ocean", .img = { IMG_OCEAN1 }, .density = WATER_DENSITY, .alpha = true },
 	{ .name = "mushroom", .img = { IMG_BB_SHROOM1 }, .backfaces = true },
+	{ .name = "test alpha", .img = { IMG_TEST_ALPHA }, .density = WATER_DENSITY, .alpha = true },
 };
 
 void blocks_init()

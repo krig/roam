@@ -9,6 +9,7 @@
 #include "geometry.h"
 #include "u8.h"
 #include "sky.h"
+#include "stb.h"
 
 static SDL_Window* window;
 static SDL_GLContext context;
@@ -106,6 +107,9 @@ void capture_mouse(bool capture)
 	mouse_captured = capture;
 }
 
+extern bool alpha_sort_chunks;
+extern bool alpha_sort_faces;
+
 static
 bool handle_event(SDL_Event* event)
 {
@@ -133,6 +137,16 @@ bool handle_event(SDL_Event* event)
 			game.camera.mode = (game.camera.mode + 1) % NUM_CAMERA_MODES;
 		else if (sym == SDLK_F5)
 			game.collisions_on = !game.collisions_on;
+		else if (sym == SDLK_F6) {
+			alpha_sort_chunks = !alpha_sort_chunks;
+			printf("sort chunks: %d\n", alpha_sort_chunks);
+			ui_add_console_line(stb_sprintf("sort chunks: %d", alpha_sort_chunks));
+		}
+		else if (sym == SDLK_F7) {
+			alpha_sort_faces = !alpha_sort_faces;
+			printf("sort faces: %d\n", alpha_sort_faces);
+			ui_add_console_line(stb_sprintf("sort faces: %d", alpha_sort_faces));
+		}
 		else if (sym == SDLK_BACKQUOTE)
 			ui_console_toggle(true);
 		else if (sym == SDLK_F2)
@@ -201,7 +215,7 @@ bool handle_event(SDL_Event* event)
 			    !blockCompare(head, game.input.prepicked_block) &&
 			    !blockCompare(feet, game.input.prepicked_block)) {
 				printf("can create.\n");
-				map_update_block(game.input.prepicked_block, BLOCK_PIG);
+				map_update_block(game.input.prepicked_block, BLOCK_TEST_ALPHA);
 			}
 		} break;
 		} break;

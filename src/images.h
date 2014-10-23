@@ -77,6 +77,7 @@ enum img_types {
 	IMG_TEST_U,
 	IMG_TEST_D,
 	IMG_WET_GRASS_SIDE,
+	IMG_TEST_ALPHA = IMG_AT(0, 8),
 	NUM_IMG_TYPES
 };
 
