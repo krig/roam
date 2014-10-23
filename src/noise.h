@@ -31,12 +31,12 @@
  */
 
 /* init the noise function using the given seed */
-void osnInit(uint64_t seed);
+void opensimplex_init(uint64_t seed);
 
 /* generate 2D, 3D, 4D noise data */
-double osnNoise2D(double x, double y);
-double osnNoise3D(double x, double y, double z);
-double osnNoise4D(double x, double y, double z, double w);
+double opensimplex_noise_2d(double x, double y);
+double opensimplex_noise_3d(double x, double y, double z);
+double opensimplex_noise_4d(double x, double y, double z, double w);
 
 /*
  * A speed-improved simplex noise algorithm for 2D
@@ -55,17 +55,17 @@ double osnNoise4D(double x, double y, double z, double w);
  *
  */
 
-void simplexInit(uint64_t seed);
-double simplexNoise(double x, double y);
+void simplex_init(uint64_t seed);
+double simplex_noise_2d(double x, double y);
 
 
 static inline
-double fBmSimplex(double x, double y, double gain, double frequency, double lacunarity, int octaves)
+double fbm_simplex_2d(double x, double y, double gain, double frequency, double lacunarity, int octaves)
 {
 	double sum = 0.0;
 	double amplitude = 1.0;
 	for (int i = 0; i < octaves; ++i) {
-		sum += simplexNoise(x * frequency, y * frequency) * amplitude;
+		sum += simplex_noise_2d(x * frequency, y * frequency) * amplitude;
         frequency *= lacunarity;
         amplitude *= gain;
 	}

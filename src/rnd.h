@@ -23,7 +23,7 @@ static inline unsigned long djb2_hash(unsigned char *str) {
 }
 
 /* RNG stream, from the OpenSimplex noise code */
-static inline uint64_t osnRand(uint64_t seed) {
+static inline uint64_t rand64(uint64_t seed) {
 		return seed * UINT64_C(6364136223846793005) + UINT64_C(1442695040888963407);
 }
 

@@ -3,7 +3,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-void m_perspective(mat44_t* m, float fovy, float aspect, float zNear, float zFar) {
+void m_perspective(mat44_t* m, float fovy, float aspect, float zNear, float zFar)
+{
 	m_setidentity(m);
 	float r = fovy * 0.5f;
 	float f = cos(r) / sin(r);
@@ -15,12 +16,14 @@ void m_perspective(mat44_t* m, float fovy, float aspect, float zNear, float zFar
 	m->m[15] = 0;
 }
 
-void m_setidentity(mat44_t* m) {
+void m_setidentity(mat44_t* m)
+{
 	memset(m->m, 0, sizeof(float)*16);
 	m->m[0] = m->m[5] = m->m[10] = m->m[15] = 1.f;
 }
 
-void m_fps_rotation(float pitch, float yaw, vec3_t* x, vec3_t* y, vec3_t* z) {
+void m_fps_rotation(float pitch, float yaw, vec3_t* x, vec3_t* y, vec3_t* z)
+{
 	float cosPitch = cosf(pitch);
 	float sinPitch = sinf(pitch);
 	float cosYaw = cosf(yaw);
@@ -36,7 +39,8 @@ void m_fps_rotation(float pitch, float yaw, vec3_t* x, vec3_t* y, vec3_t* z) {
 	z->z = cosPitch * cosYaw;
 }
 
-void m_fpsmatrix(mat44_t* to, vec3_t eye, float pitch, float yaw) {
+void m_fpsmatrix(mat44_t* to, vec3_t eye, float pitch, float yaw)
+{
 	/* equivalent to:
 	   m_setidentity(to);
 	   m_rotate(to, -pitch, 1.f, 0, 0);
@@ -72,7 +76,8 @@ void m_fpsmatrix(mat44_t* to, vec3_t eye, float pitch, float yaw) {
 void m_lookat(mat44_t* m,
 	float eyeX, float eyeY, float eyeZ,
 	float atX, float atY, float atZ,
-	float upX, float upY, float upZ) {
+	float upX, float upY, float upZ)
+{
 	mat44_t M;
 	vec3_t f, u, s;
 
@@ -98,11 +103,13 @@ void m_lookat(mat44_t* m,
 }
 
 void
-m_copymat(mat44_t* to, const mat44_t* from) {
+m_copymat(mat44_t* to, const mat44_t* from)
+{
 	memcpy(to, from, sizeof(mat44_t));
 }
 
-void m_getmat33(mat33_t* to, const mat44_t* from) {
+void m_getmat33(mat33_t* to, const mat44_t* from)
+{
 	float*__restrict__ a = to->m;
 	const float*__restrict__ b = from->m;
 	a[0] = b[0];
@@ -117,7 +124,8 @@ void m_getmat33(mat33_t* to, const mat44_t* from) {
 }
 
 void
-m_makefrustum(frustum_t* frustum, mat44_t* projection, mat44_t* view) {
+m_makefrustum(frustum_t* frustum, mat44_t* projection, mat44_t* view)
+{
 	mat44_t MP;
 	m_copymat(&MP, projection);
 	m_matmul(&MP, view);
@@ -144,7 +152,8 @@ m_makefrustum(frustum_t* frustum, mat44_t* projection, mat44_t* view) {
 
 // center: (max + min)/2
 // extents: (max - min)/2
-int collide_frustum_aabb(frustum_t* frustum, vec3_t center, vec3_t extent) {
+int collide_frustum_aabb(frustum_t* frustum, vec3_t center, vec3_t extent)
+{
 	int result, i;
 	vec4_t p, a;
 	result = ML_INSIDE;
@@ -161,7 +170,8 @@ int collide_frustum_aabb(frustum_t* frustum, vec3_t center, vec3_t extent) {
 }
 
 // these are very voxelgame-specific
-int collide_frustum_aabb_xz(frustum_t* frustum, vec3_t center, vec3_t extent) {
+int collide_frustum_aabb_xz(frustum_t* frustum, vec3_t center, vec3_t extent)
+{
 	int result, i;
 	vec4_t p, a;
 	result = ML_INSIDE;
@@ -177,7 +187,8 @@ int collide_frustum_aabb_xz(frustum_t* frustum, vec3_t center, vec3_t extent) {
 	return result;
 }
 
-int collide_frustum_aabb_y(frustum_t* frustum, vec3_t center, vec3_t extent) {
+int collide_frustum_aabb_y(frustum_t* frustum, vec3_t center, vec3_t extent)
+{
 	int result, i;
 	vec4_t p, a;
 	result = ML_INSIDE;
@@ -193,7 +204,8 @@ int collide_frustum_aabb_y(frustum_t* frustum, vec3_t center, vec3_t extent) {
 }
 
 
-vec3_t m_rotatevec3(const mat44_t* m, const vec3_t *v) {
+vec3_t m_rotatevec3(const mat44_t* m, const vec3_t *v)
+{
 	vec3_t ret;
 	ret.x = (v->x * m->m[0]) +
 		(v->y * m->m[4]) +
@@ -208,7 +220,8 @@ vec3_t m_rotatevec3(const mat44_t* m, const vec3_t *v) {
 }
 
 
-vec3_t m_matmul33(const mat33_t* m, const vec3_t* v) {
+vec3_t m_matmul33(const mat33_t* m, const vec3_t* v)
+{
 	vec3_t ret;
 	ret.x = (v->x * m->m[0]) +
 		(v->y * m->m[3]) +
@@ -223,7 +236,8 @@ vec3_t m_matmul33(const mat33_t* m, const vec3_t* v) {
 }
 
 void
-m_matmul(mat44_t* to, const mat44_t* by) {
+m_matmul(mat44_t* to, const mat44_t* by)
+{
 	const float*__restrict__ a = to->m;
 	const float*__restrict__ b = by->m;
 	float m[16];
@@ -249,7 +263,8 @@ m_matmul(mat44_t* to, const mat44_t* by) {
 }
 
 void
-m_translate(mat44_t* m, float x, float y, float z) {
+m_translate(mat44_t* m, float x, float y, float z)
+{
 	mat44_t trans;
 	m_setidentity(&trans);
 	trans.m[12] = x;
@@ -259,7 +274,8 @@ m_translate(mat44_t* m, float x, float y, float z) {
 }
 
 void
-m_rotate(mat44_t* m, float angle, float x, float y, float z) {
+m_rotate(mat44_t* m, float angle, float x, float y, float z)
+{
 	float cosa = cosf(angle);
 	float sina = sinf(angle);
 	float icosa = 1.f - cosa;
@@ -274,7 +290,8 @@ m_rotate(mat44_t* m, float angle, float x, float y, float z) {
 
 
 void
-m_transpose(mat44_t* m) {
+m_transpose(mat44_t* m)
+{
 #if 0
 	__m128 col1 = _mm_load_ps(&m->m[0]);
 	__m128 col2 = _mm_load_ps(&m->m[4]);
@@ -295,14 +312,16 @@ m_transpose(mat44_t* m) {
 #endif
 }
 
-void m_transpose33(mat33_t* m) {
+void m_transpose33(mat33_t* m)
+{
 	ML_SWAP(m->m[1], m->m[3]);
 	ML_SWAP(m->m[2], m->m[6]);
 	ML_SWAP(m->m[5], m->m[7]);
 }
 
 
-bool m_invert(mat44_t* to, const mat44_t* from) {
+bool m_invert(mat44_t* to, const mat44_t* from)
+{
 	float inv[16];
 	float* out = to->m;
 	const float* m = from->m;
@@ -435,7 +454,8 @@ bool m_invert(mat44_t* to, const mat44_t* from) {
 }
 
 // Must be orthonormal
-void m_invert_orthonormal(mat44_t* to, const mat44_t* from) {
+void m_invert_orthonormal(mat44_t* to, const mat44_t* from)
+{
 	mat33_t R;
 	vec3_t T;
 	m_getmat33(&R, from);
@@ -459,7 +479,8 @@ void m_invert_orthonormal(mat44_t* to, const mat44_t* from) {
 }
 
 
-vec4_t m_matmulvec(const mat44_t* m, const vec4_t* v) {
+vec4_t m_matmulvec(const mat44_t* m, const vec4_t* v)
+{
 	vec4_t ret;
 	ret.x = (v->x * m->m[0]) +
 		(v->y * m->m[4]) +
@@ -480,7 +501,8 @@ vec4_t m_matmulvec(const mat44_t* m, const vec4_t* v) {
 	return ret;
 }
 
-vec3_t m_matmulvec3(const mat44_t* m, const vec3_t* v) {
+vec3_t m_matmulvec3(const mat44_t* m, const vec3_t* v)
+{
 	vec3_t ret;
 	ret.x = (v->x * m->m[0]) +
 		(v->y * m->m[4]) +
@@ -498,7 +520,8 @@ vec3_t m_matmulvec3(const mat44_t* m, const vec3_t* v) {
 }
 
 
-GLuint m_compile_shader(GLenum type, const char* source) {
+GLuint m_compile_shader(GLenum type, const char* source)
+{
 	GLuint name;
 	GLint status;
 	name = glCreateShader(type);
@@ -519,7 +542,8 @@ GLuint m_compile_shader(GLenum type, const char* source) {
 	return name;
 }
 
-GLuint m_link_program(GLuint vsh, GLuint fsh) {
+GLuint m_link_program(GLuint vsh, GLuint fsh)
+{
 	GLuint program;
 	GLint status;
 	program = glCreateProgram();
@@ -544,7 +568,8 @@ GLuint m_link_program(GLuint vsh, GLuint fsh) {
 }
 
 
-void m_create_material(material_t* material, const char* vsource, const char* fsource) {
+void m_create_material(material_t* material, const char* vsource, const char* fsource)
+{
 	GLuint vshader, fshader, program;
 	vshader = m_compile_shader(GL_VERTEX_SHADER, vsource);
 	fshader = m_compile_shader(GL_FRAGMENT_SHADER, fsource);
@@ -576,13 +601,15 @@ void m_create_material(material_t* material, const char* vsource, const char* fs
 	glUseProgram(0);
 }
 
-void m_destroy_material(material_t* material) {
+void m_destroy_material(material_t* material)
+{
 	if (material->program != 0)
 		glDeleteProgram(material->program);
 	material->program = 0;
 }
 
-static inline GLsizei mesh_stride(GLenum flags) {
+static inline GLsizei mesh_stride(GLenum flags)
+{
 	return ((flags & ML_POS_2F) ? 8 : 0) +
 		((flags & ML_POS_3F) ? 12 : 0) +
 		((flags & ML_POS_4UB) ? 4 : 0) +
@@ -594,7 +621,8 @@ static inline GLsizei mesh_stride(GLenum flags) {
 		((flags & ML_TC_2US) ? 4 : 0);
 }
 
-void m_create_mesh(mesh_t* mesh, size_t n, void* data, GLenum flags, GLenum usage) {
+void m_create_mesh(mesh_t* mesh, size_t n, void* data, GLenum flags, GLenum usage)
+{
 	GLsizei stride = mesh_stride(flags);
 	glGenBuffers(1, &mesh->vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
@@ -621,13 +649,15 @@ void m_create_mesh(mesh_t* mesh, size_t n, void* data, GLenum flags, GLenum usag
 	m_checkgl(__LINE__);
 }
 
-void m_update_mesh(mesh_t* mesh, GLintptr offset, GLsizeiptr n, void* data) {
+void m_update_mesh(mesh_t* mesh, GLintptr offset, GLsizeiptr n, void* data)
+{
 	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
 	glBufferSubData(GL_ARRAY_BUFFER, offset, n, data);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void m_create_indexed_mesh(mesh_t* mesh, size_t n, void* data, size_t ilen, GLenum indextype, void* indices, GLenum flags) {
+void m_create_indexed_mesh(mesh_t* mesh, size_t n, void* data, size_t ilen, GLenum indextype, void* indices, GLenum flags)
+{
 	m_create_mesh(mesh, n, data, flags, GL_STATIC_DRAW);
 	glGenBuffers(1, &mesh->ibo);
 
@@ -652,7 +682,8 @@ void m_create_indexed_mesh(mesh_t* mesh, size_t n, void* data, size_t ilen, GLen
 	m_checkgl(__LINE__);
 }
 
-void m_destroy_mesh(mesh_t* mesh) {
+void m_destroy_mesh(mesh_t* mesh)
+{
 	if (mesh->vbo != 0)
 		glDeleteBuffers(1, &(mesh->vbo));
 	mesh->vbo = 0;
@@ -661,7 +692,8 @@ void m_destroy_mesh(mesh_t* mesh) {
 	mesh->ibo = 0;
 }
 
-void m_apply_material(const mesh_t* mesh, const material_t* material) {
+void m_apply_material(const mesh_t* mesh, const material_t* material)
+{
 	glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo);
 	if (material->position > -1) {
 		if (mesh->position > -1) {
@@ -711,7 +743,8 @@ void m_apply_material(const mesh_t* mesh, const material_t* material) {
 	}
 }
 
-void m_create_renderobj(renderobj_t* renderable, const material_t* material, const mesh_t* mesh) {
+void m_create_renderobj(renderobj_t* renderable, const material_t* material, const mesh_t* mesh)
+{
 	glGenVertexArrays(1, &renderable->vao);
 	glBindVertexArray(renderable->vao);
 	renderable->material = material;
@@ -723,13 +756,15 @@ void m_create_renderobj(renderobj_t* renderable, const material_t* material, con
 	m_checkgl(__LINE__);
 }
 
-void m_destroy_renderobj(renderobj_t* renderable) {
+void m_destroy_renderobj(renderobj_t* renderable)
+{
 	if (renderable->vao != 0)
 		glDeleteVertexArrays(1, &(renderable->vao));
 	renderable->vao = 0;
 }
 
-void m_mtxstack_init(mtxstack_t* stack, size_t size) {
+void m_mtxstack_init(mtxstack_t* stack, size_t size)
+{
 	if (size == 0)
 		fatal_error("Matrix stack too small");
 	stack->top = 0;
@@ -738,43 +773,51 @@ void m_mtxstack_init(mtxstack_t* stack, size_t size) {
 		m_setidentity(stack->stack + i);
 }
 
-void m_mtxstack_destroy(mtxstack_t* stack) {
+void m_mtxstack_destroy(mtxstack_t* stack)
+{
 	free(stack->stack);
 	stack->top = -1;
 	stack->stack = NULL;
 }
 
-void m_pushmatrix(mtxstack_t* stack) {
+void m_pushmatrix(mtxstack_t* stack)
+{
 	++stack->top;
 	m_copymat(stack->stack + stack->top, stack->stack + stack->top - 1);
 }
 
-void m_loadmatrix(mtxstack_t* stack, mat44_t* m) {
+void m_loadmatrix(mtxstack_t* stack, mat44_t* m)
+{
 	m_copymat(stack->stack + stack->top, m);
 }
 
-void m_loadidentity(mtxstack_t* stack) {
+void m_loadidentity(mtxstack_t* stack)
+{
 	m_setidentity(stack->stack + stack->top);
 }
 
-void m_pushidentity(mtxstack_t* stack) {
+void m_pushidentity(mtxstack_t* stack)
+{
 	++stack->top;
 	m_setidentity(stack->stack + stack->top);
 }
 
-void m_popmatrix(mtxstack_t* stack) {
+void m_popmatrix(mtxstack_t* stack)
+{
 	if (stack->top < 0)
 		fatal_error("Matrix stack underflow");
 	--stack->top;
 }
 
-mat44_t* m_getmatrix(mtxstack_t* stack) {
+mat44_t* m_getmatrix(mtxstack_t* stack)
+{
 	if (stack->top < 0)
 		fatal_error("Matrix stack underflow");
 	return stack->stack + stack->top;
 }
 
-void m_tex2d_load(tex2d_t* tex, const char* filename) {
+void m_tex2d_load(tex2d_t* tex, const char* filename)
+{
 	int x, y, n;
 	unsigned char* data;
 
@@ -814,13 +857,15 @@ void m_tex2d_load(tex2d_t* tex, const char* filename) {
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void m_tex2d_destroy(tex2d_t* tex) {
+void m_tex2d_destroy(tex2d_t* tex)
+{
 	glDeleteTextures(1, &tex->id);
 	memset(tex, 0, sizeof(tex2d_t));
 
 }
 
-void m_tex2d_bind(tex2d_t* tex, int index) {
+void m_tex2d_bind(tex2d_t* tex, int index)
+{
 	glActiveTexture(GL_TEXTURE0 + index);
 	glBindTexture(GL_TEXTURE_2D, tex->id);
 }
@@ -968,7 +1013,8 @@ bool collide_aabb_aabb_full(vec3_t center, vec3_t extent, vec3_t center2, vec3_t
 
 
 bool collide_segment_aabb(vec3_t pos, vec3_t delta, vec3_t padding, vec3_t center, vec3_t extent,
-	float* time, vec3_t* hit, vec3_t* hitdelta, vec3_t* normal) {
+	float* time, vec3_t* hit, vec3_t* hitdelta, vec3_t* normal)
+{
 	float scaleX = 1.f / delta.x;
 	float scaleY = 1.f / delta.y;
 	float scaleZ = 1.f / delta.z;
@@ -1012,7 +1058,8 @@ bool collide_segment_aabb(vec3_t pos, vec3_t delta, vec3_t padding, vec3_t cente
 	return true;
 }
 
-bool intersect_moving_aabb_aabb(aabb_t a, aabb_t b, vec3_t va, vec3_t vb, float* tfirst, float* tlast) {
+bool intersect_moving_aabb_aabb(aabb_t a, aabb_t b, vec3_t va, vec3_t vb, float* tfirst, float* tlast)
+{
 	if (collide_aabb_aabb(a.center, a.extent, b.center, b.extent)) {
 		*tfirst = *tlast = 0.f;
 		return true;

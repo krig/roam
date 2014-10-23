@@ -69,7 +69,7 @@ void gen_noisemap(game_chunk* chunk)
 				abort();
 			}
 			uint32_t sunlight = 0xf0000000;
-			double height = fBmSimplex(fillx, fillz, 0.5, NOISE_SCALE, 2.1117, 5);
+			double height = fbm_simplex_2d(fillx, fillz, 0.5, NOISE_SCALE, 2.1117, 5);
 			height = 32.0 + height * 24.0;
 			b = BLOCK_AIR;
 			p = BLOCK_AIR;
@@ -81,7 +81,7 @@ void gen_noisemap(game_chunk* chunk)
 					b = BLOCK_BLACKROCK;
 				} else if (filly < height) {
 					if (p == BLOCK_AIR) {
-						snowseed = osnRand(snowseed);
+						snowseed = rand64(snowseed);
 						if (height > (140.0 - (snowseed % 10))) {
 							b = BLOCK_SNOWY_GRASS_1;
 						} else {

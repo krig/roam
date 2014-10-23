@@ -146,17 +146,17 @@ double extrapolate4(int xsb, int ysb, int zsb, int wsb, double dx, double dy, do
 		+ gradients4D[index + 3] * dw;
 }
 
-void osnInit(uint64_t seed)
+void opensimplex_init(uint64_t seed)
 {
 	uint8_t source[256];
 	memset(perm, 0, 256);
 	memset(permGradIndex3D, 0, 256);
 	for (int i = 0; i < 256; i++)
 		source[i] = i;
-	seed = osnRand(osnRand(osnRand(seed)));
+	seed = rand64(rand64(rand64(seed)));
 
 	for (int i = 255; i >= 0; i--) {
-		seed = osnRand(seed);
+		seed = rand64(seed);
 		uint32_t r = (uint32_t)((seed + 31) % (i + 1));
 		perm[i] = source[r];
 		permGradIndex3D[i] = ((perm[i] % (NUM_GRADIENTS3D / 3)) * 3);
@@ -164,7 +164,7 @@ void osnInit(uint64_t seed)
 	}
 }
 
-double osnNoise2D(double x, double y)
+double opensimplex_noise_2d(double x, double y)
 {
 	//Place input coordinates onto grid.
 	double stretchOffset = (x + y) * STRETCH_CONSTANT_2D;
@@ -278,7 +278,7 @@ double osnNoise2D(double x, double y)
 	return value / NORM_CONSTANT_2D;
 }
 
-double osnNoise3D(double x, double y, double z)
+double opensimplex_noise_3d(double x, double y, double z)
 {
 	//Place input coordinates on simplectic lattice.
 	double stretchOffset = (x + y + z) * STRETCH_CONSTANT_3D;
@@ -845,7 +845,7 @@ double osnNoise3D(double x, double y, double z)
 }
 
 //4D OpenSimplex (Simplectic) Noise.
-double osnNoise4D(double x, double y, double z, double w)
+double opensimplex_noise_4d(double x, double y, double z, double w)
 {
 
 	//Place input coordinates on simplectic honeycomb.
@@ -2180,7 +2180,7 @@ static double grad[][2] = {
 static uint8_t simplexPerm[512];
 static uint8_t simplexPermMod12[512];
 
-void simplexInit(uint64_t seed)
+void simplex_init(uint64_t seed)
 {
 	int i;
 	uint8_t source[256];
@@ -2188,13 +2188,13 @@ void simplexInit(uint64_t seed)
 
 	memset(p, 0, 256);
 
-	seed = osnRand(osnRand(osnRand(seed)));
+	seed = rand64(rand64(rand64(seed)));
 
 	for (i = 0; i < 256; ++i)
 		source[i] = i;
 
 	for (i = 255; i >= 0; --i) {
-		seed = osnRand(seed);
+		seed = rand64(seed);
 		uint32_t r = (uint32_t)((seed + 31) % (i + 1));
 		p[i] = source[r];
 		source[r] = source[i];
@@ -2207,7 +2207,7 @@ void simplexInit(uint64_t seed)
 }
 
 
-double simplexNoise(double xin, double yin)
+double simplex_noise_2d(double xin, double yin)
 {
 	double n0, n1, n2; // Noise contributions from the three corners
 	// Skew the input space to determine which simplex cell we're in

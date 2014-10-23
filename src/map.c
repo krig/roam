@@ -94,8 +94,8 @@ void map_init()
 
 	game.map.seed = sys_urandom();
 	printf("* Seed: %lx\n", game.map.seed);
-	simplexInit(game.map.seed);
-	osnInit(game.map.seed);
+	simplex_init(game.map.seed);
+	opensimplex_init(game.map.seed);
 
 	chunkpos_t camera = playerChunk();
 	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
