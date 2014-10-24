@@ -359,6 +359,7 @@ static
 void game_tick(float dt)
 {
 	player_tick(dt);
+	tweaks_tick(dt);
 	camera_tick(dt);
 	ui_tick(dt);
 	map_tick();

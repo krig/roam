@@ -29,7 +29,7 @@ void init_fvar(float* v, float vmin, float vmax, const char* name);
 void init_ivar(int* v, int vmin, int vmax, const char* name);
 void init_bvar(bool* v, const char* name);
 
-void add_var_callback(const char* var, void (*cb)(var_t* var, void* userdata), void* userdata);
+void set_var_callback(const char* var, void (*cb)(var_t* var, void* userdata), void* userdata);
 var_t *get_var(const char* name);
 
 void tweaks_exit(void);

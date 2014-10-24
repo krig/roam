@@ -4,15 +4,10 @@
 #include "game.h"
 #include "tweak.h"
 
-struct event {
-	void (*cb)(var_t *var, void *userdata);
-	void *userdata;
-	struct event *next;
-};
-
 struct var_data {
 	var_t var;
-	struct event *cb;
+	void (*cb)(var_t *var, void *userdata);
+	void *userdata;
 	struct var_data *next;
 };
 
@@ -30,6 +25,7 @@ void init_fvar(float *v, float vmin, float vmax, const char *name)
 	var->var.vmin.f = vmin;
 	var->var.vmax.f = vmax;
 	var->cb = NULL;
+	var->userdata = NULL;
 	var->next = vars;
 	vars = var;
 }
@@ -46,6 +42,7 @@ void init_ivar(int *v, int vmin, int vmax, const char *name)
 	var->var.vmin.i = vmin;
 	var->var.vmax.i = vmax;
 	var->cb = NULL;
+	var->userdata = NULL;
 	var->next = vars;
 	vars = var;
 }
@@ -62,30 +59,19 @@ void init_bvar(bool* v, const char *name)
 	var->var.vmin.i = 0;
 	var->var.vmax.i = 1;
 	var->cb = NULL;
+	var->userdata = NULL;
 	var->next = vars;
 	vars = var;
 }
 
 
-void add_var_callback(const char* var, void (*cb)(var_t* var, void* userdata), void* userdata)
+void set_var_callback(const char* var, void (*cb)(var_t* var, void* userdata), void* userdata)
 {
 	struct var_data *i;
-	struct event *e;
-	i = (struct var_data *)get_var(var);
-	if (i == NULL)
-		return;
-	for (e = i->cb; e != NULL && e->next != NULL; e = e->next)
-		;
-	if (e == NULL) {
-		e = (struct event *)malloc(sizeof(struct event));
-		i->cb = e;
-	} else {
-		e->next = (struct event *)malloc(sizeof(struct event));
-		e = e->next;
+	if ((i = (struct var_data *)get_var(var)) != NULL) {
+		i->cb = cb;
+		i->userdata = userdata;
 	}
-	e->cb = cb;
-	e->userdata = userdata;
-	e->next = NULL;
 }
 
 
@@ -102,15 +88,9 @@ var_t *get_var(const char* name)
 void tweaks_exit()
 {
 	struct var_data *i, *k;
-	struct event *e, *f;
 	for (i = vars; i != NULL;) {
 		k = i;
 		i = i->next;
-		for (e = i->cb; e != NULL;) {
-			f = e;
-			e = e->next;
-			free(f);
-		}
 		free(k);
 	}
 	vars = NULL;
@@ -134,11 +114,8 @@ void tweaks_tick(float dt)
 			changed = *(bool*)i->var.val != i->var.prev.b;
 			break;
 		}
-		if (changed) {
-			struct event *e;
-			for (e = i->cb; e != NULL; e = e->next)
-				(e->cb)(&i->var, e->userdata);
-		}
+		if (changed && i->cb != NULL)
+			(i->cb)(&i->var, i->userdata);
 		switch (i->var.type) {
 		case VAR_FLOAT:
 			i->var.prev.f = *(float*)i->var.val;
