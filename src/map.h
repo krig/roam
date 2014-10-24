@@ -67,7 +67,7 @@ typedef struct game_chunk {
 	block_face_t* alphadata;
 	size_t alphadata_size;
 	size_t alphadata_capacity;
-	mesh_t twosided; // render twosided (same shader as solid meshes but different render state)
+	mesh_t sprite; // render twosided (same shader as solid meshes but different render state)
 	// add per-chunk state information here (things like command blocks..., entities)
 } game_chunk;
 
@@ -101,6 +101,7 @@ void map_update_block(ivec3_t block, uint32_t value);
 bool map_raycast(dvec3_t origin, vec3_t dir, int len, ivec3_t* hit, ivec3_t* prehit);
 uint32_t blockData(int x, int y, int z);
 
+
 // mod which handles negative numbers
 static inline
 int mod(int a, int b)
@@ -109,6 +110,7 @@ int mod(int a, int b)
 	int ret = a % b;
 	return (ret < 0) ? ret + b : ret;
 }
+
 
 // elements xyz are 0-32
 // w should be 0-3
@@ -128,6 +130,7 @@ size_t blockIndex(int x, int y, int z)
 		y;
 }
 
+
 static inline
 uint32_t* blockColumn(int x, int z)
 {
@@ -136,11 +139,13 @@ uint32_t* blockColumn(int x, int z)
 		mod(x, MAP_BLOCK_WIDTH) * MAP_BLOCK_HEIGHT;
 }
 
+
 static inline
 uint32_t blockType(int x, int y, int z)
 {
 	return blockData(x, y, z) & 0xff;
 }
+
 
 static inline
 size_t blockByCoord(ivec3_t xyz)
@@ -148,11 +153,13 @@ size_t blockByCoord(ivec3_t xyz)
 	return blockIndex(xyz.x, xyz.y, xyz.z);
 }
 
+
 static inline
 uint32_t blockTypeByCoord(ivec3_t xyz)
 {
 	return blockType(xyz.x, xyz.y, xyz.z);
 }
+
 
 static inline
 chunkpos_t blockToChunk(ivec3_t block)
@@ -160,4 +167,10 @@ chunkpos_t blockToChunk(ivec3_t block)
 	chunkpos_t c = { floor(round(block.x) / CHUNK_SIZE),
 	               floor(round(block.z) / CHUNK_SIZE) };
 	return c;
+}
+
+
+static inline
+bool is_collider(int x, int y, int z) {
+	return blockinfo[blockType(x, y, z)].flags & BLOCK_COLLIDER;
 }

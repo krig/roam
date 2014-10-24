@@ -556,6 +556,12 @@ vec3_t m_dvec3tovec3(dvec3_t v)
 }
 
 static inline
+dvec3_t m_dvec3add(dvec3_t a, dvec3_t b)
+{
+	return m_dvec3(a.x + b.x, a.y + b.y, a.z + b.z);
+}
+
+static inline
 dvec3_t m_dvec3sub(dvec3_t a, dvec3_t b)
 {
 	return m_dvec3(a.x - b.x, a.y - b.y, a.z - b.z);

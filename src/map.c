@@ -574,7 +574,7 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 						continue;
 				}
 
-				if (blockinfo[t].alpha) {
+				if (blockinfo[t].flags & BLOCK_ALPHA) {
 					save_vi = vi;
 					verts = alpha_buffer;
 					vi = *alphai;
@@ -760,7 +760,7 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 					}
 				}
 
-				if (blockinfo[t].alpha) {
+				if (blockinfo[t].flags & BLOCK_ALPHA) {
 					if (vi > ALPHA_BUFFER_SIZE)
 						fatal_error("Alpha buffer too small for chunk (%d, %d, %d): %zu verts, %zu blocks processed", bufx, cy, bufz, vi, nprocessed);
 					*alphai = vi;

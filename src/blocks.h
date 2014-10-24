@@ -1,8 +1,8 @@
 #pragma once
 
 #define AIR_DENSITY 0
-#define WATER_DENSITY 1
-#define SOLID_DENSITY 2
+#define WATER_DENSITY 100
+#define SOLID_DENSITY 1000
 
 enum BlockTex {
 	BLOCK_TEX_TOP,
@@ -14,10 +14,11 @@ enum BlockTex {
 };
 
 enum BlockFlags {
-	BLOCK_SOLID = 1,
+	BLOCK_COLLIDER = 1, // collide with player
 	BLOCK_ALPHA = 2, // draw in alpha pass
 	BLOCK_MESH = 4, // custom mesh shape
-	BLOCK_TWOSIDED = 4 // render without backface culling
+	BLOCK_SPRITE = 8, // render without backface culling
+	BLOCK_SLOPE = 0x10, // can walk up/down this block
 };
 
 enum BlockTypes {
@@ -57,12 +58,10 @@ struct blockinfo {
 	// 0 = fill with previous
 	int img[6];
 
-	int density;
-
-	bool alpha; // render in alpha pass
-	bool backfaces; // render in backface pass
-
+	uint32_t flags;
+	uint32_t density; // relative density is used when meshing
 	uint32_t light; // light emitted by block (rgb)
+	uint32_t attenuation; // light attenuation (used when lighting)
 
 	// todo: custom shape?
 	// maybe this has to be hardcoded in the tesselator for each blocktype

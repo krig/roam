@@ -3,11 +3,18 @@
 struct player {
 	dvec3_t pos;
 	vec3_t vel;
-	float jumpcount;
-	float crouch_fade;
-	bool onground;
+	bool walking;
 	bool sprinting;
 	bool crouching;
+
+	int bobcount;
+	float crouch_fade;
+
+	float health;
+	float air;
+	uint32_t xp;
+	uint32_t level;
+
 };
 
 struct inputstate {

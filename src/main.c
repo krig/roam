@@ -11,6 +11,8 @@
 #include "u8.h"
 #include "sky.h"
 #include "stb.h"
+#include "easing.h"
+#include "tweak.h"
 
 
 static SDL_Window* window;
@@ -90,6 +92,7 @@ void game_exit()
 	m_mtxstack_destroy(&game.projection);
 	m_mtxstack_destroy(&game.modelview);
 	m_tex2d_destroy(&blocks_texture);
+	tweaks_exit();
 }
 
 
@@ -111,6 +114,9 @@ static
 bool handle_event(SDL_Event* event)
 {
 	if (ui_console_handle_event(event))
+		return true;
+
+	if (tweaks_handle_event(event))
 		return true;
 
 	switch (event->type) {
@@ -324,9 +330,36 @@ bool sweep_aabb_into_blocks(vec3_t center, vec3_t extent, vec3_t delta,
 */
 
 static
+void camera_tick(float dt)
+{
+	struct player *p = &game.player;
+	struct camera *cam = &game.camera;
+	// offset camera from position
+	vec3_t offset = {0, 0, 0};
+	switch (cam->mode) {
+	case CAMERA_FLIGHT:
+		offset.y = CAMOFFSET;
+		break;
+	case CAMERA_3RDPERSON: {
+		vec3_t x, y, z;
+		m_fps_rotation(cam->pitch, cam->yaw, &x, &y, &z);
+		offset = m_vec3scale(z, 6.f);
+	} break;
+	default: {
+		float d = enCubicInOut(p->crouch_fade);
+		offset.y = CAMOFFSET * (1.f - d) + CROUCHCAMOFFSET * d;
+	} break;
+	}
+	cam->pos.x = p->pos.x + offset.x;
+	cam->pos.y = p->pos.y + offset.y;
+	cam->pos.z = p->pos.z + offset.z;
+}
+
+static
 void game_tick(float dt)
 {
 	player_tick(dt);
+	camera_tick(dt);
 	ui_tick(dt);
 	map_tick();
 	sky_tick(dt);
@@ -433,16 +466,18 @@ void game_draw(SDL_Point* viewport, float frametime)
 		ui_rect(2, 2, 450, 60, 0x66000000);
 		ui_text(4, 60 - 9, 0xffffffff,
 			"pos: (%2.2g, %2.2g, %2.2g)\n"
+			"cam: (%2.2g, %2.2g, %2.2g)\n"
 			"vel: (%2.2f, %2.2f, %2.2f)\n"
 			"chunk: (%d, %d)\n"
 			"%s%s%s\n"
 			"fps: %d, t: %1.3f",
 			game.player.pos.x, game.player.pos.y, game.player.pos.z,
+			game.camera.pos.x, game.camera.pos.y, game.camera.pos.z,
 			game.player.vel.x, game.player.vel.y, game.player.vel.z,
 			camera.x, camera.z,
-			game.player.onground ? "onground " : "",
-			game.player.crouching ? "crouching " : "",
-			game.player.sprinting ? "sprinting " : "",
+			game.player.walking ? "+walk " : "",
+			game.player.crouching ? "+crouch " : "",
+		        game.input.move_sprint ? "+sprint " : "",
 			(int)roundf(fps), game.time_of_day);
 	}
 	ui_draw_debug(&game.projection, &game.modelview);
