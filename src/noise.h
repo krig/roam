@@ -1,5 +1,7 @@
 #pragma once
 
+#include "stb_perlin.h"
+
 /*
  * A C port of "OpenSimplex (Simplectic) Noise in Java".
  * https://gist.github.com/KdotJPG/b1270127455a94ac5d19

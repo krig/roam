@@ -16,18 +16,43 @@ uint64_t sys_urandom()
 	return seed;
 }
 
-char* sys_readfile(const char* filename)
+
+char *sys_readfile(const char *filename)
 {
-	FILE* f = fopen(filename, "r");
+	FILE *f = fopen(filename, "rb");
+	if (f == NULL)
+		return NULL;
 	fseek(f, 0, SEEK_END);
 	long flen = ftell(f);
 	fseek(f, 0, SEEK_SET);
-	char* data = (char*)malloc(flen + 1);
-	fread(data, flen, 1, f);
+	char *data = (char *)malloc(flen + 1);
+	fread(data, 1, flen, f);
 	data[flen] = '\0';
 	fclose(f);
 	return data;
 }
+
+
+// reallocate if buffer size is too small, else reuse buffer
+// returns buffer size
+char* sys_readfile_realloc(const char* filename, char* buffer, size_t* len)
+{
+	FILE *f = fopen(filename, "rb");
+	if (f == NULL)
+		return NULL;
+	fseek(f, 0, SEEK_END);
+	long flen = ftell(f);
+	fseek(f, 0, SEEK_SET);
+	if (*len < flen + 1) {
+		buffer = (char *)realloc(buffer, flen + 1);
+		*len = flen + 1;
+	}
+	fread(buffer, 1, flen, f);
+	buffer[flen] = '\0';
+	fclose(f);
+	return buffer;
+}
+
 
 int sys_isfile(const char* filename)
 {

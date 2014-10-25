@@ -6,12 +6,20 @@
 
 struct var_data {
 	var_t var;
-	void (*cb)(var_t *var, void *userdata);
+	void (*call)(var_t *var, void *userdata);
 	void *userdata;
 	struct var_data *next;
 };
 
+struct cmd {
+	const char *name;
+	int (*call)(char *arg, void *userdata);
+	void *userdata;
+	struct cmd *next;
+};
+
 static struct var_data *vars = NULL;
+static struct cmd *cmds = NULL;
 
 
 void init_fvar(float *v, float vmin, float vmax, const char *name)
@@ -24,7 +32,7 @@ void init_fvar(float *v, float vmin, float vmax, const char *name)
 	var->var.prev.f = *v;
 	var->var.vmin.f = vmin;
 	var->var.vmax.f = vmax;
-	var->cb = NULL;
+	var->call = NULL;
 	var->userdata = NULL;
 	var->next = vars;
 	vars = var;
@@ -41,14 +49,14 @@ void init_ivar(int *v, int vmin, int vmax, const char *name)
 	var->var.prev.i = *v;
 	var->var.vmin.i = vmin;
 	var->var.vmax.i = vmax;
-	var->cb = NULL;
+	var->call = NULL;
 	var->userdata = NULL;
 	var->next = vars;
 	vars = var;
 }
 
 
-void init_bvar(bool* v, const char *name)
+void init_bvar(bool *v, const char *name)
 {
 	struct var_data *var;
 	var = (struct var_data *)malloc(sizeof(struct var_data));
@@ -58,30 +66,72 @@ void init_bvar(bool* v, const char *name)
 	var->var.prev.b = *v;
 	var->var.vmin.i = 0;
 	var->var.vmax.i = 1;
-	var->cb = NULL;
+	var->call = NULL;
 	var->userdata = NULL;
 	var->next = vars;
 	vars = var;
 }
 
 
-void set_var_callback(const char* var, void (*cb)(var_t* var, void* userdata), void* userdata)
+void cmd_init(const char *name, int (*cb)(char *arg, void *userdata), void *userdata)
+{
+	struct cmd *cmd;
+	cmd = (struct cmd *)malloc(sizeof(struct cmd));
+	cmd->name = name;
+	cmd->call = cb;
+	cmd->userdata = userdata;
+	cmd->next = cmds;
+	cmds = cmd;
+}
+
+
+int cmd_invoke(const char *name, char *arg)
+{
+	struct cmd *i;
+	for (i = cmds; i != NULL; i = i->next)
+		if (strcmp(name, i->name) == 0)
+			return (*i->call)(arg, i->userdata);
+	return -1;
+}
+
+
+void set_var_callback(const char *var, void (*cb)(var_t *var, void *userdata), void *userdata)
 {
 	struct var_data *i;
 	if ((i = (struct var_data *)get_var(var)) != NULL) {
-		i->cb = cb;
+		i->call = cb;
 		i->userdata = userdata;
 	}
 }
 
 
-var_t *get_var(const char* name)
+var_t *get_var(const char *name)
 {
 	struct var_data *i;
 	for (i = vars; i != NULL; i = i->next)
 		if (strcmp(name, i->var.name) == 0)
 			return &i->var;
 	return NULL;
+}
+
+static const char *vars_data = "data/vars.cfg";
+static int reload_interval = 60; // frames
+static int reload_counter = 0;
+static char* data_buffer = NULL;
+static size_t data_buffer_size = 0;
+
+// format of data file?
+// maybe a simple line based format is enough:
+// <name> <type> = <value>\n
+// can also allow multiple values..
+// <name> <type>* = <value> <value> <value>
+
+void tweaks_init()
+{
+	data_buffer_size = 16*1024;
+	data_buffer = malloc(data_buffer_size);
+	reload_counter = reload_interval;
+	tweaks_tick();
 }
 
 
@@ -98,8 +148,19 @@ void tweaks_exit()
 
 
 // update prev value for tweaks
-void tweaks_tick(float dt)
+void tweaks_tick()
 {
+	if (reload_counter++ < reload_interval)
+		return;
+	reload_counter = 0;
+
+	// start watching tweaks data file
+	// when data file changes, reload and apply changes
+	{
+		char *buf = sys_readfile_realloc(vars_data, data_buffer, &data_buffer_size);
+		
+	}
+
 	struct var_data *i;
 	bool changed;
 	for (i = vars; i != NULL; i = i->next) {
@@ -114,8 +175,8 @@ void tweaks_tick(float dt)
 			changed = *(bool*)i->var.val != i->var.prev.b;
 			break;
 		}
-		if (changed && i->cb != NULL)
-			(i->cb)(&i->var, i->userdata);
+		if (changed && i->call != NULL)
+			(i->call)(&i->var, i->userdata);
 		switch (i->var.type) {
 		case VAR_FLOAT:
 			i->var.prev.f = *(float*)i->var.val;
@@ -128,16 +189,4 @@ void tweaks_tick(float dt)
 			break;
 		}
 	}
-}
-
-
-// display ui for tweak
-void tweaks_show(const char* name)
-{
-}
-
-
-bool tweaks_handle_event(SDL_Event* event)
-{
-	return false;
 }

@@ -17,6 +17,7 @@
 // System functions
 
 char*    sys_readfile(const char* filename);
+char*   sys_readfile_realloc(const char* filename, char* buffer, size_t* len);
 int      sys_isfile(const char* filename);
 uint64_t sys_urandom(void);
 

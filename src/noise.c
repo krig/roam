@@ -41,6 +41,7 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#define STB_PERLIN_IMPLEMENTATION
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>

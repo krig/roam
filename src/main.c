@@ -30,7 +30,7 @@ static void reset_inputstate(void);
 static
 void game_init()
 {
-	m_tex2d_load(&blocks_texture, "data/blocks8-v1.png");
+	tweaks_init();
 
 	game.camera.pitch = 0;
 	game.camera.yaw = 0;
@@ -68,6 +68,7 @@ void game_init()
 	m_create_material(&game.materials[MAT_CHUNK_ALPHA], chunk_vshader, chunkalpha_fshader);
 	m_create_material(&game.materials[MAT_SKY], sky_vshader, sky_fshader);
 	ui_init(game.materials + MAT_UI, game.materials + MAT_DEBUG);
+	m_tex2d_load(&blocks_texture, "data/blocks8-v1.png");
 
 	game.day = 0;
 	game.time_of_day = 0;
@@ -114,9 +115,6 @@ static
 bool handle_event(SDL_Event* event)
 {
 	if (ui_console_handle_event(event))
-		return true;
-
-	if (tweaks_handle_event(event))
 		return true;
 
 	switch (event->type) {
@@ -359,7 +357,7 @@ static
 void game_tick(float dt)
 {
 	player_tick(dt);
-	tweaks_tick(dt);
+	tweaks_tick();
 	camera_tick(dt);
 	ui_tick(dt);
 	map_tick();
