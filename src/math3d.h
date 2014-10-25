@@ -96,6 +96,12 @@ typedef struct aabb_t {
 
 #pragma pack(push, 4)
 
+// order always has to be
+// position
+// normal
+// texcoord
+// color
+
 typedef struct posclrvert {
 	vec3_t pos;
 	uint32_t clr;

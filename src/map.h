@@ -28,6 +28,7 @@ typedef struct tc2us_t {
 
 typedef struct block_vtx_t {
 	vec3_t pos;
+//	uint32_t n; // normal + extra uint8 value (water depth?)
 	tc2us_t tc;
 	uint32_t clr;
 } block_vtx_t;

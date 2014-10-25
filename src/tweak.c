@@ -3,6 +3,10 @@
 #include "ui.h"
 #include "game.h"
 #include "tweak.h"
+#include <luajit-2.0/luajit.h>
+#include <luajit-2.0/lua.h>
+#include <luajit-2.0/lualib.h>
+#include <luajit-2.0/lauxlib.h>
 
 struct var_data {
 	var_t var;
@@ -20,6 +24,80 @@ struct cmd {
 
 static struct var_data *vars = NULL;
 static struct cmd *cmds = NULL;
+static const char *vars_data = "data/vars.lua";
+static int reload_interval = 60; // frames
+static int reload_counter = 0;
+static lua_State *L;
+
+// format of data file?
+// maybe a simple line based format is enough:
+// <name> <type> = <value>\n
+// can also allow multiple values..
+// <name> <type>* = <value> <value> <value>
+
+void tweaks_init()
+{
+	L = luaL_newstate();
+	luaJIT_setmode(L, 0, LUAJIT_MODE_ENGINE|LUAJIT_MODE_ON);
+	luaL_openlibs(L);
+	luaL_dostring(L, "print(\"LuaJIT loaded\")");
+	luaL_loadfile(L, vars_data);
+	reload_counter = reload_interval;
+	tweaks_tick();
+}
+
+
+void tweaks_exit()
+{
+	struct var_data *i, *k;
+	for (i = vars; i != NULL;) {
+		k = i;
+		i = i->next;
+		free(k);
+	}
+	vars = NULL;
+	lua_close(L);
+	L = NULL;
+}
+
+
+// update prev value for tweaks
+void tweaks_tick()
+{
+	if (reload_counter++ < reload_interval)
+		return;
+	reload_counter = 0;
+
+
+	struct var_data *i;
+	bool changed;
+	for (i = vars; i != NULL; i = i->next) {
+		switch (i->var.type) {
+		case VAR_FLOAT:
+			changed = (*(float*)i->var.val - i->var.prev.f) > ML_EPSILON;
+			break;
+		case VAR_INT:
+			changed = *(int*)i->var.val != i->var.prev.i;
+			break;
+		case VAR_BOOL:
+			changed = *(bool*)i->var.val != i->var.prev.b;
+			break;
+		}
+		if (changed && i->call != NULL)
+			(i->call)(&i->var, i->userdata);
+		switch (i->var.type) {
+		case VAR_FLOAT:
+			i->var.prev.f = *(float*)i->var.val;
+			break;
+		case VAR_INT:
+			i->var.prev.i = *(int*)i->var.val;
+			break;
+		case VAR_BOOL:
+			i->var.prev.b = *(bool*)i->var.val;
+			break;
+		}
+	}
+}
 
 
 void init_fvar(float *v, float vmin, float vmax, const char *name)
@@ -114,79 +192,3 @@ var_t *get_var(const char *name)
 	return NULL;
 }
 
-static const char *vars_data = "data/vars.cfg";
-static int reload_interval = 60; // frames
-static int reload_counter = 0;
-static char* data_buffer = NULL;
-static size_t data_buffer_size = 0;
-
-// format of data file?
-// maybe a simple line based format is enough:
-// <name> <type> = <value>\n
-// can also allow multiple values..
-// <name> <type>* = <value> <value> <value>
-
-void tweaks_init()
-{
-	data_buffer_size = 16*1024;
-	data_buffer = malloc(data_buffer_size);
-	reload_counter = reload_interval;
-	tweaks_tick();
-}
-
-
-void tweaks_exit()
-{
-	struct var_data *i, *k;
-	for (i = vars; i != NULL;) {
-		k = i;
-		i = i->next;
-		free(k);
-	}
-	vars = NULL;
-}
-
-
-// update prev value for tweaks
-void tweaks_tick()
-{
-	if (reload_counter++ < reload_interval)
-		return;
-	reload_counter = 0;
-
-	// start watching tweaks data file
-	// when data file changes, reload and apply changes
-	{
-		char *buf = sys_readfile_realloc(vars_data, data_buffer, &data_buffer_size);
-		
-	}
-
-	struct var_data *i;
-	bool changed;
-	for (i = vars; i != NULL; i = i->next) {
-		switch (i->var.type) {
-		case VAR_FLOAT:
-			changed = (*(float*)i->var.val - i->var.prev.f) > ML_EPSILON;
-			break;
-		case VAR_INT:
-			changed = *(int*)i->var.val != i->var.prev.i;
-			break;
-		case VAR_BOOL:
-			changed = *(bool*)i->var.val != i->var.prev.b;
-			break;
-		}
-		if (changed && i->call != NULL)
-			(i->call)(&i->var, i->userdata);
-		switch (i->var.type) {
-		case VAR_FLOAT:
-			i->var.prev.f = *(float*)i->var.val;
-			break;
-		case VAR_INT:
-			i->var.prev.i = *(int*)i->var.val;
-			break;
-		case VAR_BOOL:
-			i->var.prev.b = *(bool*)i->var.val;
-			break;
-		}
-	}
-}
