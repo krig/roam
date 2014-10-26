@@ -19,7 +19,8 @@ static lua_State *L;
 ** model but changing `fputs' to put the strings at a proper place
 ** (a console window or a log file, for instance).
 */
-static int script_print (lua_State *L) {
+static int script_print(lua_State *L)
+{
 	char tmp[2048] = {0};
 	int n = lua_gettop(L);  /* number of arguments */
 	int i;
@@ -41,6 +42,46 @@ static int script_print (lua_State *L) {
 	return 0;
 }
 
+static int script_quit(lua_State *L)
+{
+	lua_pop(L, lua_gettop(L));
+	game.game_active = false;
+	return 0;
+}
+
+static int script_debug_mode(lua_State *L)
+{
+	bool onoff = true;
+	if (lua_gettop(L) > 0) {
+		int n = lua_tointeger(L, 1);
+		onoff = !!n;
+	}
+	game.debug_mode = onoff;
+	return 0;
+}
+
+static int script_wireframe(lua_State *L)
+{
+	bool onoff = true;
+	if (lua_gettop(L) > 0) {
+		int n = lua_tointeger(L, 1);
+		onoff = !!n;
+	}
+	game.wireframe = onoff;
+	return 0;
+}
+
+static int script_teleport(lua_State *L)
+{
+	// TODO: how to error handle in lua
+	if (lua_gettop(L) != 3)
+		return 0;
+	game.player.pos.x = lua_tonumber(L, 1);
+	game.player.pos.y = lua_tonumber(L, 2);
+	game.player.pos.z = lua_tonumber(L, 3);
+	lua_pop(L, 3);
+	return 0;
+}
 
 void script_init()
 {
@@ -48,6 +89,10 @@ void script_init()
 	luaJIT_setmode(L, 0, LUAJIT_MODE_ENGINE|LUAJIT_MODE_ON);
 	luaL_openlibs(L);
 	lua_register(L, "print", script_print);
+	lua_register(L, "quit", script_quit);
+	lua_register(L, "debug", script_debug_mode);
+	lua_register(L, "wireframe", script_wireframe);
+	lua_register(L, "teleport", script_teleport);
 }
 
 
