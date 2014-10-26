@@ -3,6 +3,7 @@
 #include "game.h"
 #include "sky.h"
 #include "geometry.h"
+#include "script.h"
 
 static mesh_t mesh;
 
@@ -70,9 +71,11 @@ vec3_t mkrgb(uint32_t rgb)
 
 void sky_tick(float dt)
 {
-	double daylength = DAY_LENGTH;
+	double daylength;
 	if (game.fast_day_mode)
-		daylength = 10.0;
+		daylength = script_get("game.fast_day_length");
+	else
+		daylength = script_get("game.day_length");
 	double step = (dt / daylength);
 	game.time_of_day += step;
 	while (game.time_of_day >= 1.0) {

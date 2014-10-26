@@ -7,6 +7,7 @@
 #include <luajit-2.0/lua.h>
 #include <luajit-2.0/lualib.h>
 #include <luajit-2.0/lauxlib.h>
+#include "stb.h"
 
 
 static lua_State *L;
@@ -135,19 +136,6 @@ int script_dofile(const char* filename)
 }
 
 
-void script_def_f(float *v, float vmin, float vmax, const char *name)
-{
-}
-
-void script_def_i(int *v, int vmin, int vmax, const char *name)
-{
-}
-
-void script_def_b(bool *v, const char *name)
-{
-}
-
-
 // commands are triggered via the console or scripts
 // input is a lua_State *
 // output is number of results left on the stack
@@ -157,21 +145,62 @@ void script_defun(const char *name, int (*cb)(void *L))
 }
 
 
-float script_get_f(const char *name)
+static int script_gettable(const char* name)
 {
-	return 0.f;
+	char tmp[512];
+	int n, i;
+	strmcpy(tmp, name, sizeof(tmp));
+	char** tok = stb_tokens(tmp, ".", &n);
+	i = 0;
+
+	if (n == 0)
+		return -1;
+
+	lua_getglobal(L, tok[0]);
+	if (n > 1 && !lua_istable(L, -1)) {
+		lua_pop(L, lua_gettop(L));
+		return -1;
+	}
+
+	for (i = 1; i < n; ++i) {
+		lua_pushstring(L, tok[i]);
+		lua_gettable(L, -2);
+		if (i < n-1 && !lua_istable(L, -1)) {
+			lua_pop(L, lua_gettop(L));
+			return -1;
+		}
+	}
+	return 0;
+}
+
+
+double script_get(const char *name)
+{
+	if (script_gettable(name) < 0)
+		return 0.0;
+	double v = lua_tonumber(L, -1);
+	lua_pop(L, lua_gettop(L));
+	return v;
 }
 
 
 int script_get_i(const char *name)
 {
-	return 0;
+	if (script_gettable(name) < 0)
+		return 0.0;
+	int v = lua_tointeger(L, -1);
+	lua_pop(L, lua_gettop(L));
+	return v;
 }
 
 
 bool script_get_b(const char *name)
 {
-	return false;
+	if (script_gettable(name) < 0)
+		return 0.0;
+	int v = lua_tointeger(L, -1);
+	lua_pop(L, lua_gettop(L));
+	return !!v;
 }
 
 

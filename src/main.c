@@ -31,6 +31,7 @@ static
 void game_init()
 {
 	script_init();
+	script_dofile("data/boot.lua");
 	game.camera.pitch = 0;
 	game.camera.yaw = 0;
 	m_setvec3(game.camera.pos, 0, 0, 0);
@@ -76,8 +77,6 @@ void game_init()
 	player_init();
 	map_init();
 	player_move_to_spawn();
-
-	script_dofile("data/boot.lua");
 
 	mouse_captured = false;
 }

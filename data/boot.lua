@@ -6,3 +6,7 @@
 
 print("Booting the game...")
 
+game = {
+   day_length = 1200;
+   fast_day_length = 5;
+}
