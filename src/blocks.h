@@ -2,6 +2,7 @@
 
 #define AIR_DENSITY 0
 #define WATER_DENSITY 100
+#define GLASS_DENSITY 500
 #define SOLID_DENSITY 1000
 
 enum BlockTex {

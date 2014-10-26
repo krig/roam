@@ -129,7 +129,7 @@ struct blockinfo blockinfo[] = {
 	},
 	{ .name = "test alpha",
 	  .img = { IMG_TEST_ALPHA },
-	  .density = SOLID_DENSITY,
+	  .density = GLASS_DENSITY,
 	  .flags = BLOCK_COLLIDER | BLOCK_ALPHA
 	},
 };
