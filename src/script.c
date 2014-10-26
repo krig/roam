@@ -52,34 +52,21 @@ static int script_quit(lua_State *L)
 
 static int script_debug_mode(lua_State *L)
 {
-	bool onoff = true;
-	if (lua_gettop(L) > 0) {
-		int n = lua_tointeger(L, 1);
-		onoff = !!n;
-	}
-	game.debug_mode = onoff;
+	game.debug_mode = (lua_gettop(L) > 0) ? lua_toboolean(L, 1) : true;
 	return 0;
 }
 
 static int script_wireframe(lua_State *L)
 {
-	bool onoff = true;
-	if (lua_gettop(L) > 0) {
-		int n = lua_tointeger(L, 1);
-		onoff = !!n;
-	}
-	game.wireframe = onoff;
+	game.wireframe = (lua_gettop(L) > 0) ? lua_toboolean(L, 1) : true;
 	return 0;
 }
 
 static int script_teleport(lua_State *L)
 {
-	// TODO: how to error handle in lua
-	if (lua_gettop(L) != 3)
-		return 0;
-	game.player.pos.x = lua_tonumber(L, 1);
-	game.player.pos.y = lua_tonumber(L, 2);
-	game.player.pos.z = lua_tonumber(L, 3);
+	game.player.pos.x = luaL_checknumber(L, 1);
+	game.player.pos.y = luaL_checknumber(L, 2);
+	game.player.pos.z = luaL_checknumber(L, 3);
 	lua_pop(L, 3);
 	return 0;
 }
@@ -87,12 +74,9 @@ static int script_teleport(lua_State *L)
 static int script_blocktype(lua_State *L)
 {
 	int x, y, z;
-	// TODO: how to error handle in lua
-	if (lua_gettop(L) != 3)
-		return 0;
-	x = lua_tointeger(L, 1);
-	y = lua_tointeger(L, 2);
-	z = lua_tointeger(L, 3);
+	x = luaL_checkinteger(L, 1);
+	y = luaL_checkinteger(L, 2);
+	z = luaL_checkinteger(L, 3);
 	lua_pop(L, 3);
 	lua_pushinteger(L, blockType(x, y, z));
 	return 1;
