@@ -12,7 +12,7 @@
 #include "sky.h"
 #include "stb.h"
 #include "easing.h"
-#include "tweak.h"
+#include "script.h"
 
 
 static SDL_Window* window;
@@ -30,8 +30,7 @@ static void reset_inputstate(void);
 static
 void game_init()
 {
-	tweaks_init();
-
+	script_init();
 	game.camera.pitch = 0;
 	game.camera.yaw = 0;
 	m_setvec3(game.camera.pos, 0, 0, 0);
@@ -78,6 +77,8 @@ void game_init()
 	map_init();
 	player_move_to_spawn();
 
+	script_dofile("data/boot.lua");
+
 	mouse_captured = false;
 }
 
@@ -93,7 +94,7 @@ void game_exit()
 	m_mtxstack_destroy(&game.projection);
 	m_mtxstack_destroy(&game.modelview);
 	m_tex2d_destroy(&blocks_texture);
-	tweaks_exit();
+	script_exit();
 }
 
 
@@ -205,14 +206,14 @@ bool handle_event(SDL_Event* event)
 	case SDL_MOUSEBUTTONDOWN:
 		switch (event->button.button) {
 		case SDL_BUTTON_LEFT: {
-			printf("deleting picked block (%d, %d, %d)\n",
-				game.input.picked_block.x,
-				game.input.picked_block.y,
-				game.input.picked_block.z);
 			if (!mouse_captured) {
 				printf("focus gained\n");
 				capture_mouse(true);
 			} else {
+				printf("deleting picked block (%d, %d, %d)\n",
+				       game.input.picked_block.x,
+				       game.input.picked_block.y,
+				       game.input.picked_block.z);
 				if (blockTypeByCoord(game.input.picked_block) != BLOCK_AIR) {
 					printf("can delete.\n");
 					map_update_block(game.input.picked_block, BLOCK_AIR);
@@ -357,7 +358,7 @@ static
 void game_tick(float dt)
 {
 	player_tick(dt);
-	tweaks_tick();
+	script_tick();
 	camera_tick(dt);
 	ui_tick(dt);
 	map_tick();

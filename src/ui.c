@@ -4,6 +4,7 @@
 #include "game.h"
 #include "easing.h"
 #include "stb.h"
+#include "script.h"
 
 // UI drawing
 static material_t* ui_material = NULL;
@@ -412,28 +413,9 @@ void ui_add_console_line(const char* txt)
 
 void ui_execute_console_command(char* cmd)
 {
-	int ntok;
-	char** tok = stb_tokens(cmd, " \t\r\n", &ntok);
-	if (ntok == 0)
-		return;
-	if (strcmp(tok[0], "/quit") == 0) {
-		game.game_active = false;
-	} else if (strcmp(tok[0], "/fastday") == 0) {
-		game.fast_day_mode = true;
-		ui_add_console_line("Fast day mode on.");
-	} else if (strcmp(tok[0], "/nofastday") == 0) {
-		game.fast_day_mode = false;
-		ui_add_console_line("Fast day mode off.");
-	} else if (strcmp(tok[0], "/time") == 0) {
-		if (ntok != 2) {
-			ui_add_console_line("Expected /time <0-1000>");
-		} else {
-			long int v = strtol(tok[1], NULL, 0);
-			game.time_of_day = (double)v/1000.0;
-			ui_add_console_line(stb_sprintf("Set time to %ld", v));
-		}
-	} else {
-		ui_add_console_line(stb_sprintf("Unknown command: %s", cmd));
+	int ret = script_exec(cmd);
+	if (ret != 0) {
+		printf("TODO: handle ret != 0 from script command (ret = %d)\n", ret);
 	}
 }
 
