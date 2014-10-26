@@ -84,6 +84,20 @@ static int script_teleport(lua_State *L)
 	return 0;
 }
 
+static int script_blocktype(lua_State *L)
+{
+	int x, y, z;
+	// TODO: how to error handle in lua
+	if (lua_gettop(L) != 3)
+		return 0;
+	x = lua_tointeger(L, 1);
+	y = lua_tointeger(L, 2);
+	z = lua_tointeger(L, 3);
+	lua_pop(L, 3);
+	lua_pushinteger(L, blockType(x, y, z));
+	return 1;
+}
+
 void script_init()
 {
 	L = luaL_newstate();
@@ -94,6 +108,7 @@ void script_init()
 	lua_register(L, "debug", script_debug_mode);
 	lua_register(L, "wireframe", script_wireframe);
 	lua_register(L, "teleport", script_teleport);
+	lua_register(L, "blocktype", script_blocktype);
 }
 
 
@@ -198,7 +213,7 @@ bool script_get_b(const char *name)
 {
 	if (script_gettable(name) < 0)
 		return 0.0;
-	int v = lua_tointeger(L, -1);
+	int v = lua_toboolean(L, -1);
 	lua_pop(L, lua_gettop(L));
 	return !!v;
 }
