@@ -13,6 +13,11 @@
 static lua_State *L;
 
 
+lua_State *script_get_state()
+{
+	return L;
+}
+
 /*
 ** Based on luaB_print from lbaselib.c
 ** If your system does not support `stdout', you can just remove this function.
@@ -22,7 +27,7 @@ static lua_State *L;
 */
 static int script_print(lua_State *L)
 {
-	char tmp[2048] = {0};
+	char tmp[1024] = {0};
 	int n = lua_gettop(L);  /* number of arguments */
 	int i;
 	lua_getglobal(L, "tostring");
@@ -138,9 +143,9 @@ int script_dofile(const char* filename)
 // commands are triggered via the console or scripts
 // input is a lua_State *
 // output is number of results left on the stack
-void script_defun(const char *name, int (*cb)(void *L))
+void script_defun(const char *name, int (*cb)(lua_State *L))
 {
-	lua_register(L, name, (lua_CFunction)cb);
+	lua_register(L, name, cb);
 }
 
 
