@@ -11,3 +11,8 @@ game = {
    fast_day_length = 5;
 }
 
+player = {
+   accel = 30;
+   friction = 0.05;
+   gravity = -10;
+}

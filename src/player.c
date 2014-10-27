@@ -6,26 +6,6 @@
 #include <lua.h>
 #include <lauxlib.h>
 
-//#define FLYSPEED 10.f
-//#define RUNSPEED 4.f
-//#define SPRINTSPEED 1.5f
-//#define CROUCHSPEED 0.5f
-//#define JUMPFORCE 10.f
-//#define FLYUPDOWN 45.f
-//#define MAX_VELOCITY 54.f
-//#define GRAVITY -10.f
-
-// Updated from lua once per frame
-struct playervars {
-	float flyspeed;
-	float runspeed;
-	float sprintspeed;
-	float crouchspeed;
-	float jumpforce;
-	float flyupdown;
-	float maxvel;
-	float gravity;
-};
 
 static struct playervars pv;
 
@@ -35,7 +15,6 @@ void player_look(float dt)
 {
 	struct inputstate *in = &game.input;
 	struct camera *cam = &game.camera;
-
 	const float xsens = 1.f / ML_TWO_PI;
 	const float ysens = 1.f / ML_TWO_PI;
 	float dyaw = in->mouse_xrel * dt * xsens;
@@ -62,9 +41,8 @@ void player_dumb_collide()
 		return;
 
 	float groundlevel = (float)groundblock + 0.5f;
-        if (p->pos.y - FEETDISTANCE + p->vel.y < groundlevel) {
+        if (p->pos.y - FEETDISTANCE < groundlevel) {
 	        p->pos.y = groundlevel + FEETDISTANCE;
-	        p->vel.y = 0.f;
 	        p->walking = true;
         }
 }
@@ -101,7 +79,7 @@ void flight_move(struct player *p, float dt)
 	struct inputstate *in = &game.input;
 	player_look(dt);
 
-	float speed = pv.flyspeed;
+	float speed = pv.accel;//pv.flyspeed;
 	vec3_t movedir = {0, 0, 0};
 	if (in->move_left) movedir.x -= 1.f;
 	if (in->move_right) movedir.x += 1.f;
@@ -109,32 +87,34 @@ void flight_move(struct player *p, float dt)
 	if (in->move_backward) movedir.z += 1.f;
 	if (in->move_jump) movedir.y += 1.f;
 	if (in->move_crouch) movedir.y -= 1.f;
-	if (in->move_sprint) speed += pv.sprintspeed;
+	//if (in->move_sprint) speed += pv.sprintspeed;
 
-	// normalize move dir? but strafing feels good!
-	mat44_t m;
-	m_setidentity(&m);
-	m_rotate(&m, game.camera.yaw, 0, 1.f, 0);
-	vec3_t movevec = m_vec3scale(m_matmulvec3(&m, &movedir), speed*dt);
+	if (movedir.x != 0 || movedir.y != 0 || movedir.z != 0) {
+		// normalize move dir? but strafing feels good!
+		mat44_t m;
+		m_setidentity(&m);
+		m_rotate(&m, game.camera.yaw, 0, 1.f, 0);
+		vec3_t movevec = m_vec3scale(m_matmulvec3(&m, &movedir), speed*dt);
 
-	p->vel = m_vec3add(p->vel, movevec);
+		p->vel = m_vec3add(p->vel, movevec);
+	}
 
 	player_dumb_collide();
+
+	// drag
+	p->vel = m_vec3scale(p->vel, 1.f - pv.friction);
 
 	p->pos.x += p->vel.x * dt;
 	p->pos.y += p->vel.y * dt;
 	p->pos.z += p->vel.z * dt;
 }
 
-static void updatevar(lua_State *L, const char* name, float* v, float def)
+static void updatevar(lua_State *L, const char* name, float* v)
 {
 	lua_pushstring(L, name);
 	lua_gettable(L, -2);
-	if (lua_isnumber(L, -1)) {
+	if (lua_isnumber(L, -1))
 		*v = lua_tonumber(L, -1);
-	} else {
-		*v = def;
-	}
 	lua_pop(L, 1);
 }
 
@@ -144,24 +124,26 @@ void player_tick(float dt)
 	lua_State *L = script_get_state();
 	lua_getglobal(L, "player");
 	if (lua_istable(L, -1)) {
-		updatevar(L, "flyspeed", &pv.flyspeed, 10.f);
-		updatevar(L, "runspeed", &pv.runspeed, 4.f);
-		updatevar(L, "sprintspeed", &pv.sprintspeed, 1.5f);
-		updatevar(L, "crouchspeed", &pv.crouchspeed, 0.5f);
-		updatevar(L, "jumpforce", &pv.jumpforce, 10.f);
-		updatevar(L, "flyupdown", &pv.flyupdown, 45.f);
-		updatevar(L, "maxvel", &pv.maxvel, 54.f);
-		updatevar(L, "gravity", &pv.gravity, -10.f);
+		updatevar(L, "accel", &pv.accel);
+		updatevar(L, "friction", &pv.friction);
+		updatevar(L, "gravity", &pv.gravity);
 	}
 
 	struct player *p = &game.player;
 	// update animations
 	p->crouch_fade = m_clamp(p->crouch_fade + (p->crouching?dt:-dt)*5.f, 0.f, 1.f);
-	//++game.player.bobcount; foot step sound
+	++game.player.bobcount;
+	if (game.player.bobcount > 200)
+		game.player.bobcount = 0;
 
 
 	if (game.camera.mode == CAMERA_FLIGHT) {
 		flight_move(p, dt);
 		return;
 	}
+
+	p->prev_chunk = p->chunk;
+	p->prev_block = p->block;
+	p->prev_pos = p->pos;
+	p->prev_vel = p->vel;
 }

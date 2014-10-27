@@ -464,12 +464,12 @@ void game_draw(SDL_Point* viewport, float frametime)
 
 		ui_rect(2, 2, 450, 60, 0x66000000);
 		ui_text(4, 60 - 9, 0xffffffff,
-			"pos: (%2.2g, %2.2g, %2.2g)\n"
-			"cam: (%2.2g, %2.2g, %2.2g)\n"
-			"vel: (%2.2f, %2.2f, %2.2f)\n"
+			"pos: (%+4.4g, %+4.4g, %+4.4g)\n"
+			"cam: (%+4.4g, %+4.4g, %+4.4g)\n"
+			"vel: (%+4.4f, %+4.4f, %+4.4f)\n"
 			"chunk: (%d, %d)\n"
 			"%s%s%s\n"
-			"fps: %d, t: %1.3f",
+			"fps: %d, t: %4.4f",
 			game.player.pos.x, game.player.pos.y, game.player.pos.z,
 			game.camera.pos.x, game.camera.pos.y, game.camera.pos.z,
 			game.player.vel.x, game.player.vel.y, game.player.vel.z,

@@ -1,8 +1,32 @@
 #pragma once
 
+// Updated from lua once per frame
+struct playervars {
+	float accel;
+	float friction;
+	float gravity;
+};
+
+
+// collision with block
+struct contact {
+	ivec3_t block;
+	vec3_t point;
+	vec3_t normal;
+	float time;
+};
+
 struct player {
+	chunkpos_t chunk;
+	ivec3_t block;
 	dvec3_t pos;
 	vec3_t vel;
+
+	chunkpos_t prev_chunk;
+	ivec3_t prev_block;
+	dvec3_t prev_pos;
+	vec3_t prev_vel;
+
 	bool walking;
 	bool sprinting;
 	bool crouching;
@@ -15,6 +39,8 @@ struct player {
 	uint32_t xp;
 	uint32_t level;
 
+	struct contact contacts[3*3*4];
+	int ncontacts;
 };
 
 struct inputstate {
