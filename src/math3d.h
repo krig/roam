@@ -543,6 +543,26 @@ static inline
 }
 
 static inline
+float m_fastinvsqrt(float x) {
+	union {
+		float f;
+		int bits;
+	} v;
+	float xhalf = 0.5f * x;
+	v.f = x;
+	v.bits = 0x5f3759df - (v.bits >> 1);  // what the fuck?
+	x = v.f;
+	x = x*(1.5f-(xhalf*x*x));
+	return x;
+}
+
+static inline
+vec3_t m_vec3fastnormalize(vec3_t v)
+{
+	return m_vec3scale(v, m_fastinvsqrt(v.x*v.x + v.y*v.y + v.z*v.z));
+}
+
+static inline
 vec4_t m_normalize_plane(vec4_t plane)
 {
 	vec3_t n = {plane.x, plane.y, plane.z};
