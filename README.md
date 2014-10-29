@@ -8,7 +8,7 @@ Minecraft-like, but I'm going to go a different direction, I think.
 * OpenGL 3.3
 * SDL 2
 * LuaJIT 2
-* ISC License (Like BSD, but simpler)
+* Public Domain (see LICENSE)
 
 ![screenshot](http://33.media.tumblr.com/3da5329f8ec1803e36ba3714187e169f/tumblr_ndqpxtSMMc1qbhw3go1_1280.jpg)
 
