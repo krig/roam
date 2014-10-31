@@ -507,6 +507,8 @@ uint32_t bitcontract16(uint32_t x)
 // assert(avglight(0, 0, 0, 0) == 0x0f0f0f0f);
 // assert(avglight(0xffff0000, 0xffff0000, 0xffff0000, 0xffff0000) == 0xffff0000);
 // MC smooth lighting: average light of four blocks around vert on the positive face side
+// This should average eight blocks, really.. the only question is how to scale
+// eight 4-bit values into a 8-bit value nicely. :P
 static
 uint32_t avglight(uint32_t b0, uint32_t b1, uint32_t b2, uint32_t b3)
 {
