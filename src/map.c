@@ -7,6 +7,7 @@
 #include "blocks.h"
 #include "ui.h"
 #include "gen.h"
+#include "easing.h"
 
 static inline
 tc2us_t make_tc2us(vec2_t tc)
@@ -81,11 +82,24 @@ bool popChunkTesselation(chunkpos_t* chunk)
 	return true;
 }
 
+static uint32_t lightlut[256];
+
+static
+void lightlut_init(void)
+{
+	for (int i = 0; i < 256; ++i) {
+		lightlut[i] = 7 + (uint32_t)trunc(enSineOut((double)i / 255.0)*248.5);
+		lightlut[i] = ML_MIN(255, lightlut[i]);
+		printf("%02x ", lightlut[i]);
+	}
+	printf("\n");
+}
 
 void map_init()
 {
 	blocks_init();
 	gen_block_tcs();
+	lightlut_init();
 
 	printf("* Allocate and build initial map...\n");
 	memset(&game.map, 0, sizeof(struct game_map));
@@ -413,9 +427,9 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai);
 static
 vec3_t avg3(vec3_t a, vec3_t b, vec3_t c) {
 	vec3_t r = {
-		(a.x + b.x + c.x) / 3.f,
-		(a.y + b.y + c.y) / 3.f,
-		(a.z + b.z + c.z) / 3.f
+		(a.x + b.x + c.x) * (1.f / 3.f),
+		(a.y + b.y + c.y) * (1.f / 3.f),
+		(a.z + b.z + c.z) * (1.f / 3.f)
 	};
 	return r;
 }
@@ -485,18 +499,43 @@ uint32_t bitcontract16(uint32_t x)
 // assert(avglight(0, 0, 0, 0) == 0x0f0f0f0f);
 // assert(avglight(0xffff0000, 0xffff0000, 0xffff0000, 0xffff0000) == 0xffff0000);
 // MC smooth lighting: average light of four blocks around vert on the positive face side
-// This should average eight blocks, really.. the only question is how to scale
+// This should average seven blocks, really.. the only question is how to scale
 // eight 4-bit values into a 8-bit value nicely. :P
 static
-uint32_t avglight(uint32_t b0, uint32_t b1, uint32_t b2, uint32_t b3)
+uint32_t avglight(uint32_t b0, uint32_t b1, uint32_t b2, uint32_t b3, uint32_t b4, uint32_t b5, uint32_t b6)
 {
+#define AVGLIGHT_SCALE(f) (lightlut[(uint32_t)trunc(((double)(f)/60.0)*255.5)])
 	static const uint32_t M[4] = { 0xf0000000, 0xf000000, 0xf00000, 0xf0000 };
 	static const uint32_t S[4] = { 28, 24, 20, 16 };
 	uint32_t ret = 0;
-	ret |= ((((b0 & M[0]) >> S[0]) + ((b1 & M[0]) >> S[0]) + ((b2 & M[0]) >> S[0]) + ((b3 & M[0]) >> S[0]) + 4) * 4 - 1) << 24;
-	ret |= ((((b0 & M[1]) >> S[1]) + ((b1 & M[1]) >> S[1]) + ((b2 & M[1]) >> S[1]) + ((b3 & M[1]) >> S[1]) + 4) * 4 - 1) << 16;
-	ret |= ((((b0 & M[2]) >> S[2]) + ((b1 & M[2]) >> S[2]) + ((b2 & M[2]) >> S[2]) + ((b3 & M[2]) >> S[2]) + 4) * 4 - 1) << 8;
-	ret |= ((((b0 & M[3]) >> S[3]) + ((b1 & M[3]) >> S[3]) + ((b2 & M[3]) >> S[3]) + ((b3 & M[3]) >> S[3]) + 4) * 4 - 1);
+	ret |= AVGLIGHT_SCALE(((b0 & M[0]) >> S[0]) +
+	                      ((b1 & M[0]) >> S[0]) +
+	                      ((b2 & M[0]) >> S[0]) +
+	                      ((b3 & M[0]) >> S[0]) +
+	                      ((b4 & M[0]) >> S[0]) +
+	                      ((b5 & M[0]) >> S[0]) +
+	                      ((b6 & M[0]) >> S[0])) << 24;
+	ret |= AVGLIGHT_SCALE(((b0 & M[1]) >> S[1]) +
+	                      ((b1 & M[1]) >> S[1]) +
+	                      ((b2 & M[1]) >> S[1]) +
+	                      ((b3 & M[1]) >> S[1]) +
+	                      ((b4 & M[1]) >> S[1]) +
+	                      ((b5 & M[1]) >> S[1]) +
+	                      ((b6 & M[1]) >> S[1])) << 16;
+	ret |= AVGLIGHT_SCALE(((b0 & M[2]) >> S[2]) +
+	                      ((b1 & M[2]) >> S[2]) +
+	                      ((b2 & M[2]) >> S[2]) +
+	                      ((b3 & M[2]) >> S[2]) +
+	                      ((b4 & M[2]) >> S[2]) +
+	                      ((b5 & M[2]) >> S[2]) +
+	                      ((b6 & M[2]) >> S[2])) << 8;
+	ret |= AVGLIGHT_SCALE(((b0 & M[3]) >> S[3]) +
+	                       ((b1 & M[3]) >> S[3]) +
+	                       ((b2 & M[3]) >> S[3]) +
+	                       ((b3 & M[3]) >> S[3]) +
+	                       ((b4 & M[3]) >> S[3]) +
+	                       ((b5 & M[3]) >> S[3]) +
+	                       ((b6 & M[3]) >> S[3]));
 	return ret;
 }
 
@@ -505,15 +544,15 @@ uint32_t avglight(uint32_t b0, uint32_t b1, uint32_t b2, uint32_t b3)
 #define BNONSOLID(t) (blockinfo[(n[(t)] & 0xff)].density < density)
 //#define BNONSOLID(t) ((n[(t)] & 0xff) == BLOCK_AIR)
 #define BLOCKAT(x, y, z) (map_blocks[blockIndex((x), (y), (z))])
-#define BLOCKLIGHT(a, b, c, d) avglight(n[a], n[b], n[c], n[d])
+#define BLOCKLIGHT(a, b, c, d, e, f, g) avglight(n[a], n[b], n[c], n[d], n[e], n[f], n[g])
 #define GETCOL(np, ng, x, y, z) memcpy(n + (np), map_blocks + blockIndex(bx + (x), by + (y), bz + (z)), sizeof(uint32_t) * (ng))
 #define FLIPCHECK() ((corners[0].clr/2) + (corners[2].clr/2) > (corners[1].clr/2) + (corners[3].clr/2))
 
 // n array layout:
 //+y       +y       +y
-// \ 2 5 8  | b e h  | k n q
-// \ 1 4 7  | a d g  | j m p
-// \ 0 3 6  | 9 c f  | i l o
+// \ 02 05 08  | 11 14 17  | 20 23 26
+// \ 01 04 07  | 10 13 16  | 19 22 25
+// \ 00 03 06  | 09 12 15  | 18 21 24
 // +-----+x +-----+x +-----+x
 //  (iz-1)   (iz)     (iz+1)
 
@@ -598,10 +637,10 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 					assert((n[14]&0xff) != (n[13]&0xff));
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_TOP, 0);
 					const block_vtx_t corners[4] = {
-						{POS(  ix, by+iy+1, iz+1), tc[0], BLOCKLIGHT(20,23,11,14)},
-						{POS(ix+1, by+iy+1, iz+1), tc[1], BLOCKLIGHT(23,26,14,17)},
-						{POS(ix+1, by+iy+1,   iz), tc[2], BLOCKLIGHT( 5, 8,14,17)},
-						{POS(  ix, by+iy+1,   iz), tc[3], BLOCKLIGHT( 2, 5,11,14)},
+						{POS(  ix, by+iy+1, iz+1), tc[0], BLOCKLIGHT(20,23,11,14,10,19,22)},
+						{POS(ix+1, by+iy+1, iz+1), tc[1], BLOCKLIGHT(23,26,14,17,16,22,25)},
+						{POS(ix+1, by+iy+1,   iz), tc[2], BLOCKLIGHT( 5, 8,14,17,4,7,16)},
+						{POS(  ix, by+iy+1,   iz), tc[3], BLOCKLIGHT( 2, 5,11,14,1,4,10)},
 					};
 					if (FLIPCHECK()) {
 						verts[vi++] = corners[0];
@@ -622,10 +661,10 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 				if (BNONSOLID(12)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BOTTOM, 0);
 					const block_vtx_t corners[4] = {
-						{POS(  ix, by+iy,   iz), tc[0], BLOCKLIGHT( 0, 3, 9,12)},
-						{POS(ix+1, by+iy,   iz), tc[1], BLOCKLIGHT( 3, 6,12,15)},
-						{POS(ix+1, by+iy, iz+1), tc[2], BLOCKLIGHT(12,15,21,24)},
-						{POS(  ix, by+iy, iz+1), tc[3], BLOCKLIGHT( 9,12,18,21)},
+						{POS(  ix, by+iy,   iz), tc[0], BLOCKLIGHT( 0, 3, 9,12,1,4,10)},
+						{POS(ix+1, by+iy,   iz), tc[1], BLOCKLIGHT( 3, 6,12,15,4,7,16)},
+						{POS(ix+1, by+iy, iz+1), tc[2], BLOCKLIGHT(12,15,21,24,16,22,25)},
+						{POS(  ix, by+iy, iz+1), tc[3], BLOCKLIGHT( 9,12,18,21,10,19,22)},
 					};
 					if (FLIPCHECK()) {
 						verts[vi++] = corners[0];
@@ -646,10 +685,10 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 				if (BNONSOLID(10)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_LEFT, 0);
 					const block_vtx_t corners[4] = {
-						{POS(ix,   by+iy,   iz), tc[0], BLOCKLIGHT( 0, 1, 9,10)},
-						{POS(ix,   by+iy, iz+1), tc[1], BLOCKLIGHT( 9,10,18,19)},
-						{POS(ix, by+iy+1, iz+1), tc[2], BLOCKLIGHT(10,11,19,20)},
-						{POS(ix, by+iy+1,   iz), tc[3], BLOCKLIGHT( 1, 2,10,11)},
+						{POS(ix,   by+iy,   iz), tc[0], BLOCKLIGHT( 0, 1, 9,10,3,4,12)},
+						{POS(ix,   by+iy, iz+1), tc[1], BLOCKLIGHT( 9,10,18,19,12,21,22)},
+						{POS(ix, by+iy+1, iz+1), tc[2], BLOCKLIGHT(10,11,19,20,14,22,23)},
+						{POS(ix, by+iy+1,   iz), tc[3], BLOCKLIGHT( 1, 2,10,11,4,5,14)},
 					};
 					if (FLIPCHECK()) {
 						verts[vi++] = corners[0];
@@ -670,10 +709,10 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 				if (BNONSOLID(16)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_RIGHT, 0);
 					const block_vtx_t corners[4] = {
-						{POS(ix+1,   by+iy, iz+1), tc[0], BLOCKLIGHT(15,16,24,25)},
-						{POS(ix+1,   by+iy,   iz), tc[1], BLOCKLIGHT( 6, 7,15,16)},
-						{POS(ix+1, by+iy+1,   iz), tc[2], BLOCKLIGHT( 7, 8,16,17)},
-						{POS(ix+1, by+iy+1, iz+1), tc[3], BLOCKLIGHT(16,17,25,26)},
+						{POS(ix+1,   by+iy, iz+1), tc[0], BLOCKLIGHT(15,16,24,25,12,21,22)},
+						{POS(ix+1,   by+iy,   iz), tc[1], BLOCKLIGHT( 6, 7,15,16,3,4,12)},
+						{POS(ix+1, by+iy+1,   iz), tc[2], BLOCKLIGHT( 7, 8,16,17,4,5,14)},
+						{POS(ix+1, by+iy+1, iz+1), tc[3], BLOCKLIGHT(16,17,25,26,14,22,23)},
 					};
 					if (FLIPCHECK()) {
 						verts[vi++] = corners[0];
@@ -694,10 +733,10 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 				if (BNONSOLID(22)) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_FRONT, 0);
 					block_vtx_t corners[4] = {
-						{POS(  ix,   by+iy, iz+1), tc[0], BLOCKLIGHT(18,19,21,22)},
-						{POS(ix+1,   by+iy, iz+1), tc[1], BLOCKLIGHT(21,22,24,25)},
-						{POS(ix+1, by+iy+1, iz+1), tc[2], BLOCKLIGHT(22,23,25,26)},
-						{POS(  ix, by+iy+1, iz+1), tc[3], BLOCKLIGHT(19,20,22,23)},
+						{POS(  ix,   by+iy, iz+1), tc[0], BLOCKLIGHT(18,19,21,22,9,10,12)},
+						{POS(ix+1,   by+iy, iz+1), tc[1], BLOCKLIGHT(21,22,24,25,12,15,16)},
+						{POS(ix+1, by+iy+1, iz+1), tc[2], BLOCKLIGHT(22,23,25,26,14,16,17)},
+						{POS(  ix, by+iy+1, iz+1), tc[3], BLOCKLIGHT(19,20,22,23,10,11,14)},
 					};
 					if (FLIPCHECK()) {
 						verts[vi++] = corners[0];
@@ -718,10 +757,10 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 				if (BNONSOLID(4)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BACK, 0);
 					const block_vtx_t corners[4] = {
-						{POS(ix+1,   by+iy, iz), tc[0], BLOCKLIGHT( 3, 4, 6, 7)},
-						{POS(  ix,   by+iy, iz), tc[1], BLOCKLIGHT( 0, 1, 3, 4)},
-						{POS(  ix, by+iy+1, iz), tc[2], BLOCKLIGHT( 1, 2, 4, 5)},
-						{POS(ix+1, by+iy+1, iz), tc[3], BLOCKLIGHT( 4, 5, 7, 8)},
+						{POS(ix+1,   by+iy, iz), tc[0], BLOCKLIGHT( 3, 4, 6, 7,12,15,16)},
+						{POS(  ix,   by+iy, iz), tc[1], BLOCKLIGHT( 0, 1, 3, 4,9,10,12)},
+						{POS(  ix, by+iy+1, iz), tc[2], BLOCKLIGHT( 1, 2, 4, 5,10,11,14)},
+						{POS(ix+1, by+iy+1, iz), tc[3], BLOCKLIGHT( 4, 5, 7, 8,14,16,17)},
 					};
 					if (FLIPCHECK()) {
 						verts[vi++] = corners[0];
