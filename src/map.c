@@ -498,45 +498,29 @@ uint32_t bitcontract16(uint32_t x)
 // assert(avglight(0xabcd0000, 0xabcd0000, 0xabcd0000, 0xabcd0000) == 0xafbfcfdf);
 // assert(avglight(0, 0, 0, 0) == 0x0f0f0f0f);
 // assert(avglight(0xffff0000, 0xffff0000, 0xffff0000, 0xffff0000) == 0xffff0000);
-// MC smooth lighting: average light of four blocks around vert on the positive face side
-// This should average seven blocks, really.. the only question is how to scale
-// eight 4-bit values into a 8-bit value nicely. :P
-// Hmm.. so yeah.. it should weight the first four higher than the last three. Let me think about this..
 static
-uint32_t avglight(uint32_t b0, uint32_t b1, uint32_t b2, uint32_t b3, uint32_t b4, uint32_t b5, uint32_t b6)
+uint32_t avglight(uint32_t b0, uint32_t b1, uint32_t b2, uint32_t b3)
 {
-#define AVGLIGHT_SCALE(f) (lightlut[ML_MIN(255, (uint32_t)trunc(((double)(f)/130.0)*255.5))])
+#define AVGLIGHT_SCALE(f) (lightlut[ML_MIN(255, (int)trunc(((double)(f)/60.0)*255.5))])
 	static const uint32_t M[4] = { 0xf0000000, 0xf000000, 0xf00000, 0xf0000 };
 	static const uint32_t S[4] = { 28, 24, 20, 16 };
 	uint32_t ret = 0;
-	ret |= AVGLIGHT_SCALE(((b0 & M[0]) >> S[0])*2 +
-	                      ((b1 & M[0]) >> S[0])*2 +
-	                      ((b2 & M[0]) >> S[0])*2 +
-	                      ((b3 & M[0]) >> S[0])*2 +
-	                      ((b4 & M[0]) >> S[0]) +
-	                      ((b5 & M[0]) >> S[0]) +
-	                      ((b6 & M[0]) >> S[0])) << 24;
-	ret |= AVGLIGHT_SCALE(((b0 & M[1]) >> S[1])*2 +
-	                      ((b1 & M[1]) >> S[1])*2 +
-	                      ((b2 & M[1]) >> S[1])*2 +
-	                      ((b3 & M[1]) >> S[1])*2 +
-	                      ((b4 & M[1]) >> S[1]) +
-	                      ((b5 & M[1]) >> S[1]) +
-	                      ((b6 & M[1]) >> S[1])) << 16;
-	ret |= AVGLIGHT_SCALE(((b0 & M[2]) >> S[2])*2 +
-	                      ((b1 & M[2]) >> S[2])*2 +
-	                      ((b2 & M[2]) >> S[2])*2 +
-	                      ((b3 & M[2]) >> S[2])*2 +
-	                      ((b4 & M[2]) >> S[2]) +
-	                      ((b5 & M[2]) >> S[2]) +
-	                      ((b6 & M[2]) >> S[2])) << 8;
-	ret |= AVGLIGHT_SCALE(((b0 & M[3]) >> S[3])*2 +
-	                       ((b1 & M[3]) >> S[3])*2 +
-	                       ((b2 & M[3]) >> S[3])*2 +
-	                       ((b3 & M[3]) >> S[3])*2 +
-	                       ((b4 & M[3]) >> S[3]) +
-	                       ((b5 & M[3]) >> S[3]) +
-	                       ((b6 & M[3]) >> S[3]));
+	ret |= AVGLIGHT_SCALE(((b0 & M[0]) >> S[0]) +
+	                      ((b1 & M[0]) >> S[0]) +
+	                      ((b2 & M[0]) >> S[0]) +
+	                      ((b3 & M[0]) >> S[0])) << 24;
+	ret |= AVGLIGHT_SCALE(((b0 & M[1]) >> S[1]) +
+	                      ((b1 & M[1]) >> S[1]) +
+	                      ((b2 & M[1]) >> S[1]) +
+	                      ((b3 & M[1]) >> S[1])) << 16;
+	ret |= AVGLIGHT_SCALE(((b0 & M[2]) >> S[2]) +
+	                      ((b1 & M[2]) >> S[2]) +
+	                      ((b2 & M[2]) >> S[2]) +
+	                      ((b3 & M[2]) >> S[2])) << 8;
+	ret |= AVGLIGHT_SCALE(((b0 & M[3]) >> S[3]) +
+	                       ((b1 & M[3]) >> S[3]) +
+	                       ((b2 & M[3]) >> S[3]) +
+	                       ((b3 & M[3]) >> S[3]));
 	return ret;
 }
 
@@ -545,7 +529,7 @@ uint32_t avglight(uint32_t b0, uint32_t b1, uint32_t b2, uint32_t b3, uint32_t b
 #define BNONSOLID(t) (blockinfo[(n[(t)] & 0xff)].density < density)
 //#define BNONSOLID(t) ((n[(t)] & 0xff) == BLOCK_AIR)
 #define BLOCKAT(x, y, z) (map_blocks[blockIndex((x), (y), (z))])
-#define BLOCKLIGHT(a, b, c, d, e, f, g) avglight(n[a], n[b], n[c], n[d], n[e], n[f], n[g])
+#define BLOCKLIGHT(a, b, c, d, e, f, g) avglight(n[a], n[b], n[c], n[d])
 #define GETCOL(np, ng, x, y, z) memcpy(n + (np), map_blocks + blockIndex(bx + (x), by + (y), bz + (z)), sizeof(uint32_t) * (ng))
 #define FLIPCHECK() ((corners[0].clr>>24) + (corners[2].clr>>24) > (corners[1].clr>>24) + (corners[3].clr>>24))
 
