@@ -828,6 +828,8 @@ void m_tex2d_load(tex2d_t* tex, const char* filename)
 	M_CHECKGL(glBindTexture(GL_TEXTURE_2D, tex->id));
 	M_CHECKGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
 	M_CHECKGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
+//	M_CHECKGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR));
+//	M_CHECKGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
 	M_CHECKGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
 	M_CHECKGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
 	tex->w = (uint16_t)x;
@@ -847,7 +849,7 @@ void m_tex2d_load(tex2d_t* tex, const char* filename)
 		fatal_error("bad pixel depth %d for %s", n, filename);
 	}
 
-	M_CHECKGL(glGenerateMipmap(GL_TEXTURE_2D));
+	//M_CHECKGL(glGenerateMipmap(GL_TEXTURE_2D));
 
 	stbi_image_free(data);
 	M_CHECKGL(glBindTexture(GL_TEXTURE_2D, 0));

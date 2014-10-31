@@ -131,5 +131,6 @@ void process_light_propagation()
 
 void gen_loadchunk(game_chunk* chunk)
 {
-	gen_testmap(chunk);
+	//gen_testmap(chunk);
+	gen_noisemap(chunk);
 }

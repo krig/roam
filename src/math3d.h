@@ -467,7 +467,7 @@ vec2_t m_vec2add(const vec2_t a, const vec2_t b)
 }
 
 static inline
-vec2_t m_vec2scale(vec2_t tc, float by)
+vec2_t m_vec2addf(vec2_t tc, float by)
 {
 	tc.x += by;
 	tc.y += by;
