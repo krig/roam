@@ -21,7 +21,6 @@ static bool mouse_captured = false;
 struct game game;
 tex2d_t blocks_texture;
 extern bool alpha_sort_chunks;
-extern bool alpha_sort_faces;
 
 
 static void reset_inputstate(void);
@@ -142,11 +141,6 @@ bool handle_event(SDL_Event* event)
 			alpha_sort_chunks = !alpha_sort_chunks;
 			printf("sort chunks: %d\n", alpha_sort_chunks);
 			ui_add_console_line(stb_sprintf("sort chunks: %d", alpha_sort_chunks));
-		}
-		else if (sym == SDLK_F7) {
-			alpha_sort_faces = !alpha_sort_faces;
-			printf("sort faces: %d\n", alpha_sort_faces);
-			ui_add_console_line(stb_sprintf("sort faces: %d", alpha_sort_faces));
 		}
 		else if (sym == SDLK_F10) {
 			char name[512];

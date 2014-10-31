@@ -268,40 +268,7 @@ int cmp_alpha_chunks(struct alpha_t *a, struct alpha_t *b)
 	return ret;
 }
 
-static vec3_t alpha_offset_cmpval;
 bool alpha_sort_chunks = true;
-bool alpha_sort_faces = true;
-
-static
-vec3_t avg3(vec3_t a, vec3_t b, vec3_t c) {
-	vec3_t r = {
-		(a.x + b.x + c.x) / 3.f,
-		(a.y + b.y + c.y) / 3.f,
-		(a.z + b.z + c.z) / 3.f
-	};
-	return r;
-}
-
-static
-int cmp_alpha_faces(block_face_t* a, block_face_t* b)
-{
-	vec3_t offset = alpha_offset_cmpval;
-	int ret = 0;
-
-	vec3_t ca = avg3(a->vtx[0].pos, a->vtx[1].pos, a->vtx[2].pos);
-	vec3_t cb = avg3(b->vtx[0].pos, b->vtx[1].pos, b->vtx[2].pos);
-	ca = m_vec3sub(ca, offset);
-	cb = m_vec3sub(cb, offset);
-	float da = m_vec3dot(ca, ca);
-	float db = m_vec3dot(cb, cb);
-
-	if (da > db)
-		ret = -1;
-	if (da < db)
-		ret = 1;
-	return ret;
-}
-
 
 void map_draw_alphapass()
 {
@@ -330,15 +297,6 @@ void map_draw_alphapass()
 	for (i = 0, alpha = alphas; i < nalphas; ++i, ++alpha) {
 		game_chunk* chunk = alpha->chunk;
 		mesh_t* mesh = &(chunk->alpha);
-		alpha_offset_cmpval.x = game.player.pos.x + alpha->offset.x;
-		alpha_offset_cmpval.y = game.player.pos.y + alpha->offset.y;
-		alpha_offset_cmpval.z = game.player.pos.z + alpha->offset.z;
-		if (alpha_sort_faces) {
-			qsort(chunk->alphadata, chunk->alphadata_size, sizeof(block_face_t), (int(*)(const void*, const void*))cmp_alpha_faces);
-			m_update_mesh(mesh, 0,
-				chunk->alphadata_size * sizeof(block_face_t),
-				chunk->alphadata);
-		}
 		m_uniform_vec3(material->chunk_offset, &alpha->offset);
 		m_draw(mesh);
 	}
@@ -423,7 +381,6 @@ void map_unload_chunk_ptr(game_chunk* chunk)
 	for (int i = 0; i < MAP_CHUNK_HEIGHT; ++i)
 		m_destroy_mesh(chunk->solid + i);
 	m_destroy_mesh(&chunk->alpha);
-	chunk->alphadata_size = 0;
 	chunk->dirty = true;
 	//printf("unloaded chunk: [%d, %d] [%d, %d]\n", x, z, bufx, bufz);
 }
@@ -453,6 +410,35 @@ static block_vtx_t tesselation_buffer[TESSELATION_BUFFER_SIZE];
 static
 bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai);
 
+static
+vec3_t avg3(vec3_t a, vec3_t b, vec3_t c) {
+	vec3_t r = {
+		(a.x + b.x + c.x) / 3.f,
+		(a.y + b.y + c.y) / 3.f,
+		(a.z + b.z + c.z) / 3.f
+	};
+	return r;
+}
+
+static
+int cmp_alpha_faces(block_face_t* a, block_face_t* b)
+{
+	vec3_t ca = avg3(a->vtx[0].pos, a->vtx[1].pos, a->vtx[2].pos);
+	vec3_t cb = avg3(b->vtx[0].pos, b->vtx[1].pos, b->vtx[2].pos);
+	if (ca.y < cb.y)
+		return -1;
+	if (ca.y > cb.y)
+		return 1;
+	if (ca.x < cb.x)
+		return -1;
+	if (ca.x > cb.x)
+		return 1;
+	if (ca.z < cb.z)
+		return -1;
+	if (ca.z > cb.z)
+		return 1;
+	return 0;
+}
 
 void chunk_build_mesh(int x, int z)
 {
@@ -471,15 +457,7 @@ void chunk_build_mesh(int x, int z)
 		if (alphai > 0) {
 			mesh_t* alpha = &(chunk->alpha);
 			size_t nalphafaces = (alphai/3);
-			if (chunk->alphadata == NULL || chunk->alphadata_capacity < nalphafaces) {
-				size_t sz = nalphafaces * sizeof(block_face_t);
-				if (chunk->alphadata != NULL)
-					free(chunk->alphadata);
-				chunk->alphadata = (block_face_t*)malloc(sz);
-				chunk->alphadata_size = nalphafaces;
-				chunk->alphadata_capacity = nalphafaces;
-			}
-			memcpy(chunk->alphadata, alpha_buffer, alphai * sizeof(block_vtx_t));
+			qsort(alpha_buffer, nalphafaces, sizeof(block_face_t), (int(*)(const void*, const void*))cmp_alpha_faces);
 			m_create_mesh(alpha, alphai, alpha_buffer, ML_POS_3F | ML_TC_2US | ML_CLR_4UB, GL_DYNAMIC_DRAW);
 			m_set_material(alpha, game.materials + MAT_CHUNK_ALPHA);
 		}

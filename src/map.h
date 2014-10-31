@@ -64,10 +64,7 @@ typedef struct game_chunk {
 	uint32_t genstate;
 	uint32_t meshstate;
 	mesh_t solid[MAP_CHUNK_HEIGHT];
-	mesh_t alpha; // sort before rendering - should not be a mesh? no backface culling?
-	block_face_t* alphadata;
-	size_t alphadata_size;
-	size_t alphadata_capacity;
+	mesh_t alpha;
 	mesh_t sprite; // render twosided (same shader as solid meshes but different render state)
 	// add per-chunk state information here (things like command blocks..., entities)
 } game_chunk;
