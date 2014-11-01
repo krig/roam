@@ -51,7 +51,7 @@ struct controls {
 };
 
 struct statistics {
-	float frametime;
+	int64_t frametime; // milliseconds
 	uint64_t frames;
 };
 

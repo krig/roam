@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdnoreturn.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -20,11 +21,12 @@ char*    sys_readfile(const char* filename);
 char*   sys_readfile_realloc(const char* filename, char* buffer, size_t* len);
 int      sys_isfile(const char* filename);
 uint64_t sys_urandom(void);
+int64_t sys_timems(void);
 
 
 // Common utility functions
 
-static inline
+static inline noreturn
 void fatal_error(const char* msg, ...)
 {
 	char buf[512];

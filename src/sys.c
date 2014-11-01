@@ -1,5 +1,6 @@
 #include "common.h"
 #include <time.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -62,4 +63,12 @@ int sys_isfile(const char* filename)
 	if (ret == -1)
 		return 0;
 	return 1;
+}
+
+int64_t sys_timems()
+{
+	struct timeval tv;
+	if (gettimeofday(&tv, NULL) == 0)
+		return (int64_t)tv.tv_sec * 1000 + (int64_t)tv.tv_usec / 1000;
+	fatal_error("failed to get current time");
 }

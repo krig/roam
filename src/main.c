@@ -363,8 +363,10 @@ void game_tick(float dt)
 
 }
 
+SDL_Point game_viewport;
+
 static
-void game_draw(SDL_Point* viewport, float frametime)
+void game_draw(SDL_Point* viewport)
 {
 	mat44_t view;
 	frustum_t frustum;
@@ -453,8 +455,11 @@ void game_draw(SDL_Point* viewport, float frametime)
 		ui_debug_line(origo, yaxis, 0xffff0000);
 		ui_debug_line(origo, zaxis, 0xff0000ff);
 
-		static float fps = 0;
-		fps = (1.f / frametime) * 0.1f + fps * 0.9f;
+		static double ft[4] = {0};
+		ft[game.stats.frames % 4] = 1.0 / ((double)(game.stats.frametime) / 1000.0);
+		double fps = 0.0;
+		for (int fi = 0; fi < 4; ++fi)
+			fps += ft[fi] * 0.25;
 
 		ui_rect(2, 2, 450, 60, 0x66000000);
 		ui_text(4, 60 - 9, 0xffffffff,
@@ -463,7 +468,7 @@ void game_draw(SDL_Point* viewport, float frametime)
 			"vel: (%+4.4f, %+4.4f, %+4.4f)\n"
 			"chunk: (%d, %d)\n"
 			"%s%s%s\n"
-			"fps: %d, t: %4.4f",
+			"fps: %g, t: %4.4f",
 			game.player.pos.x, game.player.pos.y, game.player.pos.z,
 			game.camera.pos.x, game.camera.pos.y, game.camera.pos.z,
 			game.player.vel.x, game.player.vel.y, game.player.vel.z,
@@ -471,7 +476,7 @@ void game_draw(SDL_Point* viewport, float frametime)
 			game.player.walking ? "+walk " : "",
 			game.player.crouching ? "+crouch " : "",
 		        game.input.move_sprint ? "+sprint " : "",
-			(int)roundf(fps), game.time_of_day);
+		        round(fps), game.time_of_day);
 	}
 	ui_draw_debug(&game.projection, &game.modelview);
 	ui_draw(viewport);
@@ -481,10 +486,39 @@ void game_draw(SDL_Point* viewport, float frametime)
 	//	SDL_WarpMouseInWindow(window, viewport->x >> 1, viewport->y >> 1);
 }
 
-int main(int argc, char* argv[])
+static
+void game_loop(int64_t dt)
 {
 	SDL_Event event;
-	SDL_Point sz;
+	while (SDL_PollEvent(&event)) {
+		if (event.type == SDL_WINDOWEVENT) {
+			if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
+				SDL_GetWindowSize(window, &game_viewport.x, &game_viewport.y);
+				M_CHECKGL(glViewport(0, 0, game_viewport.x, game_viewport.y));
+			} else if (event.window.event == SDL_WINDOWEVENT_MAXIMIZED) {
+				SDL_GetWindowSize(window, &game_viewport.x, &game_viewport.y);
+				M_CHECKGL(glViewport(0, 0, game_viewport.x, game_viewport.y));
+				m_perspective(m_getmatrix(&game.projection), ML_DEG2RAD(70.f),
+				              (float)game_viewport.x / (float)game_viewport.y,
+				              0.1f, 1024.f);
+			} else if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
+				printf("focus lost\n");
+				capture_mouse(false);
+			} else if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
+				game.game_active = false;
+			}
+		} else if (!handle_event(&event)) {
+			game.game_active = false;
+		}
+	}
+
+	float frametime = (float)dt / 1000.f;
+	game_tick(frametime);
+}
+
+
+int main(int argc, char* argv[])
+{
 	GLenum rc;
 
 	if (argc == 3 && strcmp(argv[1], "objtest") == 0) {
@@ -540,66 +574,47 @@ int main(int argc, char* argv[])
 	       "GLSL Version: %s\n",
 	       version, vendor, renderer, glslversion);
 
-	SDL_GetWindowSize(window, &sz.x, &sz.y);
-	//SDL_GL_GetDrawableSize(window, &sz.x, &sz.y);
-	M_CHECKGL(glViewport(0, 0, sz.x, sz.y));
+	SDL_GetWindowSize(window, &game_viewport.x, &game_viewport.y);
+	M_CHECKGL(glViewport(0, 0, game_viewport.x, game_viewport.y));
 
 	m_mtxstack_init(&game.projection, 3);
 	m_mtxstack_init(&game.modelview, 16);
 
 	m_perspective(m_getmatrix(&game.projection), ML_DEG2RAD(70.f),
-	              (float)sz.x / (float)sz.y,
+	              (float)game_viewport.x / (float)game_viewport.y,
 	              0.1f, 1024.f);
 
 	game_init();
 
-	int64_t startms, endms, nowms;
-	float frametime;
+	int64_t currenttime, newtime, frametime;
+	int64_t t, dt, accumulator ;
 	game.stats.frametime = (1.f/60.f);
-	startms = (int64_t)SDL_GetTicks();
 
+	t = 0;
+	dt = 15;
+	accumulator = 0;
+	currenttime = sys_timems();
 	game.game_active = true;
 	while (game.game_active) {
-		while (SDL_PollEvent(&event)) {
-			if (event.type == SDL_WINDOWEVENT) {
-				if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-					//SDL_GL_GetDrawableSize(window, &sz.x, &sz.y);
-					SDL_GetWindowSize(window, &sz.x, &sz.y);
-					glViewport(0, 0, sz.x, sz.y);
-					//sz.x = event.window.data1;
-					//sz.y = event.window.data2;
-				} else if (event.window.event == SDL_WINDOWEVENT_MAXIMIZED) {
-					//SDL_GL_GetDrawableSize(window, &sz.x, &sz.y);
-					SDL_GetWindowSize(window, &sz.x, &sz.y);
-					M_CHECKGL(glViewport(0, 0, sz.x, sz.y));
-					m_perspective(m_getmatrix(&game.projection), ML_DEG2RAD(70.f),
-					              (float)sz.x / (float)sz.y,
-					              0.1f, 1024.f);
-				} else if (event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
-					printf("focus lost\n");
-					capture_mouse(false);
-				} else if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
-					goto exit;
-				}
-			} else if (!handle_event(&event)) {
-				goto exit;
-			}
+		newtime = sys_timems();
+		frametime = newtime - currenttime;
+		if (frametime > 250)
+			frametime = 250;
+		currenttime = newtime;
+
+		accumulator += frametime;
+		while (accumulator >= dt) {
+			// timestep
+			game_loop(dt);
+			t += dt;
+			accumulator -= dt;
 		}
-
-		endms = (int64_t)SDL_GetTicks();
-		nowms = endms - startms;
-		if (nowms < 1)
-			nowms = 1;
-		frametime = (float)((double)nowms / 1000.0);
-		game_tick(frametime);
-		startms = (int64_t)SDL_GetTicks();
-		game_draw(&sz, frametime);
+		game_draw(&game_viewport);
 		game.stats.frames++;
-
+		game.stats.frametime = frametime;
 		SDL_GL_SwapWindow(window);
 	}
 
-exit:
 	game_exit();
 	SDL_GL_DeleteContext(context);
 	SDL_DestroyWindow(window);
