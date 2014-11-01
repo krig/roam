@@ -97,7 +97,7 @@ void chunk_unload(int x, int z);
 void chunk_build_mesh(int x, int z);
 void map_update_block(ivec3_t block, uint32_t value);
 bool map_raycast(dvec3_t origin, vec3_t dir, int len, ivec3_t* hit, ivec3_t* prehit);
-uint32_t blockData(int x, int y, int z);
+uint32_t block_at(int x, int y, int z);
 
 
 // mod which handles negative numbers
@@ -141,7 +141,7 @@ uint32_t* block_column(int x, int z)
 static inline
 uint32_t blocktype(int x, int y, int z)
 {
-	return blockData(x, y, z) & 0xff;
+	return block_at(x, y, z) & 0xff;
 }
 
 

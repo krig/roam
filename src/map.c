@@ -19,7 +19,7 @@ tc2us_t make_tc2us(vec2_t tc)
 	return to;
 }
 
-uint32_t blockData(int x, int y, int z)
+uint32_t block_at(int x, int y, int z)
 {
 	if (y < 0 || y >= MAP_BLOCK_HEIGHT)
 		return (0xf0000000|BLOCK_AIR);
@@ -61,7 +61,7 @@ static size_t tesselation_queue_head = 0;
 static size_t tesselation_queue_len = 0;
 
 static
-bool pushChunkTesselation(int x, int z)
+bool push_tesselation(int x, int z)
 {
 	chunkpos_t chunk = { x, z };
 	if (tesselation_queue_len >= TESSELATION_QUEUE_SIZE)
@@ -73,7 +73,7 @@ bool pushChunkTesselation(int x, int z)
 }
 
 static
-bool popChunkTesselation(chunkpos_t* chunk)
+bool pop_tesselation(chunkpos_t* chunk)
 {
 	if (tesselation_queue_len == 0)
 		return false;
@@ -119,7 +119,7 @@ void map_init()
 	// tesselate column
 	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z) {
 		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x) {
-			if (!pushChunkTesselation(camera.x + x, camera.z + z)) {
+			if (!push_tesselation(camera.x + x, camera.z + z)) {
 				chunk_build_mesh(camera.x + x, camera.z + z);
 			}
 		}
@@ -169,7 +169,7 @@ void map_tick()
 		}
 		for (int dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
 			for (int dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
-				if (!pushChunkTesselation(cx + dx, cz + dz)) {
+				if (!push_tesselation(cx + dx, cz + dz)) {
 					chunk_build_mesh(cx + dx, cz + dz);
 				}
 			}
@@ -177,7 +177,7 @@ void map_tick()
 	}
 	chunkpos_t chunk;
 	for (int i = 0; i < 5; ++i) {
-		if (popChunkTesselation(&chunk)) {
+		if (pop_tesselation(&chunk)) {
 			chunk_build_mesh(chunk.x, chunk.z);
 		}
 	}
