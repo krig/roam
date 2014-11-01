@@ -83,7 +83,7 @@ static int script_blocktype(lua_State *L)
 	y = luaL_checkinteger(L, 2);
 	z = luaL_checkinteger(L, 3);
 	lua_pop(L, 3);
-	lua_pushinteger(L, blockType(x, y, z));
+	lua_pushinteger(L, blocktype(x, y, z));
 	return 1;
 }
 

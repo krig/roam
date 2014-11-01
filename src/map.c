@@ -23,7 +23,7 @@ uint32_t blockData(int x, int y, int z)
 {
 	if (y < 0 || y >= MAP_BLOCK_HEIGHT)
 		return (0xf0000000|BLOCK_AIR);
-	size_t idx = blockIndex(x, y, z);
+	size_t idx = block_index(x, y, z);
 	if (idx >= MAP_BUFFER_SIZE)
 		return (0xf0000000|BLOCK_AIR);
 	return map_blocks[idx];
@@ -322,7 +322,7 @@ void map_draw_alphapass()
 
 void map_update_block(ivec3_t block, uint32_t value)
 {
-	size_t idx = blockByCoord(block);
+	size_t idx = block_by_coord(block);
 
 	// relight column down (fixes sunlight)
 	uint32_t sunlight = 0xf0000000;
@@ -336,7 +336,7 @@ void map_update_block(ivec3_t block, uint32_t value)
 	}
 	// TODO: need to re-propagate light from lightsources affected by this change
 
-	chunkpos_t chunk = blockToChunk(block);
+	chunkpos_t chunk = block_chunk(block);
 	bool tess[4] = { false, false, false, false };
 	int mx = block.x % CHUNK_SIZE;
 	int mz = block.z % CHUNK_SIZE;
@@ -524,13 +524,13 @@ uint32_t avglight(uint32_t b0, uint32_t b1, uint32_t b2, uint32_t b3)
 	return ret;
 }
 
-// TODO: calculate index of surrounding blocks directly without going through blockType
+// TODO: calculate index of surrounding blocks directly without going through blocktype
 #define POS(x, y, z) m_vec3(x, y, z)
 #define BNONSOLID(t) (blockinfo[(n[(t)] & 0xff)].density < density)
 //#define BNONSOLID(t) ((n[(t)] & 0xff) == BLOCK_AIR)
-#define BLOCKAT(x, y, z) (map_blocks[blockIndex((x), (y), (z))])
+#define BLOCKAT(x, y, z) (map_blocks[block_index((x), (y), (z))])
 #define BLOCKLIGHT(a, b, c, d, e, f, g) avglight(n[a], n[b], n[c], n[d])
-#define GETCOL(np, ng, x, y, z) memcpy(n + (np), map_blocks + blockIndex(bx + (x), by + (y), bz + (z)), sizeof(uint32_t) * (ng))
+#define GETCOL(np, ng, x, y, z) memcpy(n + (np), map_blocks + block_index(bx + (x), by + (y), bz + (z)), sizeof(uint32_t) * (ng))
 #define FLIPCHECK() ((corners[0].clr>>24) + (corners[2].clr>>24) > (corners[1].clr>>24) + (corners[3].clr>>24))
 
 // n array layout:
@@ -565,7 +565,7 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 	// fill in verts
 	for (iz = 0; iz < CHUNK_SIZE; ++iz) {
 		for (ix = 0; ix < CHUNK_SIZE; ++ix) {
-			idx0 = blockIndex(bx+ix, by, bz+iz);
+			idx0 = block_index(bx+ix, by, bz+iz);
 			for (iy = 0; iy < CHUNK_SIZE; ++iy) {
 				t = map_blocks[idx0 + iy] & 0xff;
 				density = blockinfo[t].density;
@@ -798,7 +798,7 @@ bool map_raycast(dvec3_t origin, vec3_t dir, int len, ivec3_t* hit, ivec3_t* pre
 		block.y = round(blockf.y);
 		block.z = round(blockf.z);
 		if (block.x != prev.x || block.y != prev.y || block.z != prev.z) {
-			uint8_t t = blockTypeByCoord(block);
+			uint8_t t = blocktypeByCoord(block);
 			if (t != BLOCK_AIR) {
 				//if (game.debug_mode) {
 				//	ui_debug_block(prev, 0xff0000ff);

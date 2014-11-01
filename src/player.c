@@ -62,13 +62,13 @@ void player_init()
 void player_move_to_spawn()
 {
 	dvec3_t p = game.player.pos;
-	while (blockType(p.x, p.y-2, p.z) != BLOCK_AIR ||
-		blockType(p.x, p.y-1, p.z) != BLOCK_AIR ||
-		blockType(p.x, p.y, p.z) != BLOCK_AIR ||
-		blockType(p.x + 1, p.y, p.z) != BLOCK_AIR ||
-		blockType(p.x - 1, p.y, p.z) != BLOCK_AIR ||
-		blockType(p.x, p.y, p.z + 1) != BLOCK_AIR ||
-		blockType(p.x, p.y, p.z - 1) != BLOCK_AIR)
+	while (blocktype(p.x, p.y-2, p.z) != BLOCK_AIR ||
+		blocktype(p.x, p.y-1, p.z) != BLOCK_AIR ||
+		blocktype(p.x, p.y, p.z) != BLOCK_AIR ||
+		blocktype(p.x + 1, p.y, p.z) != BLOCK_AIR ||
+		blocktype(p.x - 1, p.y, p.z) != BLOCK_AIR ||
+		blocktype(p.x, p.y, p.z + 1) != BLOCK_AIR ||
+		blocktype(p.x, p.y, p.z - 1) != BLOCK_AIR)
 		p.y += 1.0;
 	game.player.pos = p;
 }

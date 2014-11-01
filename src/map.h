@@ -113,7 +113,7 @@ int mod(int a, int b)
 // elements xyz are 0-32
 // w should be 0-3
 static inline
-uint32_t mapPackVectorChunkCoord(unsigned int x, unsigned int y, unsigned int z, unsigned int w)
+uint32_t packvec_1010102(unsigned int x, unsigned int y, unsigned int z, unsigned int w)
 {
 	assert(x <= CHUNK_SIZE && y <= CHUNK_SIZE && z <= CHUNK_SIZE && w < 4);
 	return ((x)*(unsigned int)(1023/CHUNK_SIZE)) + (((y)*(unsigned int)(1023/CHUNK_SIZE))<<10) + (((z)*(unsigned int)(1023/CHUNK_SIZE))<<20) + ((w)<<30);
@@ -121,7 +121,7 @@ uint32_t mapPackVectorChunkCoord(unsigned int x, unsigned int y, unsigned int z,
 
 
 static inline
-size_t blockIndex(int x, int y, int z)
+size_t block_index(int x, int y, int z)
 {
 	return mod(z, MAP_BLOCK_WIDTH) * (MAP_BLOCK_WIDTH * MAP_BLOCK_HEIGHT) +
 		mod(x, MAP_BLOCK_WIDTH) * MAP_BLOCK_HEIGHT +
@@ -130,7 +130,7 @@ size_t blockIndex(int x, int y, int z)
 
 
 static inline
-uint32_t* blockColumn(int x, int z)
+uint32_t* block_column(int x, int z)
 {
 	return map_blocks +
 		mod(z, MAP_BLOCK_WIDTH) * (MAP_BLOCK_WIDTH * MAP_BLOCK_HEIGHT) +
@@ -139,28 +139,28 @@ uint32_t* blockColumn(int x, int z)
 
 
 static inline
-uint32_t blockType(int x, int y, int z)
+uint32_t blocktype(int x, int y, int z)
 {
 	return blockData(x, y, z) & 0xff;
 }
 
 
 static inline
-size_t blockByCoord(ivec3_t xyz)
+size_t block_by_coord(ivec3_t xyz)
 {
-	return blockIndex(xyz.x, xyz.y, xyz.z);
+	return block_index(xyz.x, xyz.y, xyz.z);
 }
 
 
 static inline
-uint32_t blockTypeByCoord(ivec3_t xyz)
+uint32_t blocktypeByCoord(ivec3_t xyz)
 {
-	return blockType(xyz.x, xyz.y, xyz.z);
+	return blocktype(xyz.x, xyz.y, xyz.z);
 }
 
 
 static inline
-chunkpos_t blockToChunk(ivec3_t block)
+chunkpos_t block_chunk(ivec3_t block)
 {
 	chunkpos_t c = { floor(round(block.x) / CHUNK_SIZE),
 	               floor(round(block.z) / CHUNK_SIZE) };
@@ -170,5 +170,5 @@ chunkpos_t blockToChunk(ivec3_t block)
 
 static inline
 bool is_collider(int x, int y, int z) {
-	return blockinfo[blockType(x, y, z)].flags & BLOCK_COLLIDER;
+	return blockinfo[blocktype(x, y, z)].flags & BLOCK_COLLIDER;
 }

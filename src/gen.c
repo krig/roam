@@ -24,7 +24,7 @@ void gen_testmap(game_chunk* chunk)
 	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
 		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
 			uint32_t sunlight = 0xf0000000;
-			size_t idx0 = blockIndex(fillx, 0, fillz);
+			size_t idx0 = block_index(fillx, 0, fillz);
 			for (filly = MAP_BLOCK_HEIGHT-1; filly >= 0; --filly) {
 				uint32_t b = BLOCK_AIR;
 					if (filly <= 32)
@@ -40,7 +40,7 @@ void gen_testmap(game_chunk* chunk)
 	for (int i = 0; i < NUM_BLOCKTYPES; ++i) {
 		int px = (i*2) % CHUNK_SIZE;
 		int pz = ((i*2) / CHUNK_SIZE) * 2;
-		blocks[blockIndex(blockx + px, 33, blockz + pz)] = i;
+		blocks[block_index(blockx + px, 33, blockz + pz)] = i;
 	}
 }
 
@@ -63,7 +63,7 @@ void gen_noisemap(game_chunk* chunk)
 	uint32_t p, b;
 	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
 		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
-			size_t idx0 = blockIndex(fillx, 0, fillz);
+			size_t idx0 = block_index(fillx, 0, fillz);
 			if (idx0 >= MAP_BUFFER_SIZE) {
 				printf("bad index: %d, %d, %d\n", fillx, 0, fillz);
 				abort();
