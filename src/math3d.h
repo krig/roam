@@ -296,7 +296,7 @@ bool m_fisvalid(float f)
 static inline
 float m_sign(float x)
 {
-	return (x >= 0) ? 1.f : -1.f;
+	return (x > 0) ? 1.f : (x < 0) ? -1.f : 0;
 }
 
 static inline
@@ -419,6 +419,19 @@ void m_draw(const mesh_t* mesh)
 		M_CHECKGL(glDrawArrays(mesh->mode, 0, mesh->count));
 	glBindVertexArray(0);
 }
+
+
+static inline
+void m_draw_range(const mesh_t* mesh, GLint first, GLsizei count)
+{
+	M_CHECKGL(glBindVertexArray(mesh->vao));
+	if (mesh->ibo > 0)
+		M_CHECKGL(glDrawElements(mesh->mode, mesh->count, mesh->ibotype, 0));
+	else
+		M_CHECKGL(glDrawArrays(mesh->mode, first, count));
+	glBindVertexArray(0);
+}
+
 
 static inline
 vec3_t m_xaxis44(const mat44_t* from)
