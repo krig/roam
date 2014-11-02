@@ -235,8 +235,9 @@ void map_draw(frustum_t* frustum)
 			if (collide_frustum_aabb_xz(frustum, center, extent) == ML_OUTSIDE)
 				continue;
 
-			if (game.debug_mode && chunk->dirty) {
-				ui_debug_aabb(center, extent, 0x44ff2222);
+			if (chunk->dirty) {
+				if (game.debug_mode)
+					ui_debug_aabb(center, extent, 0x44ff2222);
 				continue;
 			}
 
