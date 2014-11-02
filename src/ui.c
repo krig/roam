@@ -17,6 +17,7 @@ static GLsizei ui_count = 0;
 static float ui_scale = 1;
 #define MAX_UI_VERTICES 8192
 static uivert_t ui_vertices[MAX_UI_VERTICES];
+static GLsizei ui_maxcount = 0;
 
 // debug 3d drawing
 #define MAX_DEBUG_LINEVERTS 8192
@@ -27,6 +28,7 @@ static posclrvert_t debug_lines[MAX_DEBUG_LINEVERTS];
 static size_t debug_linevertcount = 0;
 static GLuint debug_vao = -1;
 static GLuint debug_vbo = -1;
+static size_t debug_maxcount = 0;
 
 static bool console_enabled = false;
 static bool console_first_char = true; // hack to discard toggle key
@@ -146,7 +148,12 @@ void ui_draw(SDL_Point* viewport)
 		glUniform1i(ui_tex0_index, 0);
 		glBindVertexArray(ui_vao);
 		glBindBuffer(GL_ARRAY_BUFFER, ui_vbo);
-		glBufferData(GL_ARRAY_BUFFER, (unsigned long)(ui_count)*sizeof(uivert_t), ui_vertices, GL_DYNAMIC_DRAW);
+		if (ui_count > ui_maxcount) {
+			glBufferData(GL_ARRAY_BUFFER, (unsigned long)(ui_count)*sizeof(uivert_t), ui_vertices, GL_DYNAMIC_DRAW);
+			ui_maxcount = ui_count;
+		} else {
+			glBufferSubData(GL_ARRAY_BUFFER, 0, (unsigned long)(ui_count)*sizeof(uivert_t), ui_vertices);
+		}
 		glDrawArrays(GL_TRIANGLES, 0, ui_count);
 		glBindVertexArray(0);
 		glUseProgram(0);
@@ -382,7 +389,12 @@ void ui_draw_debug(mtxstack_t* projection, mtxstack_t* modelview)
 		m_uniform_mat44(debug_modelview_index, m_getmatrix(modelview));
 		glBindVertexArray(debug_vao);
 		glBindBuffer(GL_ARRAY_BUFFER, debug_vbo);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(posclrvert_t)*debug_linevertcount, debug_lines, GL_DYNAMIC_DRAW);
+		if (debug_linevertcount > debug_maxcount) {
+			glBufferData(GL_ARRAY_BUFFER, sizeof(posclrvert_t)*debug_linevertcount, debug_lines, GL_DYNAMIC_DRAW);
+			debug_maxcount = debug_linevertcount;
+		} else {
+			glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(posclrvert_t)*debug_linevertcount, debug_lines);
+		}
 		glDrawArrays(GL_LINES, 0, debug_linevertcount);
 		glBindVertexArray(0);
 		glUseProgram(0);
