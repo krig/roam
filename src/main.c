@@ -23,9 +23,6 @@ tex2d_t blocks_texture;
 extern bool alpha_sort_chunks;
 
 
-static void reset_inputstate(void);
-
-
 static
 void game_init()
 {
@@ -57,7 +54,7 @@ void game_init()
 	};
 	game.controls = default_controls;
 
-	reset_inputstate();
+	memset(&game.input, 0, sizeof(struct inputstate));
 
 	printf("* Load materials + UI\n");
 	m_create_material(&game.materials[MAT_BASIC], basic_vshader, basic_fshader);
@@ -95,12 +92,6 @@ void game_exit()
 	script_exit();
 }
 
-
-static
-void reset_inputstate(void)
-{
-	memset(&game.input, 0, sizeof(struct inputstate));
-}
 
 static
 void capture_mouse(bool capture)
