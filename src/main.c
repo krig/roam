@@ -96,8 +96,9 @@ void game_exit()
 static
 void capture_mouse(bool capture)
 {
-	SDL_SetRelativeMouseMode(capture ? SDL_TRUE : SDL_FALSE);
-	SDL_SetWindowGrab(window, capture ? SDL_TRUE : SDL_FALSE);
+	int cval = capture ? SDL_TRUE : SDL_FALSE;
+	SDL_SetRelativeMouseMode(cval);
+	SDL_SetWindowGrab(window, cval);
 	mouse_captured = capture;
 }
 
@@ -198,7 +199,7 @@ bool handle_event(SDL_Event* event)
 				       game.input.picked_block.x,
 				       game.input.picked_block.y,
 				       game.input.picked_block.z);
-				if (blocktypeByCoord(game.input.picked_block) != BLOCK_AIR) {
+				if (blocktype_by_coord(game.input.picked_block) != BLOCK_AIR) {
 					printf("can delete.\n");
 					map_update_block(game.input.picked_block, BLOCK_AIR);
 				}
@@ -213,7 +214,7 @@ bool handle_event(SDL_Event* event)
 			ivec3_t feet = player_block();
 			ivec3_t head = feet;
 			head.y += 1;
-			if (blocktypeByCoord(game.input.prepicked_block) == BLOCK_AIR &&
+			if (blocktype_by_coord(game.input.prepicked_block) == BLOCK_AIR &&
 			    !block_eq(head, game.input.prepicked_block) &&
 			    !block_eq(feet, game.input.prepicked_block)) {
 				printf("can create.\n");

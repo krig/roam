@@ -153,7 +153,7 @@ size_t block_by_coord(ivec3_t xyz)
 
 
 static inline
-uint32_t blocktypeByCoord(ivec3_t xyz)
+uint32_t blocktype_by_coord(ivec3_t xyz)
 {
 	return blocktype(xyz.x, xyz.y, xyz.z);
 }

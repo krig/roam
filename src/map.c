@@ -799,7 +799,7 @@ bool map_raycast(dvec3_t origin, vec3_t dir, int len, ivec3_t* hit, ivec3_t* pre
 		block.y = round(blockf.y);
 		block.z = round(blockf.z);
 		if (block.x != prev.x || block.y != prev.y || block.z != prev.z) {
-			uint8_t t = blocktypeByCoord(block);
+			uint8_t t = blocktype_by_coord(block);
 			if (t != BLOCK_AIR) {
 				//if (game.debug_mode) {
 				//	ui_debug_block(prev, 0xff0000ff);
