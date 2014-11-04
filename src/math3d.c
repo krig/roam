@@ -602,10 +602,6 @@ void m_create_material(material_t* material, const char* vsource, const char* fs
 	material->sky_dark = glGetUniformLocation(program, "sky_dark");
 	material->sky_light = glGetUniformLocation(program, "sky_light");
 	material->tex0 = glGetUniformLocation(program, "tex0");
-	material->position = glGetAttribLocation(program, "position");
-	material->texcoord = glGetAttribLocation(program, "texcoord");
-	material->color = glGetAttribLocation(program, "color");
-	material->normal = glGetAttribLocation(program, "normal");
 	glUseProgram(0);
 }
 
@@ -705,55 +701,56 @@ void m_destroy_mesh(mesh_t* mesh)
 
 void m_set_material(mesh_t* mesh, material_t* material)
 {
+	GLint midx;
 	mesh->material = material;
 	M_CHECKGL(glBindVertexArray(mesh->vao));
 	if (mesh->ibo > 0)
 		M_CHECKGL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->ibo));
 	M_CHECKGL(glBindBuffer(GL_ARRAY_BUFFER, mesh->vbo));
-	if (material->position > -1) {
+	if ((midx = glGetAttribLocation(material->program, "position")) > -1) {
 		if (mesh->position > -1) {
 			if (mesh->flags & ML_POS_2F)
-				M_CHECKGL(glVertexAttribPointer(material->position, 2, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->position)));
+				M_CHECKGL(glVertexAttribPointer(midx, 2, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->position)));
 			else if (mesh->flags & ML_POS_3F)
-				M_CHECKGL(glVertexAttribPointer(material->position, 3, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->position)));
+				M_CHECKGL(glVertexAttribPointer(midx, 3, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->position)));
 			else if (mesh->flags & ML_POS_4UB)
-				M_CHECKGL(glVertexAttribPointer(material->position, 4, GL_UNSIGNED_BYTE, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->position)));
+				M_CHECKGL(glVertexAttribPointer(midx, 4, GL_UNSIGNED_BYTE, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->position)));
 			else // 10_10_10_2
-				M_CHECKGL(glVertexAttribPointer(material->position, 4, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->position)));
-			M_CHECKGL(glEnableVertexAttribArray(material->position));
+				M_CHECKGL(glVertexAttribPointer(midx, 4, GL_UNSIGNED_INT_2_10_10_10_REV, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->position)));
+			M_CHECKGL(glEnableVertexAttribArray(midx));
 		} else {
-			M_CHECKGL(glDisableVertexAttribArray(material->position));
+			M_CHECKGL(glDisableVertexAttribArray(midx));
 		}
 	}
-	if (material->normal > -1) {
+	if ((midx = glGetAttribLocation(material->program, "normal")) > -1) {
 		if (mesh->normal > -1) {
 			if (mesh->flags & ML_N_3F)
-				M_CHECKGL(glVertexAttribPointer(material->normal, 3, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->normal)));
+				M_CHECKGL(glVertexAttribPointer(midx, 3, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->normal)));
 			else // 4ub
-				M_CHECKGL(glVertexAttribPointer(material->normal, 4, GL_BYTE, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->normal)));
-			M_CHECKGL(glEnableVertexAttribArray(material->normal));
+				M_CHECKGL(glVertexAttribPointer(midx, 4, GL_BYTE, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->normal)));
+			M_CHECKGL(glEnableVertexAttribArray(midx));
 		} else {
-			M_CHECKGL(glDisableVertexAttribArray(material->normal));
+			M_CHECKGL(glDisableVertexAttribArray(midx));
 		}
 	}
-	if (material->texcoord > -1) {
+	if ((midx = glGetAttribLocation(material->program, "texcoord")) > -1) {
 		if (mesh->texcoord > -1) {
 			if (mesh->flags & ML_TC_2F)
-				M_CHECKGL(glVertexAttribPointer(material->texcoord, 2, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->texcoord)));
+				M_CHECKGL(glVertexAttribPointer(midx, 2, GL_FLOAT, GL_FALSE, mesh->stride, (void*)((ptrdiff_t)mesh->texcoord)));
 			else // 2US
-				M_CHECKGL(glVertexAttribPointer(material->texcoord, 2, GL_UNSIGNED_SHORT, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->texcoord)));
-			M_CHECKGL(glEnableVertexAttribArray(material->texcoord));
+				M_CHECKGL(glVertexAttribPointer(midx, 2, GL_UNSIGNED_SHORT, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->texcoord)));
+			M_CHECKGL(glEnableVertexAttribArray(midx));
 		} else {
-			M_CHECKGL(glDisableVertexAttribArray(material->texcoord));
+			M_CHECKGL(glDisableVertexAttribArray(midx));
 		}
 	}
-	if (material->color > -1) {
+	if ((midx = glGetAttribLocation(material->program, "color")) > -1) {
 		if (mesh->color > -1) {
-			glVertexAttribPointer(material->color, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->color));
-			glEnableVertexAttribArray(material->color);
+			glVertexAttribPointer(midx, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, mesh->stride, (void*)((ptrdiff_t)mesh->color));
+			glEnableVertexAttribArray(midx);
 
 		} else {
-			glDisableVertexAttribArray(material->color);
+			glDisableVertexAttribArray(midx);
 		}
 	}
 	M_CHECKGL(glBindVertexArray(0));

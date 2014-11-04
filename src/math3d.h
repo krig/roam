@@ -145,10 +145,6 @@ typedef struct material {
 	GLint sun_color;
 	GLint sky_dark;
 	GLint sky_light;
-	GLint position;
-	GLint texcoord;
-	GLint color;
-	GLint normal;
 } material_t;
 
 
