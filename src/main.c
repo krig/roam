@@ -21,6 +21,7 @@ static bool mouse_captured = false;
 struct game game;
 tex2d_t blocks_texture;
 extern bool alpha_sort_chunks;
+SDL_Point game_viewport;
 
 
 static
@@ -235,90 +236,12 @@ bool handle_event(SDL_Event* event)
 }
 
 
-
-
-/*
-static inline
-ivec3_t ivec3_t_offset(ivec3_t v, int x, int y, int z) {
-	ivec3_t to = { v.x + x, v.y + y, v.z + z };
-	return to;
-}
-
-static inline
-vec3_t ivec3_t_to_vec3(ivec3_t v) {
-	return m_vec3(v.x, v.y, v.z);
-}
-
-// sweep box 2 into box 1
-static
-bool sweep_aabb(vec3_t center, vec3_t extent, vec3_t center2, vec3_t extent2, vec3_t delta,
-	vec3_t* sweep_pos, float* time, vec3_t* hitpoint, vec3_t* hitdelta, vec3_t* hitnormal)
-{
-	bool hit = false;
-	if (delta.x == 0 && delta.y == 0 && delta.z == 0) {
-		hit = collide_aabb_aabb_full(center, extent, center2, extent2, hitpoint, hitdelta, hitnormal);
-		if (hit) {
-			*time = 0;
-			*sweep_pos = center2;
-		}
-	} else {
-		hit = collide_segment_aabb(center2, delta, extent2, center, extent, time, hitpoint, hitdelta, hitnormal);
-		if (hit) {
-			sweep_pos->x = center2.x + delta.x * *time;
-			sweep_pos->y = center2.y + delta.y * *time;
-			sweep_pos->z = center2.z + delta.z * *time;
-			vec3_t dir = m_vec3normalize(delta);
-			hitpoint->x += dir.x * extent2.x;
-			hitpoint->y += dir.y * extent2.y;
-			hitpoint->z += dir.z * extent2.z;
-		}
-	}
-	return hit;
-}
-
-static
-bool sweep_aabb_into_blocks(vec3_t center, vec3_t extent, vec3_t delta,
-	ivec3_t* blocks, size_t nblocks,
-	vec3_t* outhitpoint, vec3_t* outhitdelta, vec3_t* outhitnormal, vec3_t* outsweeppos)
-{
-
-	float nearest_time;
-	float time;
-	vec3_t hitpoint;
-	vec3_t hitnormal;
-	vec3_t hitdelta;
-	vec3_t sweeppos;
-
-	bool hit;
-	vec3_t bcenter;
-	vec3_t bextent = { 0.5f, 0.5f, 0.5f };
-
-	hit = false;
-	nearest_time = 1.f;
-	for (int i = 0; i < nblocks; ++i) {
-		bcenter = ivec3_t_to_vec3(blocks[i]);
-		if (sweep_aabb(bcenter, bextent, center, extent, delta,
-				&sweeppos, &time, &hitpoint, &hitdelta, &hitnormal)) {
-			if (time < nearest_time) {
-				hit = true;
-				*outhitpoint = hitpoint;
-				*outhitdelta = hitdelta;
-				*outhitnormal = hitnormal;
-				*outsweeppos = sweeppos;
-			}
-		}
-	}
-
-	return hit;
-}
-*/
-
 static
 void camera_tick(float dt)
 {
+	// offset camera from position
 	struct player *p = &game.player;
 	struct camera *cam = &game.camera;
-	// offset camera from position
 	vec3_t offset = {0, 0, 0};
 	switch (cam->mode) {
 	case CAMERA_FLIGHT:
@@ -339,6 +262,7 @@ void camera_tick(float dt)
 	cam->pos.z = p->pos.z + offset.z;
 }
 
+
 static
 void game_tick(float dt)
 {
@@ -355,7 +279,6 @@ void game_tick(float dt)
 
 }
 
-SDL_Point game_viewport;
 
 static
 void game_draw(SDL_Point* viewport)
@@ -472,11 +395,8 @@ void game_draw(SDL_Point* viewport)
 	}
 	ui_draw_debug(&game.projection, &game.modelview);
 	ui_draw(viewport);
-
-
-	//if (mouse_captured)
-	//	SDL_WarpMouseInWindow(window, viewport->x >> 1, viewport->y >> 1);
 }
+
 
 static
 void game_loop(int64_t dt)
@@ -545,7 +465,11 @@ int main(int argc, char* argv[])
 		fatal_error(SDL_GetError());
 
 	SDL_GL_MakeCurrent(window, context);
-	//SDL_GL_SetSwapInterval(1);
+	{
+		int sw = SDL_GL_SetSwapInterval(-1); // late swap tearing
+		if (sw == -1) sw = SDL_GL_SetSwapInterval(0); // vsync off
+		if (sw == -1) sw = SDL_GL_SetSwapInterval(1);
+	}
 
 	glewExperimental = GL_TRUE;
 	if ((rc = glewInit()) != GLEW_OK)
