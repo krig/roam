@@ -16,3 +16,5 @@ player = {
    friction = 0.05;
    gravity = -10;
 }
+
+vsync("off")
