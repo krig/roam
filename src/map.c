@@ -168,7 +168,9 @@ void map_tick()
 		}
 	}
 	{
-		int max_per_frame = 5;
+		int max_per_frame = 10; // milliseconds
+		Uint32 start_ticks = SDL_GetTicks();
+		Uint32 curr_ticks = start_ticks;
 		int cx = nc.x;
 		int cz = nc.z;
 		game_chunk* chunks = game.map.chunks;
@@ -180,8 +182,8 @@ void map_tick()
 				game_chunk* chunk = chunk_row + bx;
 				if (chunk->dirty) {
 					chunk_build_mesh_ptr(bx, bz, chunk);
-					--max_per_frame;
-					if (max_per_frame <= 0)
+					curr_ticks = SDL_GetTicks();
+					if (curr_ticks < start_ticks || ((curr_ticks - start_ticks) > max_per_frame))
 						goto escape;
 				}
 			}
@@ -246,7 +248,7 @@ void map_draw(frustum_t* frustum)
 			if (chunk->dirty) {
 				if (game.debug_mode)
 					ui_debug_aabb(center, extent, 0x44ff2222);
-				continue;
+				//continue;
 			}
 
 			extent.y = chunk_radius;
