@@ -168,6 +168,8 @@ void map_tick()
 		}
 	}
 	{
+		// TODO: try different meshing patterns, processing out from
+		// center should look best
 		int max_per_frame = 10; // milliseconds
 		Uint32 start_ticks = SDL_GetTicks();
 		Uint32 curr_ticks = start_ticks;
@@ -469,11 +471,11 @@ void chunk_build_mesh_ptr(int bufx, int bufz, game_chunk* chunk)
 	if (!chunk->dirty)
 		return;
 	chunk_destroy_mesh_ptr(chunk);
+	chunk->dirty = false;
 	size_t alphai = 0;
 	mesh_t* mesh = chunk->solid;
 	for (int y = 0; y < MAP_CHUNK_HEIGHT; ++y)
 		mesh_subchunk(mesh + y, bufx, bufz, y, &alphai);
-	chunk->dirty = false;
 	if (alphai > 0) {
 		mesh_t* alpha = &(chunk->alpha);
 		size_t nalphafaces = (alphai/3);
