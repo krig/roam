@@ -29,7 +29,8 @@ uint32_t block_at(int x, int y, int z)
 	return map_blocks[idx];
 }
 
-void map_unload_chunk_ptr(game_chunk* chunk);
+void chunk_mark_dirty_ptr(game_chunk* chunk);
+void chunk_destroy_mesh_ptr(game_chunk* chunk);
 
 /*
   Set up a lookup table used for the texcoords of all regular blocks.
@@ -54,33 +55,6 @@ void gen_block_tcs()
 extern tex2d_t blocks_texture;
 uint32_t* map_blocks = NULL;
 static chunkpos_t map_chunk;
-
-#define TESSELATION_QUEUE_SIZE (MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH)
-static chunkpos_t tesselation_queue[TESSELATION_QUEUE_SIZE];
-static size_t tesselation_queue_head = 0;
-static size_t tesselation_queue_len = 0;
-
-static
-bool push_tesselation(int x, int z)
-{
-	chunkpos_t chunk = { x, z };
-	if (tesselation_queue_len >= TESSELATION_QUEUE_SIZE)
-		return false;
-	size_t pos = (tesselation_queue_head + tesselation_queue_len) % TESSELATION_QUEUE_SIZE;
-	tesselation_queue[pos] = chunk;
-	++tesselation_queue_len;
-	return true;
-}
-
-static
-bool pop_tesselation(chunkpos_t* chunk)
-{
-	if (tesselation_queue_len == 0)
-		return false;
-	*chunk = tesselation_queue[tesselation_queue_head];
-	tesselation_queue_head = (tesselation_queue_head + 1) % TESSELATION_QUEUE_SIZE;
-	return true;
-}
 
 static uint32_t lightlut[256];
 
@@ -115,15 +89,6 @@ void map_init()
 	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z)
 		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x)
 			chunk_load(camera.x + x, camera.z + z);
-
-	// tesselate column
-	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z) {
-		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x) {
-			//if (!push_tesselation(camera.x + x, camera.z + z)) {
-				chunk_build_mesh(camera.x + x, camera.z + z);
-				//}
-		}
-	}
 	map_chunk = camera;
 
 	map_tick();
@@ -134,15 +99,34 @@ void map_init()
 void map_exit()
 {
 	for (size_t i = 0; i < MAP_CHUNK_WIDTH*MAP_CHUNK_WIDTH; ++i)
-		map_unload_chunk_ptr(game.map.chunks + i);
+		chunk_destroy_mesh_ptr(game.map.chunks + i);
 
 	free(map_blocks);
 	map_blocks = NULL;
 }
 
+static inline game_chunk* cached_chunk_at(int x, int z)
+{
+	int bufx = mod(x, MAP_CHUNK_WIDTH);
+	int bufz = mod(z, MAP_CHUNK_WIDTH);
+	game_chunk* chunk = game.map.chunks + (bufz*MAP_CHUNK_WIDTH + bufx);
+	if (chunk->x == x && chunk->z == z)
+		return chunk;
+	return 0;
+}
+
 
 void map_tick()
 {
+	// here is the correct chunk update algorithm:
+	// pass through all cache slots. If a cache slot
+	// doesn't match its loaded chunk data, that cache
+	// slot plus all surrounding cache slots must be
+	// reloaded.
+	// for each slot:
+	// if not dirty,
+	// push to reload queue and mark as dirty
+
 	chunkpos_t nc = player_chunk();
 	if (nc.x != map_chunk.x || nc.z != map_chunk.z) {
 		game_chunk* chunks = game.map.chunks;
@@ -155,32 +139,56 @@ void map_tick()
 
 		for (int dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
 			int bz = mod(cz + dz, MAP_CHUNK_WIDTH);
-			game_chunk* chunk_row = chunks + (bz*MAP_CHUNK_WIDTH);
+ 			game_chunk* chunk_row = chunks + (bz*MAP_CHUNK_WIDTH);
 			for (int dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
 				int bx = mod(cx + dx, MAP_CHUNK_WIDTH);
 				game_chunk* chunk = chunk_row + bx;
 				if (chunk->x != cx + dx ||
 				    chunk->z != cz + dz) {
-					chunk_unload(chunk->x, chunk->z);
+					chunk_mark_dirty_ptr(chunk);
 					chunk_load(cx + dx, cz + dz);
 					chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
 					assert(chunk->x == (cx + dx) && chunk->z == (cz + dz));
 
-					if (!push_tesselation(cx + dx, cz + dz)) {
-						printf("failed to push tesselation for %d, %d\n", cx + dx, cz + dz);
+					// mark surrounding chunks dirty unless they are also
+					// invalidated
+					{
+						game_chunk* surround;
+						if ((surround = cached_chunk_at(chunk->x-1, chunk->z)) != 0)
+							chunk_mark_dirty_ptr(surround);
+						if ((surround = cached_chunk_at(chunk->x+1, chunk->z)) != 0)
+							chunk_mark_dirty_ptr(surround);
+						if ((surround = cached_chunk_at(chunk->x, chunk->z-1)) != 0)
+							chunk_mark_dirty_ptr(surround);
+						if ((surround = cached_chunk_at(chunk->x, chunk->z+1)) != 0)
+							chunk_mark_dirty_ptr(surround);
 					}
 				}
 			}
 		}
 	}
 	{
-		chunkpos_t chunk;
-		for (int i = 0; i < 5; ++i) {
-			if (pop_tesselation(&chunk)) {
-				chunk_build_mesh(chunk.x, chunk.z);
+		int max_per_frame = 5;
+		int cx = nc.x;
+		int cz = nc.z;
+		game_chunk* chunks = game.map.chunks;
+		for (int dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
+			int bz = mod(cz + dz, MAP_CHUNK_WIDTH);
+			game_chunk* chunk_row = chunks + (bz*MAP_CHUNK_WIDTH);
+			for (int dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
+				int bx = mod(cx + dx, MAP_CHUNK_WIDTH);
+				game_chunk* chunk = chunk_row + bx;
+				if (chunk->dirty) {
+					chunk_build_mesh_ptr(bx, bz, chunk);
+					--max_per_frame;
+					if (max_per_frame <= 0)
+						goto escape;
+				}
 			}
 		}
 	}
+escape:
+	return;
 }
 
 #define MAX_ALPHAS ((VIEW_DISTANCE*2)*(VIEW_DISTANCE*2))
@@ -352,27 +360,22 @@ void map_update_block(ivec3_t block, uint32_t value)
 		tess[3] = true;
 	}
 	printf("reload chunk [%d, %d] [%d, %d]\n", chunk.x, chunk.z, mx, mz);
-	chunk_unload(chunk.x, chunk.z);
-	chunk_build_mesh(chunk.x, chunk.z);
+	chunk_mark_dirty(chunk.x, chunk.z);
 	if (tess[0]) {
 		printf("reload chunk [%d, %d]\n", chunk.x-1, chunk.z);
-		chunk_unload(chunk.x-1, chunk.z);
-		chunk_build_mesh(chunk.x-1, chunk.z);
+		chunk_mark_dirty(chunk.x-1, chunk.z);
 	}
 	if (tess[1]) {
 		printf("reload chunk [%d, %d]\n", chunk.x+1, chunk.z);
-		chunk_unload(chunk.x+1, chunk.z);
-		chunk_build_mesh(chunk.x+1, chunk.z);
+		chunk_mark_dirty(chunk.x+1, chunk.z);
 	}
 	if (tess[2]) {
 		printf("reload chunk [%d, %d]\n", chunk.x, chunk.z-1);
-		chunk_unload(chunk.x, chunk.z-1);
-		chunk_build_mesh(chunk.x, chunk.z-1);
+		chunk_mark_dirty(chunk.x, chunk.z-1);
 	}
 	if (tess[3]) {
 		printf("reload chunk [%d, %d]\n", chunk.x, chunk.z+1);
-		chunk_unload(chunk.x, chunk.z+1);
-		chunk_build_mesh(chunk.x, chunk.z+1);
+		chunk_mark_dirty(chunk.x, chunk.z+1);
 	}
 }
 
@@ -387,27 +390,31 @@ void chunk_load(int x, int z) {
 	game_chunk* chunk = game.map.chunks + (bufz*MAP_CHUNK_WIDTH + bufx);
 	chunk->x = x;
 	chunk->z = z;
-	chunk->dirty = true;
+	chunk_destroy_mesh_ptr(chunk);
 	gen_loadchunk(chunk);
 }
 
-void map_unload_chunk_ptr(game_chunk* chunk)
+void chunk_destroy_mesh_ptr(game_chunk* chunk)
 {
 	for (int i = 0; i < MAP_CHUNK_HEIGHT; ++i)
 		m_destroy_mesh(chunk->solid + i);
 	m_destroy_mesh(&chunk->alpha);
 	chunk->dirty = true;
-	//printf("unloaded chunk: [%d, %d] [%d, %d]\n", x, z, bufx, bufz);
 }
 
-void chunk_unload(int x, int z)
+void chunk_mark_dirty_ptr(game_chunk* chunk)
+{
+	chunk->dirty = true;
+}
+
+void chunk_mark_dirty(int x, int z)
 {
 	int bufx = mod(x, MAP_CHUNK_WIDTH);
 	int bufz = mod(z, MAP_CHUNK_WIDTH);
 	game_chunk* chunk = game.map.chunks + (bufz*MAP_CHUNK_WIDTH + bufx);
 	if (chunk->x != x || chunk->z != z)
 		return;
-	map_unload_chunk_ptr(chunk);
+	chunk_mark_dirty_ptr(chunk);
 }
 
 // tesselation buffer: size is maximum number of triangles generated
@@ -455,6 +462,25 @@ int cmp_alpha_faces(block_face_t* a, block_face_t* b)
 	return 0;
 }
 
+void chunk_build_mesh_ptr(int bufx, int bufz, game_chunk* chunk)
+{
+	if (!chunk->dirty)
+		return;
+	chunk_destroy_mesh_ptr(chunk);
+	size_t alphai = 0;
+	mesh_t* mesh = chunk->solid;
+	for (int y = 0; y < MAP_CHUNK_HEIGHT; ++y)
+		mesh_subchunk(mesh + y, bufx, bufz, y, &alphai);
+	chunk->dirty = false;
+	if (alphai > 0) {
+		mesh_t* alpha = &(chunk->alpha);
+		size_t nalphafaces = (alphai/3);
+		qsort(alpha_buffer, nalphafaces, sizeof(block_face_t), (int(*)(const void*, const void*))cmp_alpha_faces);
+		m_create_mesh(alpha, alphai, alpha_buffer, ML_POS_3F | ML_TC_2US | ML_CLR_4UB, GL_DYNAMIC_DRAW);
+		m_set_material(alpha, game.materials + MAT_CHUNK_ALPHA);
+	}
+}
+
 void chunk_build_mesh(int x, int z)
 {
 	int bufx = mod(x, MAP_CHUNK_WIDTH);
@@ -462,21 +488,7 @@ void chunk_build_mesh(int x, int z)
 	game_chunk* chunk = game.map.chunks + bufz*MAP_CHUNK_WIDTH + bufx;
 	if (chunk->x != x || chunk->z != z)
 		return;
-	if (chunk->dirty) {
-		size_t alphai = 0;
-		mesh_t* mesh = chunk->solid;
-		for (int y = 0; y < MAP_CHUNK_HEIGHT; ++y)
-			mesh_subchunk(mesh + y, bufx, bufz, y, &alphai);
-		chunk->dirty = false;
-		//printf("tesselated chunk: [%d, %d] [%d, %d]\n", x, z, bufx, bufz);
-		if (alphai > 0) {
-			mesh_t* alpha = &(chunk->alpha);
-			size_t nalphafaces = (alphai/3);
-			qsort(alpha_buffer, nalphafaces, sizeof(block_face_t), (int(*)(const void*, const void*))cmp_alpha_faces);
-			m_create_mesh(alpha, alphai, alpha_buffer, ML_POS_3F | ML_TC_2US | ML_CLR_4UB, GL_DYNAMIC_DRAW);
-			m_set_material(alpha, game.materials + MAT_CHUNK_ALPHA);
-		}
-	}
+	chunk_build_mesh_ptr(bufx, bufz, chunk);
 }
 
 // Interleave lower 16 bits of x and y in groups of 4
