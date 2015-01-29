@@ -396,13 +396,14 @@ void game_draw(SDL_Point* viewport)
 		ui_rect(2, 2, 450, 60, 0x66000000);
 		ui_text(4, 60 - 9, 0xffffffff,
 			"pos: (%+4.4g, %+4.4g, %+4.4g)\n"
-			"cam: (%+4.4g, %+4.4g, %+4.4g)\n"
+			"cam: (%+4.4g, %+4.4g, %+4.4g) p: %+.3g, y: %.3g\n"
 			"vel: (%+4.4f, %+4.4f, %+4.4f)\n"
 			"chunk: (%d, %d)\n"
 			"%s%s%s\n"
 			"fps: %g, t: %4.4f",
 			game.player.pos.x, game.player.pos.y, game.player.pos.z,
 			game.camera.pos.x, game.camera.pos.y, game.camera.pos.z,
+			ML_RAD2DEG(game.camera.pitch), ML_RAD2DEG(game.camera.yaw),
 			game.player.vel.x, game.player.vel.y, game.player.vel.z,
 			camera.x, camera.z,
 			game.player.walking ? "+walk " : "",
