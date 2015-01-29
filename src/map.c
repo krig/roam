@@ -119,9 +119,9 @@ void map_init()
 	// tesselate column
 	for (int z = -VIEW_DISTANCE; z < VIEW_DISTANCE; ++z) {
 		for (int x = -VIEW_DISTANCE; x < VIEW_DISTANCE; ++x) {
-			if (!push_tesselation(camera.x + x, camera.z + z)) {
+			//if (!push_tesselation(camera.x + x, camera.z + z)) {
 				chunk_build_mesh(camera.x + x, camera.z + z);
-			}
+				//}
 		}
 	}
 	map_chunk = camera;
@@ -154,31 +154,31 @@ void map_tick()
 		map_chunk = nc;
 
 		for (int dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
+			int bz = mod(cz + dz, MAP_CHUNK_WIDTH);
+			game_chunk* chunk_row = chunks + (bz*MAP_CHUNK_WIDTH);
 			for (int dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
 				int bx = mod(cx + dx, MAP_CHUNK_WIDTH);
-				int bz = mod(cz + dz, MAP_CHUNK_WIDTH);
-				game_chunk* chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
+				game_chunk* chunk = chunk_row + bx;
 				if (chunk->x != cx + dx ||
 				    chunk->z != cz + dz) {
 					chunk_unload(chunk->x, chunk->z);
 					chunk_load(cx + dx, cz + dz);
 					chunk = chunks + (bz*MAP_CHUNK_WIDTH + bx);
 					assert(chunk->x == (cx + dx) && chunk->z == (cz + dz));
-				}
-			}
-		}
-		for (int dz = -VIEW_DISTANCE; dz < VIEW_DISTANCE; ++dz) {
-			for (int dx = -VIEW_DISTANCE; dx < VIEW_DISTANCE; ++dx) {
-				if (!push_tesselation(cx + dx, cz + dz)) {
-					chunk_build_mesh(cx + dx, cz + dz);
+
+					if (!push_tesselation(cx + dx, cz + dz)) {
+						printf("failed to push tesselation for %d, %d\n", cx + dx, cz + dz);
+					}
 				}
 			}
 		}
 	}
-	chunkpos_t chunk;
-	for (int i = 0; i < 5; ++i) {
-		if (pop_tesselation(&chunk)) {
-			chunk_build_mesh(chunk.x, chunk.z);
+	{
+		chunkpos_t chunk;
+		for (int i = 0; i < 5; ++i) {
+			if (pop_tesselation(&chunk)) {
+				chunk_build_mesh(chunk.x, chunk.z);
+			}
 		}
 	}
 }
