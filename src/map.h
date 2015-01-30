@@ -9,6 +9,7 @@
 #include "blocks.h"
 
 #define CHUNK_SIZE 16
+#define MAX_SUBCHUNKS 64 // allow chunks populated across 1km (!)
 #define CHUNK_SIZE_STR(s) CHUNK_SIZE_STR_2(s)
 #define CHUNK_SIZE_STR_2(s) #s
 #define VIEW_DISTANCE 16
@@ -57,17 +58,30 @@ enum ChunkFlags {
 	BLOCK_CHANGED,
 };
 
+typedef struct game_subchunk {
+	uint32_t block[CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
+} game_subchunk;
+
 typedef struct game_chunk {
 	int x; // actual coordinates of chunk
 	int z;
 	bool dirty;
 	uint32_t genstate;
 	uint32_t meshstate;
-	mesh_t solid[MAP_CHUNK_HEIGHT];
+	int offset_y;
+	int height_y;
+	uint32_t subchunks[MAX_SUBCHUNKS]; // number of 16x16x16 subchunks
+	// can have special subchunk indices for special subchunk types (all-air, all-solid...)
+	mesh_t solid[MAP_CHUNK_HEIGHT]; // a solid mesh for each subchunk
 	mesh_t alpha;
 	mesh_t sprite; // render twosided (same shader as solid meshes but different render state)
-	// add per-chunk state information here (things like command blocks..., entities)
+	// add per-chunk state information here (things like command blocks..., entities?)
 } game_chunk;
+
+// uint32_t allocate_subchunk(map);
+// void free_subchunk(map, uint32_t);
+// game_subchunk* get_subchunk(map, uint32_t);
+// 
 
 // block:
 // SSSSRRRRGGGGBBBBMMMMMMMMTTTTTTTT
