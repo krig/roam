@@ -188,8 +188,8 @@ void make_sphere(mesh_t* mesh, float radius, int subdivisions) {
 	// 1 = 60 * 4
 	// 2 = 60 * 4 * 4
 	nverts = 60 * pow(4, subdivisions);
-	verts[0] = malloc(nverts * sizeof(vec3_t));
-	verts[1] = malloc(nverts * sizeof(vec3_t));
+	verts[0] = malloc(nverts * sizeof(vec3_t) * 2);
+	verts[1] = verts[0] + nverts;
 	initial_icosahedron(verts[0]);
 	currverts = 60;
 	v = 0;
@@ -198,7 +198,6 @@ void make_sphere(mesh_t* mesh, float radius, int subdivisions) {
 		v = (v + 1) % 2;
 	}
 	m_create_mesh(mesh, currverts, verts[subdivisions % 2], ML_POS_3F, GL_STATIC_DRAW);
-	free(verts[1]);
 	free(verts[0]);
 }
 
@@ -211,8 +210,8 @@ void make_hemisphere(mesh_t* mesh, float radius, int subdivisions) {
 	// 1 = 45 * 4
 	// 2 = 45 * 4 * 4
 	nverts = 45 * pow(4, subdivisions);
-	verts[0] = malloc(nverts * sizeof(vec3_t));
-	verts[1] = malloc(nverts * sizeof(vec3_t));
+	verts[0] = malloc(nverts * sizeof(vec3_t) * 2);
+	verts[1] = verts[0] + nverts;
 	initial_hemi_icosahedron(verts[0]);
 	currverts = 45;
 	v = 0;
@@ -221,6 +220,5 @@ void make_hemisphere(mesh_t* mesh, float radius, int subdivisions) {
 		v = (v + 1) % 2;
 	}
 	m_create_mesh(mesh, currverts, verts[subdivisions % 2], ML_POS_3F, GL_STATIC_DRAW);
-	free(verts[1]);
 	free(verts[0]);
 }
