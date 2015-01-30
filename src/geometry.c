@@ -198,6 +198,8 @@ void make_sphere(mesh_t* mesh, float radius, int subdivisions) {
 		v = (v + 1) % 2;
 	}
 	m_create_mesh(mesh, currverts, verts[subdivisions % 2], ML_POS_3F, GL_STATIC_DRAW);
+	free(verts[1]);
+	free(verts[0]);
 }
 
 
@@ -219,4 +221,6 @@ void make_hemisphere(mesh_t* mesh, float radius, int subdivisions) {
 		v = (v + 1) % 2;
 	}
 	m_create_mesh(mesh, currverts, verts[subdivisions % 2], ML_POS_3F, GL_STATIC_DRAW);
+	free(verts[1]);
+	free(verts[0]);
 }
