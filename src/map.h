@@ -12,7 +12,7 @@
 #define MAX_SUBCHUNKS 64 // allow chunks populated across 1km (!)
 #define CHUNK_SIZE_STR(s) CHUNK_SIZE_STR_2(s)
 #define CHUNK_SIZE_STR_2(s) #s
-#define VIEW_DISTANCE 32
+#define VIEW_DISTANCE 16
 #define OCEAN_LEVEL 32
 #define MAP_CHUNK_WIDTH (VIEW_DISTANCE*2)
 #define MAP_CHUNK_HEIGHT 8
