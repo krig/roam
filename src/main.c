@@ -236,7 +236,7 @@ bool handle_event(SDL_Event* event)
 			    !block_eq(head, game.input.prepicked_block) &&
 			    !block_eq(feet, game.input.prepicked_block)) {
 				printf("can create.\n");
-				map_update_block(game.input.prepicked_block, BLOCK_TEST_ALPHA);
+				map_update_block(game.input.prepicked_block, BLOCK_RED_LEAVES);
 			}
 		} break;
 		} break;
