@@ -23,7 +23,7 @@ void gen_testmap(game_chunk* chunk)
 
 	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
 		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
-			uint32_t sunlight = 0xf0000000;
+			uint32_t sunlight = 0xf;
 			size_t idx0 = block_index(fillx, 0, fillz);
 			for (filly = MAP_BLOCK_HEIGHT-1; filly >= 0; --filly) {
 				uint32_t b = BLOCK_AIR;
@@ -32,7 +32,7 @@ void gen_testmap(game_chunk* chunk)
 
 				if (b != BLOCK_AIR)
 					sunlight = 0;
-				blocks[idx0 + filly] = b | sunlight;
+				blocks[idx0 + filly] = b | (sunlight << 28);
 			}
 		}
 	}
@@ -69,7 +69,7 @@ void gen_noisemap(game_chunk* chunk)
 				printf("bad index: %d, %d, %d\n", fillx, 0, fillz);
 				abort();
 			}
-			uint32_t sunlight = 0xf0000000;
+			uint32_t sunlight = 0xf;
 			double height = fbm_simplex_2d(fillx, fillz, 0.5, NOISE_SCALE, 2.1117, 5);
 			height = 32.0 + height * 24.0;
 			b = BLOCK_AIR;
@@ -112,13 +112,12 @@ void gen_noisemap(game_chunk* chunk)
 					b = BLOCK_AIR;
 				}
 				if (b == BLOCK_AIR) {
-					//sunlight = sunlight;
-				} else if (sunlight > 0 && (b == BLOCK_OCEAN || b == BLOCK_OCEAN2)) {
-					sunlight = ((sunlight >> 28) - 1) << 28;
+				} else if (sunlight > 0 && (blockinfo[b].density < SOLID_DENSITY)) {
+					sunlight -= 1;
 				} else {
 					sunlight = 0;
 				}
-				blocks[idx0 + filly] = b | sunlight;
+				blocks[idx0 + filly] = b | (sunlight << 28);
 				p = b;
 			}
 		}
