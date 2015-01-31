@@ -61,8 +61,9 @@ static uint32_t lightlut[256];
 static
 void lightlut_init(void)
 {
+	double base_level = 32.0;
 	for (int i = 0; i < 256; ++i) {
-		lightlut[i] = 8 + (uint32_t)trunc(enPerlinInOut((double)i / 255.0)*247.5);
+		lightlut[i] = (uint32_t)base_level + (uint32_t)trunc((double)i / 255.0)*(255.0 - base_level);
 		lightlut[i] = ML_MIN(255, lightlut[i]);
 		printf("%02x ", lightlut[i]);
 	}

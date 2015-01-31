@@ -59,6 +59,7 @@ void gen_noisemap(game_chunk* chunk)
 #define NOISE_SCALE (1.0/((double)CHUNK_SIZE * 16))
 
 	uint64_t snowseed = game.map.seed ^ ((uint64_t)blockx << 32) ^ (uint64_t)blockz;
+	uint64_t sandseed = game.map.seed ^ ((uint64_t)blockz << 32) ^ (uint64_t)blockx;
 
 	uint32_t p, b;
 	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
@@ -73,6 +74,10 @@ void gen_noisemap(game_chunk* chunk)
 			height = 32.0 + height * 24.0;
 			b = BLOCK_AIR;
 			p = BLOCK_AIR;
+			sandseed = rand64(sandseed);
+			int sand_height = 1 + (sandseed % 3);
+			int sand_depth = 3 + (sandseed % 3);
+			int sand_depth_c = sand_depth;
 			for (filly = MAP_BLOCK_HEIGHT-1; filly >= 0; --filly) {
 				if (filly > height && filly > OCEAN_LEVEL) {
 					b = BLOCK_AIR;
@@ -82,21 +87,37 @@ void gen_noisemap(game_chunk* chunk)
 				} else if (filly < height) {
 					if (p == BLOCK_AIR) {
 						snowseed = rand64(snowseed);
-						if (height > (140.0 - (snowseed % 10))) {
+						if (height > (60.0 - (snowseed % 10))) {
 							b = BLOCK_SNOWY_GRASS_1;
+						} else if (height <= OCEAN_LEVEL + sand_height) {
+							b = BLOCK_GOLD_SAND;
 						} else {
 							b = BLOCK_WET_GRASS;
 						}
+					} else if (p == BLOCK_GOLD_SAND && sand_depth_c > 0) {
+						b = BLOCK_GOLD_SAND;
+						--sand_depth_c;
+					} else if (filly < OCEAN_LEVEL && filly > OCEAN_LEVEL + (sand_height - sand_depth)) {
+						b = BLOCK_GOLD_SAND;
 					} else {
 						b = BLOCK_WET_DIRT;
 					}
 				} else if (filly <= OCEAN_LEVEL) {
-					b = BLOCK_OCEAN;
+					if (filly - height < 3) {
+						b = BLOCK_OCEAN2;
+					} else {
+						b = BLOCK_OCEAN2;
+					}
 				} else {
 					b = BLOCK_AIR;
 				}
-				if (b != BLOCK_AIR)
+				if (b == BLOCK_AIR) {
+					//sunlight = sunlight;
+				} else if (sunlight > 0 && (b == BLOCK_OCEAN || b == BLOCK_OCEAN2)) {
+					sunlight = ((sunlight >> 28) - 1) << 28;
+				} else {
 					sunlight = 0;
+				}
 				blocks[idx0 + filly] = b | sunlight;
 				p = b;
 			}
