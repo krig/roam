@@ -249,8 +249,8 @@ void map_draw(frustum_t* frustum)
 				continue;
 
 			if (chunk->dirty) {
-				if (game.debug_mode)
-					ui_debug_aabb(center, extent, 0x44ff2222);
+				//if (game.debug_mode)
+				//	ui_debug_aabb(center, extent, 0x44ff2222);
 				//continue;
 			}
 
