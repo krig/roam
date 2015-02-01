@@ -74,3 +74,22 @@ TODO:
 * audio
 * physics
 * fix controls
+
+
+
+## thoughts on terrain generation
+
+to generate chunk (X, Z) to level N+1,
+require that chunks (X+-1,Z+-1) are generated to level N
+
+Level 0: Biome determination for each block in chunk (smoothed 2d function (temperature+humidity+elevation maps?)
+Level 1: Height map generation - blending between biomes is the tricky
+part here... want to allow completely different functions for
+different biomes, but need to cross-blend somehow.
+Level 2: Ore placement
+Level 3: Caves generation - not sure how/if I want to do this..
+Level 4: Water generation - lakes, rivers - use humidity map
+Level 5: Trees generation - again, humidity, biome..
+Level 6: Structure generation
+Level 7: Decoration (plants, mushrooms)
+
