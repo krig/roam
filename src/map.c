@@ -171,7 +171,7 @@ void map_tick()
 	{
 		// TODO: try different meshing patterns, processing out from
 		// center should look best
-		int max_per_frame = 10; // milliseconds
+		Uint32 max_per_frame = 10; // milliseconds
 		Uint32 start_ticks = SDL_GetTicks();
 		Uint32 curr_ticks = start_ticks;
 		int cx = nc.x;

@@ -15,6 +15,10 @@
 #define M_CHECKGL_ENABLED 0
 
 
+#define ASIZE(a) ((sizeof(a)/sizeof((a)[0])))
+#define STATIC_ASSERT(e) do { enum { static_assert__ = 1/(e) }; } while (0)
+
+
 // System functions
 
 char*    sys_readfile(const char* filename);

@@ -146,7 +146,7 @@ struct blockinfo blockinfo[] = {
 
 void blocks_init()
 {
-	for (int i = 0; i < sizeof(blockinfo)/sizeof(struct blockinfo); ++i) {
+	for (unsigned int i = 0; i < ASIZE(blockinfo); ++i) {
 		int prev = IMG_BLACKROCK;
 		for (int m = 0; m < 6; ++m) {
 			if (blockinfo[i].img[m] == IMG_INVALID)

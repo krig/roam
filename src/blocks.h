@@ -62,9 +62,9 @@ struct blockinfo {
 	int img[6];
 
 	uint32_t flags;
-	uint32_t density; // relative density is used when meshing
-	uint32_t light; // light emitted by block (rgb)
-	uint32_t attenuation; // light attenuation (used when lighting)
+	int density; // relative density is used when meshing
+	int light; // light emitted by block (rgb)
+	int attenuation; // light attenuation (used when lighting)
 
 	// todo: custom shape?
 	// maybe this has to be hardcoded in the tesselator for each blocktype

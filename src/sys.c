@@ -44,7 +44,7 @@ char* sys_readfile_realloc(const char* filename, char* buffer, size_t* len)
 	fseek(f, 0, SEEK_END);
 	long flen = ftell(f);
 	fseek(f, 0, SEEK_SET);
-	if (*len < flen + 1) {
+	if ((long)*len < flen + 1) {
 		buffer = (char *)realloc(buffer, flen + 1);
 		*len = flen + 1;
 	}

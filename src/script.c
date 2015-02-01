@@ -58,7 +58,7 @@ static void script_teleport(int argc, char** argv)
 void script_init()
 {
 	printf("script init\n");
-	vars = stb_sdict_new(1);
+	vars = stb_sdict_new(0);
 	memset(defuns, 0, sizeof(defuns));
 	script_defun("quit", script_quit);
 	script_defun("debug", script_debug_mode);
@@ -80,7 +80,7 @@ void script_tick()
 static void script_call(int argc, char** argv)
 {
 	printf("call: %s\n", argv[0]);
-	for (int i = 0; i < stb_arrcount(defuns); ++i) {
+	for (unsigned int i = 0; i < stb_arrcount(defuns); ++i) {
 		if (strcmp(defuns[i].name, argv[0]) == 0) {
 			(*defuns[i].cb)(argc, argv);
 			break;
@@ -124,7 +124,7 @@ int script_dofile(const char* filename)
 
 void script_defun(const char *name, void (*cb)(int argc, char** argv))
 {
-	for (int i = 0; i < stb_arrcount(defuns); ++i) {
+	for (unsigned int i = 0; i < stb_arrcount(defuns); ++i) {
 		if (defuns[i].name == 0) {
 			defuns[i].name = name;
 			defuns[i].cb = cb;

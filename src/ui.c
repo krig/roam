@@ -109,7 +109,7 @@ void ui_draw(SDL_Point* viewport)
 	const int NLINES = 32;
 	if (console_enabled || console_fade > 0) {
 		int console_width = (640 > viewport->x) ? viewport->x : 640;
-		int max_display = console_width/UI_CHAR_W - 1;
+		size_t max_display = console_width/UI_CHAR_W - 1;
 		size_t len, offset;
 		float elastic_fade = enQuinticInOut(console_fade);
 		uint32_t alpha = (uint32_t)(ML_MAX(elastic_fade, 0.1f)*255.5f);
