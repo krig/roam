@@ -6,101 +6,69 @@
 #include "stb.h"
 
 
-static lua_State *L;
+#define MAX_DEFUNS 32
+
+struct defun_data {
+	const char* name;
+	void (*cb)(int, char**);
+};
+
+static struct defun_data defuns[MAX_DEFUNS];
+
+static stb_sdict* vars;
 
 
-lua_State *script_get_state()
+static int is_boolean_true(const char* str)
 {
-	return L;
+	return
+		stb_stricmp(str, "true") == 0 ||
+		stb_stricmp(str, "1") == 0 ||
+		stb_stricmp(str, "yes") == 0;
 }
 
-/*
-** Based on luaB_print from lbaselib.c
-** If your system does not support `stdout', you can just remove this function.
-** If you need, you can define your own `print' function, following this
-** model but changing `fputs' to put the strings at a proper place
-** (a console window or a log file, for instance).
-*/
-static int script_print(lua_State *L)
-{
-	char tmp[1024] = {0};
-	int n = lua_gettop(L);  /* number of arguments */
-	int i;
-	lua_getglobal(L, "tostring");
-	for (i=1; i<=n; i++) {
-		const char *s;
-		lua_pushvalue(L, -1);  /* function to be called */
-		lua_pushvalue(L, i);   /* value to print */
-		lua_call(L, 1, 1);
-		s = lua_tostring(L, -1);  /* get result */
-		if (s == NULL)
-			return luaL_error(L, LUA_QL("tostring") " must return a string to "
-			                  LUA_QL("print"));
-		if (i>1) strmcat(tmp, "\t", sizeof(tmp));
-		strmcat(tmp, s, sizeof(tmp));
-		lua_pop(L, 1);  /* pop result */
-	}
-	ui_add_console_line(tmp);
-	return 0;
-}
 
-static int script_quit(lua_State *L)
+static void script_quit(int argc, char** argv)
 {
-	lua_pop(L, lua_gettop(L));
 	game.game_active = false;
-	return 0;
 }
 
-static int script_debug_mode(lua_State *L)
+static void script_debug_mode(int argc, char** argv)
 {
-	game.debug_mode = (lua_gettop(L) > 0) ? lua_toboolean(L, 1) : true;
-	return 0;
+	game.debug_mode = (argc > 0) ? is_boolean_true(argv[1]) : true;
 }
 
-static int script_wireframe(lua_State *L)
+static void script_wireframe(int argc, char** argv)
 {
-	game.wireframe = (lua_gettop(L) > 0) ? lua_toboolean(L, 1) : true;
-	return 0;
+	game.wireframe = (argc > 0) ? is_boolean_true(argv[1]) : true;
 }
 
-static int script_teleport(lua_State *L)
+static void script_teleport(int argc, char** argv)
 {
-	game.player.pos.x = luaL_checknumber(L, 1);
-	game.player.pos.y = luaL_checknumber(L, 2);
-	game.player.pos.z = luaL_checknumber(L, 3);
-	lua_pop(L, 3);
-	return 0;
-}
-
-static int script_blocktype(lua_State *L)
-{
-	int x, y, z;
-	x = luaL_checkinteger(L, 1);
-	y = luaL_checkinteger(L, 2);
-	z = luaL_checkinteger(L, 3);
-	lua_pop(L, 3);
-	lua_pushinteger(L, blocktype(x, y, z));
-	return 1;
+	printf("teleport: %d\n", argc);
+	if (argc == 2) {
+		game.player.pos.x = atof(argv[1]);
+		game.player.pos.z = atof(argv[2]);
+	} else if (argc == 3) {
+		game.player.pos.x = atof(argv[1]);
+		game.player.pos.y = atof(argv[2]);
+		game.player.pos.z = atof(argv[3]);
+	}
 }
 
 void script_init()
 {
-	L = luaL_newstate();
-	luaJIT_setmode(L, 0, LUAJIT_MODE_ENGINE|LUAJIT_MODE_ON);
-	luaL_openlibs(L);
-	lua_register(L, "print", script_print);
-	lua_register(L, "quit", script_quit);
-	lua_register(L, "debug", script_debug_mode);
-	lua_register(L, "wireframe", script_wireframe);
-	lua_register(L, "teleport", script_teleport);
-	lua_register(L, "blocktype", script_blocktype);
+	printf("script init\n");
+	vars = stb_sdict_new(1);
+	memset(defuns, 0, sizeof(defuns));
+	script_defun("quit", script_quit);
+	script_defun("debug", script_debug_mode);
+	script_defun("wireframe", script_wireframe);
+	script_defun("teleport", script_teleport);
 }
 
 
 void script_exit()
 {
-	lua_close(L);
-	L = NULL;
 }
 
 
@@ -109,20 +77,33 @@ void script_tick()
 }
 
 
-int script_exec(const char *cmd)
+static void script_call(int argc, char** argv)
 {
-	int ret = luaL_dostring(L, cmd);
-	int top = lua_gettop(L);
-	const char* s;
-	while (top > 0) {
-		s = lua_tostring(L, -1);
-		if (s != NULL)
-			ui_add_console_line(s);
-		lua_pop(L, 1);
-		--top;
+	printf("call: %s\n", argv[0]);
+	for (int i = 0; i < stb_arrcount(defuns); ++i) {
+		if (strcmp(defuns[i].name, argv[0]) == 0) {
+			(*defuns[i].cb)(argc, argv);
+			break;
+		}
 	}
-	lua_settop(L, 0);
-	return ret < 0 ? ret : 0;
+}
+
+
+int script_exec(char *cmd)
+{
+	int count;
+	char **tokens;
+	tokens = stb_tokens_quoted(cmd, " \t", &count);
+	if (count == 3 && strcmp(tokens[1], "=") == 0) {
+		printf("defining var %s as %s\n", tokens[0], tokens[2]);
+		void* prev = stb_sdict_change(vars, tokens[0], strdup(tokens[2]));
+		if (prev != NULL)
+			free(prev);
+	} else if (count > 0) {
+		script_call(count-1, tokens);
+	}
+	free(tokens);
+	return 0;
 }
 
 int script_dofile(const char* filename)
@@ -131,76 +112,34 @@ int script_dofile(const char* filename)
 		printf("Script not found: %s\n", filename);
 		return 0;
 	}
-	int ret = luaL_dofile(L, filename);
-	return ret;
-}
-
-
-// commands are triggered via the console or scripts
-// input is a lua_State *
-// output is number of results left on the stack
-void script_defun(const char *name, int (*cb)(lua_State *L))
-{
-	lua_register(L, name, cb);
-}
-
-
-static int script_gettable(const char* name)
-{
-	char tmp[512];
-	int n, i;
-	strmcpy(tmp, name, sizeof(tmp));
-	char** tok = stb_tokens(tmp, ".", &n);
-	i = 0;
-
-	if (n == 0)
-		return -1;
-
-	lua_getglobal(L, tok[0]);
-	if (n > 1 && !lua_istable(L, -1)) {
-		lua_pop(L, lua_gettop(L));
-		return -1;
+	int len;
+	char** lines = stb_stringfile_trimmed((char*)filename, &len, '#');
+	for (int i = 0; i < len; ++i) {
+		script_exec(lines[i]);
 	}
-
-	for (i = 1; i < n; ++i) {
-		lua_pushstring(L, tok[i]);
-		lua_gettable(L, -2);
-		if (i < n-1 && !lua_istable(L, -1)) {
-			lua_pop(L, lua_gettop(L));
-			return -1;
-		}
-	}
+	free(lines);
 	return 0;
 }
 
 
+void script_defun(const char *name, void (*cb)(int argc, char** argv))
+{
+	for (int i = 0; i < stb_arrcount(defuns); ++i) {
+		if (defuns[i].name == 0) {
+			defuns[i].name = name;
+			defuns[i].cb = cb;
+			return;
+		}
+	}
+	printf("Max defuns reached\n");
+}
+
 double script_get(const char *name)
 {
-	if (script_gettable(name) < 0)
-		return 0.0;
-	double v = lua_tonumber(L, -1);
-	lua_pop(L, lua_gettop(L));
-	return v;
-}
-
-
-int script_get_i(const char *name)
-{
-	if (script_gettable(name) < 0)
-		return 0.0;
-	int v = lua_tointeger(L, -1);
-	lua_pop(L, lua_gettop(L));
-	return v;
-}
-
-
-bool script_get_b(const char *name)
-{
-	if (script_gettable(name) < 0)
-		return 0.0;
-	int v = lua_toboolean(L, -1);
-	lua_pop(L, lua_gettop(L));
-	return !!v;
+	char* val = (char*)stb_sdict_get(vars, (char*)name);
+	if (val)
+		return atof(val);
+	return 0.0;
 }
 
 

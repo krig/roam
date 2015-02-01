@@ -25,9 +25,11 @@ SDL_Point game_viewport;
 
 
 static
-int vsync_onoff(lua_State *L)
+void vsync_onoff(int argc, char** argv)
 {
-	const char* onoff = lua_tostring(L, -1);
+	if (argc != 1)
+		return;
+	const char* onoff = argv[1];
 	if (stb_stricmp(onoff, "on") == 0)
 		SDL_GL_SetSwapInterval(1);
 	else if (stb_stricmp(onoff, "off") == 0)
@@ -36,7 +38,6 @@ int vsync_onoff(lua_State *L)
 		int sw = SDL_GL_SetSwapInterval(-1);
 		if (sw == -1) SDL_GL_SetSwapInterval(1);
 	}
-	return 0;
 }
 
 
@@ -45,7 +46,7 @@ void game_init()
 {
 	script_init();
 	script_defun("vsync", vsync_onoff);
-	script_dofile("data/boot.lua");
+	script_dofile("data/boot.script");
 	game.camera.pitch = 0;
 	game.camera.yaw = 0;
 	m_setvec3(game.camera.pos, 0, 0, 0);

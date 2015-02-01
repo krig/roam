@@ -1,0 +1,6 @@
+game.day_length = 1200
+game.fast_day_length = 5
+player.accel = 30
+player.friction = 0.05
+player.gravity = -10
+vsync off

@@ -121,13 +121,9 @@ static void updatevar(lua_State *L, const char* name, float* v)
 void player_tick(float dt)
 {
 	// update script vars
-	lua_State *L = script_get_state();
-	lua_getglobal(L, "player");
-	if (lua_istable(L, -1)) {
-		updatevar(L, "accel", &pv.accel);
-		updatevar(L, "friction", &pv.friction);
-		updatevar(L, "gravity", &pv.gravity);
-	}
+	pv.accel = script_get("player.accel");
+	pv.friction = script_get("player.friction");
+	pv.gravity = script_get("player.gravity");
 
 	struct player *p = &game.player;
 	// update animations
