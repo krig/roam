@@ -3,8 +3,6 @@
 #include "game.h"
 #include "player.h"
 #include "script.h"
-#include <lua.h>
-#include <lauxlib.h>
 
 
 static struct playervars pv;
@@ -109,14 +107,6 @@ void flight_move(struct player *p, float dt)
 	p->pos.z += p->vel.z * dt;
 }
 
-static void updatevar(lua_State *L, const char* name, float* v)
-{
-	lua_pushstring(L, name);
-	lua_gettable(L, -2);
-	if (lua_isnumber(L, -1))
-		*v = lua_tonumber(L, -1);
-	lua_pop(L, 1);
-}
 
 void player_tick(float dt)
 {
