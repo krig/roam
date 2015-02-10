@@ -4,13 +4,24 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include <stdnoreturn.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <float.h>
 #include <assert.h>
+
+
+#ifdef _MSC_VER
+#define __restrict__
+#define __typeof__ decltype
+#define noreturn
+#define inline __forceinline
+#define snprintf _snprintf
+#else
+#include <stdnoreturn.h>
+#endif
+
 
 #define M_CHECKGL_ENABLED 0
 

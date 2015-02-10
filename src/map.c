@@ -639,12 +639,11 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 				if (BNONSOLID(14)) {
 					assert((n[14]&0xff) != (n[13]&0xff));
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_TOP, 0);
-					const block_vtx_t corners[4] = {
-						{POS(  ix, by+iy+1, iz+1), tc[0], BLOCKLIGHT(20,23,11,14,10,19,22)},
-						{POS(ix+1, by+iy+1, iz+1), tc[1], BLOCKLIGHT(23,26,14,17,16,22,25)},
-						{POS(ix+1, by+iy+1,   iz), tc[2], BLOCKLIGHT( 5, 8,14,17,4,7,16)},
-						{POS(  ix, by+iy+1,   iz), tc[3], BLOCKLIGHT( 2, 5,11,14,1,4,10)},
-					};
+					block_vtx_t corners[4];
+					corners[0].pos = POS(  ix, by+iy+1, iz+1), corners[0].tc = tc[0], corners[0].clr = BLOCKLIGHT(20,23,11,14,10,19,22);
+					corners[1].pos = POS(ix+1, by+iy+1, iz+1), corners[1].tc = tc[1], corners[1].clr = BLOCKLIGHT(23,26,14,17,16,22,25);
+					corners[2].pos = POS(ix+1, by+iy+1,   iz), corners[2].tc = tc[2], corners[2].clr = BLOCKLIGHT( 5, 8,14,17,4,7,16);
+					corners[3].pos = POS(  ix, by+iy+1,   iz), corners[3].tc = tc[3], corners[3].clr = BLOCKLIGHT( 2, 5,11,14,1,4,10);
 					if (FLIPCHECK()) {
 						verts[vi++] = corners[0];
 						verts[vi++] = corners[1];
@@ -663,12 +662,11 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 				}
 				if (BNONSOLID(12)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BOTTOM, 0);
-					const block_vtx_t corners[4] = {
-						{POS(  ix, by+iy,   iz), tc[0], BLOCKLIGHT( 0, 3, 9,12,1,4,10)},
-						{POS(ix+1, by+iy,   iz), tc[1], BLOCKLIGHT( 3, 6,12,15,4,7,16)},
-						{POS(ix+1, by+iy, iz+1), tc[2], BLOCKLIGHT(12,15,21,24,16,22,25)},
-						{POS(  ix, by+iy, iz+1), tc[3], BLOCKLIGHT( 9,12,18,21,10,19,22)},
-					};
+					block_vtx_t corners[4];
+					corners[0].pos = POS(  ix, by+iy,   iz), corners[0].tc = tc[0], corners[0].clr = BLOCKLIGHT( 0, 3, 9,12,1,4,10);
+					corners[1].pos = POS(ix+1, by+iy,   iz), corners[1].tc = tc[1], corners[1].clr = BLOCKLIGHT( 3, 6,12,15,4,7,16);
+					corners[2].pos = POS(ix+1, by+iy, iz+1), corners[2].tc = tc[2], corners[2].clr = BLOCKLIGHT(12,15,21,24,16,22,25);
+					corners[3].pos = POS(  ix, by+iy, iz+1), corners[3].tc = tc[3], corners[3].clr = BLOCKLIGHT( 9,12,18,21,10,19,22);
 					if (FLIPCHECK()) {
 						verts[vi++] = corners[0];
 						verts[vi++] = corners[1];
@@ -687,12 +685,11 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 				}
 				if (BNONSOLID(10)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_LEFT, 0);
-					const block_vtx_t corners[4] = {
-						{POS(ix,   by+iy,   iz), tc[0], BLOCKLIGHT( 0, 1, 9,10,3,4,12)},
-						{POS(ix,   by+iy, iz+1), tc[1], BLOCKLIGHT( 9,10,18,19,12,21,22)},
-						{POS(ix, by+iy+1, iz+1), tc[2], BLOCKLIGHT(10,11,19,20,14,22,23)},
-						{POS(ix, by+iy+1,   iz), tc[3], BLOCKLIGHT( 1, 2,10,11,4,5,14)},
-					};
+					block_vtx_t corners[4];
+					corners[0].pos = POS(ix,   by+iy,   iz), corners[0].tc = tc[0], corners[0].clr = BLOCKLIGHT( 0, 1, 9,10,3,4,12);
+					corners[1].pos = POS(ix,   by+iy, iz+1), corners[1].tc = tc[1], corners[1].clr = BLOCKLIGHT( 9,10,18,19,12,21,22);
+					corners[2].pos = POS(ix, by+iy+1, iz+1), corners[2].tc = tc[2], corners[2].clr = BLOCKLIGHT(10,11,19,20,14,22,23);
+					corners[3].pos = POS(ix, by+iy+1,   iz), corners[3].tc = tc[3], corners[3].clr = BLOCKLIGHT( 1, 2,10,11,4,5,14);
 					if (FLIPCHECK()) {
 						verts[vi++] = corners[0];
 						verts[vi++] = corners[1];
@@ -711,12 +708,11 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 				}
 				if (BNONSOLID(16)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_RIGHT, 0);
-					const block_vtx_t corners[4] = {
-						{POS(ix+1,   by+iy, iz+1), tc[0], BLOCKLIGHT(15,16,24,25,12,21,22)},
-						{POS(ix+1,   by+iy,   iz), tc[1], BLOCKLIGHT( 6, 7,15,16,3,4,12)},
-						{POS(ix+1, by+iy+1,   iz), tc[2], BLOCKLIGHT( 7, 8,16,17,4,5,14)},
-						{POS(ix+1, by+iy+1, iz+1), tc[3], BLOCKLIGHT(16,17,25,26,14,22,23)},
-					};
+					block_vtx_t corners[4];
+					corners[0].pos = POS(ix+1,   by+iy, iz+1), corners[0].tc = tc[0], corners[0].clr = BLOCKLIGHT(15,16,24,25,12,21,22);
+					corners[1].pos = POS(ix+1,   by+iy,   iz), corners[1].tc = tc[1], corners[1].clr = BLOCKLIGHT( 6, 7,15,16,3,4,12);
+					corners[2].pos = POS(ix+1, by+iy+1,   iz), corners[2].tc = tc[2], corners[2].clr = BLOCKLIGHT( 7, 8,16,17,4,5,14);
+					corners[3].pos = POS(ix+1, by+iy+1, iz+1), corners[3].tc = tc[3], corners[3].clr = BLOCKLIGHT(16,17,25,26,14,22,23);
 					if (FLIPCHECK()) {
 						verts[vi++] = corners[0];
 						verts[vi++] = corners[1];
@@ -735,12 +731,11 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 				}
 				if (BNONSOLID(22)) {
 					tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_FRONT, 0);
-					block_vtx_t corners[4] = {
-						{POS(  ix,   by+iy, iz+1), tc[0], BLOCKLIGHT(18,19,21,22,9,10,12)},
-						{POS(ix+1,   by+iy, iz+1), tc[1], BLOCKLIGHT(21,22,24,25,12,15,16)},
-						{POS(ix+1, by+iy+1, iz+1), tc[2], BLOCKLIGHT(22,23,25,26,14,16,17)},
-						{POS(  ix, by+iy+1, iz+1), tc[3], BLOCKLIGHT(19,20,22,23,10,11,14)},
-					};
+					block_vtx_t corners[4];
+					corners[0].pos = POS(  ix,   by+iy, iz+1), corners[0].tc = tc[0], corners[0].clr = BLOCKLIGHT(18,19,21,22,9,10,12);
+					corners[1].pos = POS(ix+1,   by+iy, iz+1), corners[1].tc = tc[1], corners[1].clr = BLOCKLIGHT(21,22,24,25,12,15,16);
+					corners[2].pos = POS(ix+1, by+iy+1, iz+1), corners[2].tc = tc[2], corners[2].clr = BLOCKLIGHT(22,23,25,26,14,16,17);
+					corners[3].pos = POS(  ix, by+iy+1, iz+1), corners[3].tc = tc[3], corners[3].clr = BLOCKLIGHT(19,20,22,23,10,11,14);
 					if (FLIPCHECK()) {
 						verts[vi++] = corners[0];
 						verts[vi++] = corners[1];
@@ -759,12 +754,11 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 				}
 				if (BNONSOLID(4)) {
 					const tc2us_t* tc = &BLOCKTC(t, BLOCK_TEX_BACK, 0);
-					const block_vtx_t corners[4] = {
-						{POS(ix+1,   by+iy, iz), tc[0], BLOCKLIGHT( 3, 4, 6, 7,12,15,16)},
-						{POS(  ix,   by+iy, iz), tc[1], BLOCKLIGHT( 0, 1, 3, 4,9,10,12)},
-						{POS(  ix, by+iy+1, iz), tc[2], BLOCKLIGHT( 1, 2, 4, 5,10,11,14)},
-						{POS(ix+1, by+iy+1, iz), tc[3], BLOCKLIGHT( 4, 5, 7, 8,14,16,17)},
-					};
+					block_vtx_t corners[4];
+					corners[0].pos = POS(ix+1,   by+iy, iz), corners[0].tc = tc[0], corners[0].clr = BLOCKLIGHT( 3, 4, 6, 7,12,15,16);
+					corners[1].pos = POS(  ix,   by+iy, iz), corners[1].tc = tc[1], corners[1].clr = BLOCKLIGHT( 0, 1, 3, 4,9,10,12);
+					corners[2].pos = POS(  ix, by+iy+1, iz), corners[2].tc = tc[2], corners[2].clr = BLOCKLIGHT( 1, 2, 4, 5,10,11,14);
+					corners[3].pos = POS(ix+1, by+iy+1, iz), corners[3].tc = tc[3], corners[3].clr = BLOCKLIGHT( 4, 5, 7, 8,14,16,17);
 					if (FLIPCHECK()) {
 						verts[vi++] = corners[0];
 						verts[vi++] = corners[1];
