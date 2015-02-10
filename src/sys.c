@@ -1,65 +1,84 @@
 #include "common.h"
 #include <time.h>
-#ifdef _MSC_VER
-#include <windows.h>
-/*
- * gettimeofday.c
- *    Win32 gettimeofday() replacement
- *
- * src/port/gettimeofday.c
- *
- * Copyright (c) 2003 SRA, Inc.
- * Copyright (c) 2003 SKC, Inc.
- *
- * Permission to use, copy, modify, and distribute this software and
- * its documentation for any purpose, without fee, and without a
- * written agreement is hereby granted, provided that the above
- * copyright notice and this paragraph and the following two
- * paragraphs appear in all copies.
- *
- * IN NO EVENT SHALL THE AUTHOR BE LIABLE TO ANY PARTY FOR DIRECT,
- * INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, INCLUDING
- * LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
- * DOCUMENTATION, EVEN IF THE UNIVERSITY OF CALIFORNIA HAS BEEN ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * THE AUTHOR SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE.  THE SOFTWARE PROVIDED HEREUNDER IS ON AN "AS
- * IS" BASIS, AND THE AUTHOR HAS NO OBLIGATIONS TO PROVIDE MAINTENANCE,
- * SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
- */
-/* FILETIME of Jan 1 1970 00:00:00. */
-static const unsigned __int64 epoch = ((unsigned __int64) 116444736000000000ULL);
-/*
- * timezone information is stored outside the kernel so tzp isn't used anymore.
- *
- * Note: this function is not for Win32 high precision timing purpose. See
- * elapsed_time().
- */
-int
-gettimeofday(struct timeval * tp, struct timezone * tzp)
-{
-    FILETIME    file_time;
-    SYSTEMTIME  system_time;
-    ULARGE_INTEGER ularge;
 
-    GetSystemTime(&system_time);
-    SystemTimeToFileTime(&system_time, &file_time);
-    ularge.LowPart = file_time.dwLowDateTime;
-    ularge.HighPart = file_time.dwHighDateTime;
-
-    tp->tv_sec = (long) ((ularge.QuadPart - epoch) / 10000000L);
-    tp->tv_usec = (long) (system_time.wMilliseconds * 1000);
-
-    return 0;
-}
-#else
-#include <sys/time.h>
-#endif
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+
+#ifndef _MSC_VER
+#include <sys/time.h>
+#else
+/**
+ * This file has no copyright assigned and is placed in the Public Domain.
+ * This file is part of the w64 mingw-runtime package.
+ * No warranty is given; refer to the file DISCLAIMER.PD within this package.
+ */
+#include <windows.h>
+
+struct timezone 
+{
+  __int32  tz_minuteswest; /* minutes W of Greenwich */
+  bool  tz_dsttime;     /* type of dst correction */
+};
+
+struct timespec {
+__int32    tv_sec;         /* seconds */
+__int32    tv_nsec;        /* nanoseconds */
+};
+
+#define FILETIME_1970 116444736000000000ull /* seconds between 1/1/1601 and 1/1/1970 */
+#define HECTONANOSEC_PER_SEC 10000000ull
+
+int getntptimeofday (struct timespec *, struct timezone *);
+
+int getntptimeofday (struct timespec *tp, struct timezone *z)
+{
+  int res = 0;
+  union {
+    unsigned long long ns100; /*time since 1 Jan 1601 in 100ns units */
+    FILETIME ft;
+  }  _now;
+  TIME_ZONE_INFORMATION  TimeZoneInformation;
+  DWORD tzi;
+
+  if (z != NULL)
+    {
+      if ((tzi = GetTimeZoneInformation(&TimeZoneInformation)) != TIME_ZONE_ID_INVALID) {
+	z->tz_minuteswest = TimeZoneInformation.Bias;
+	if (tzi == TIME_ZONE_ID_DAYLIGHT)
+	  z->tz_dsttime = 1;
+	else
+	  z->tz_dsttime = 0;
+      }
+    else
+      {
+	z->tz_minuteswest = 0;
+	z->tz_dsttime = 0;
+      }
+    }
+
+  if (tp != NULL) {
+    GetSystemTimeAsFileTime (&_now.ft);	 /* 100-nanoseconds since 1-1-1601 */
+    /* The actual accuracy on XP seems to be 125,000 nanoseconds = 125 microseconds = 0.125 milliseconds */
+    _now.ns100 -= FILETIME_1970;	/* 100 nano-seconds since 1-1-1970 */
+    tp->tv_sec = _now.ns100 / HECTONANOSEC_PER_SEC;	/* seconds since 1-1-1970 */
+    tp->tv_nsec = (long) (_now.ns100 % HECTONANOSEC_PER_SEC) * 100; /* nanoseconds */
+  }
+  return res;
+}
+
+int gettimeofday (struct timeval *p, void *z)
+{
+ struct timespec tp;
+
+ if (getntptimeofday (&tp, (struct timezone *) z))
+   return -1;
+ p->tv_sec=tp.tv_sec;
+ p->tv_usec=(tp.tv_nsec/1000);
+ return 0;
+}
+
+#endif
 
 
 uint64_t sys_urandom()
