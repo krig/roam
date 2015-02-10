@@ -134,36 +134,31 @@ void sky_tick(float dt)
 #define MKRGB(rgb) mkrgb(0x##rgb)
 
 	// day, dusk, night, dawn
-	const vec3_t ambient[4] = {
-		MKRGB(ffffff),
-		MKRGB(544769),
-		MKRGB(101010),
-		MKRGB(6f2168),
-	};
-	const vec3_t sky_dark[4] = {
-		MKRGB(3F6CB4),
-		MKRGB(40538e),
-		MKRGB(000000),
-		MKRGB(3d2163),
-	};
-	const vec3_t sky_light[4] = {
-		MKRGB(00AAFF),
-		MKRGB(6a6ca5),
-		MKRGB(171b33),
-		MKRGB(e16e7a),
-	};
-	const vec3_t sun_color[4] = {
-		MKRGB(E8EAE7),
-		MKRGB(fdf2c9),
-		MKRGB(e2f3fa),
-		MKRGB(fefebb),
-	};
-	const vec3_t fog[4] = {
-		MKRGB(7ed4ff),
-		MKRGB(ad6369),
-		MKRGB(383e60),
-		MKRGB(f7847a),
-	};
+	vec3_t ambient[4];
+		ambient[0] = MKRGB(ffffff);
+		ambient[1] = MKRGB(544769);
+		ambient[2] = MKRGB(101010);
+		ambient[3] = MKRGB(6f2168);
+	vec3_t sky_dark[4];
+		sky_dark[0] = MKRGB(3F6CB4);
+		sky_dark[1] = MKRGB(40538e);
+		sky_dark[2] = MKRGB(000000);
+		sky_dark[3] = MKRGB(3d2163);
+	vec3_t sky_light[4];
+		sky_light[0] = MKRGB(00AAFF);
+		sky_light[1] = MKRGB(6a6ca5);
+		sky_light[2] = MKRGB(171b33);
+		sky_light[3] = MKRGB(e16e7a);
+	vec3_t sun_color[4];
+		sun_color[0] = MKRGB(E8EAE7);
+		sun_color[1] = MKRGB(fdf2c9);
+		sun_color[2] = MKRGB(e2f3fa);
+		sun_color[3] = MKRGB(fefebb);
+	vec3_t fog[4];
+		fog[0] = MKRGB(7ed4ff);
+		fog[1] = MKRGB(ad6369);
+		fog[2] = MKRGB(383e60);
+		fog[3] = MKRGB(f7847a);
 
 	const float fogdensity[4] = {
 		0.007,

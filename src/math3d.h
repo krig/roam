@@ -17,8 +17,12 @@
 
 #define ML_DEG2RAD(d) (((d) * ML_PI) / 180.0)
 #define ML_RAD2DEG(r) (((r) * 180.0) / ML_PI)
-#define ML_SWAP(a, b) do { __typeof__ (a) _swap_##__LINE__ = (a); (a) = (b); (b) = _swap_##__LINE__; } while (0)
 
+#ifdef _MSC_VER
+#define ML_SWAP(a, b) do { a=(a+b) - (b=a); } while (0)
+#else
+#define ML_SWAP(a, b) do { __typeof__ (a) _swap_##__LINE__ = (a); (a) = (b); (b) = _swap_##__LINE__; } while (0)
+#endif
 
 enum ml_CollisionResult {
 	ML_OUTSIDE,

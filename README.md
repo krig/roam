@@ -62,7 +62,6 @@ TODO:
 * Proper memory allocator / memory tracking
 * Better visualisation
 * builtin HTTP/REST server for tweak controls
-* remove use of lua?
 * entities
 * better terrain generation
   * biomes

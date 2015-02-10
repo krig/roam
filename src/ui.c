@@ -243,14 +243,13 @@ void ui_text(float x, float y, uint32_t clr, const char* str, ...)
 		vec2_t p2 = { rpos.x + scale, rpos.y + scale };
 		vec2_t t1 = { tc.x, 0.f };
 		vec2_t t2 = { tc.x + d, v };
-		uivert_t quad[6] = {
-			{ p1, { t1.x, t2.y }, clr },
-			{ p2, { t2.x, t1.y }, clr },
-			{ { p1.x, p2.y }, t1, clr },
-			{ p2, { t2.x, t1.y }, clr },
-			{ p1, { t1.x, t2.y }, clr },
-			{ { p2.x, p1.y }, t2, clr },
-		};
+		uivert_t quad[6];
+		quad[0].pos = p1,                           quad[0].tc.x = t1.x, quad[0].tc.y = t2.y, quad[0].clr = clr;
+		quad[1].pos = p2,                           quad[1].tc.x = t2.x, quad[1].tc.y = t1.y, quad[1].clr = clr;
+		quad[2].pos.x = p1.x, quad[2].pos.y = p2.y, quad[2].tc = t1,                          quad[2].clr = clr;
+		quad[3].pos = p2,                           quad[3].tc.x = t2.x, quad[3].tc.y = t1.y, quad[3].clr = clr;
+		quad[4].pos = p1,                           quad[4].tc.x = t1.x, quad[4].tc.y = t2.y, quad[4].clr = clr;
+		quad[5].pos.x = p2.x, quad[5].pos.y = p1.y, quad[5].tc = t2,                          quad[5].clr = clr;
 
 		memcpy(ptr, quad, sizeof(quad));
 		ptr += 6;

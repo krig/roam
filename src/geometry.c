@@ -19,20 +19,19 @@ void make_cube(mesh_t* mesh, vec3_t size, uint32_t top_clr, uint32_t bottom_clr)
 		{{ 0.5f*size.x, 0.5f*size.y, 0.5f*size.z }, { 0, 0, 0 }, top_clr }
 	};
 
-	posnormalclrvert_t tris[] = {
+	posnormalclrvert_t tris[36];
 		// bottom
-		vtx[0], vtx[1], vtx[2], vtx[1], vtx[3], vtx[2],
+		tris[ 0] = vtx[0], tris[ 1] = vtx[1], tris[ 2] = vtx[2], tris[ 3] = vtx[1], tris[ 4] = vtx[3], tris[ 5] = vtx[2],
 		// top
-		vtx[4], vtx[5], vtx[6], vtx[6], vtx[5], vtx[7],
+		tris[ 6] = vtx[4], tris[ 7] = vtx[5], tris[ 8] = vtx[6], tris[ 9] = vtx[6], tris[10] = vtx[5], tris[11] = vtx[7],
 		// front
-		vtx[2], vtx[3], vtx[5], vtx[3], vtx[7], vtx[5],
+		tris[12] = vtx[2], tris[13] = vtx[3], tris[14] = vtx[5], tris[15] = vtx[3], tris[16] = vtx[7], tris[17] = vtx[5],
 		// back
-		vtx[0], vtx[4], vtx[1], vtx[1], vtx[4], vtx[6],
+		tris[18] = vtx[0], tris[19] = vtx[4], tris[20] = vtx[1], tris[21] = vtx[1], tris[22] = vtx[4], tris[23] = vtx[6],
 		// left
-		vtx[2], vtx[4], vtx[0], vtx[2], vtx[5], vtx[4],
+		tris[24] = vtx[2], tris[25] = vtx[4], tris[26] = vtx[0], tris[27] = vtx[2], tris[28] = vtx[5], tris[29] = vtx[4],
 		// right
-		vtx[3], vtx[1], vtx[6], vtx[3], vtx[6], vtx[7]
-	};
+		tris[30] = vtx[3], tris[31] = vtx[1], tris[32] = vtx[6], tris[33] = vtx[3], tris[34] = vtx[6], tris[35] = vtx[7];
 
 	vec3_t normals[] = {{ 0,-1, 0 }, { 0, 1, 0 }, { 0, 0, 1 },
 	                     { 0, 0,-1 }, {-1, 0, 0 }, { 1, 0, 0 }};
