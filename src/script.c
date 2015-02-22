@@ -44,7 +44,7 @@ static void script_wireframe(int argc, char** argv)
 
 static void script_teleport(int argc, char** argv)
 {
-	printf("teleport: %d\n", argc);
+	ui_console_printf("teleport: %d", argc);
 	if (argc == 2) {
 		game.player.pos.x = atof(argv[1]);
 		game.player.pos.z = atof(argv[2]);
@@ -57,7 +57,6 @@ static void script_teleport(int argc, char** argv)
 
 void script_init()
 {
-	printf("script init\n");
 	vars = stb_sdict_new(0);
 	memset(defuns, 0, sizeof(defuns));
 	script_defun("quit", script_quit);
@@ -80,12 +79,13 @@ void script_tick()
 static void script_call(int argc, char** argv)
 {
 	printf("call: %s\n", argv[0]);
-	for (unsigned int i = 0; i < stb_arrcount(defuns); ++i) {
-		if (strcmp(defuns[i].name, argv[0]) == 0) {
-			(*defuns[i].cb)(argc, argv);
-			break;
+	for (struct defun_data* d = defuns; d->name; ++d) {
+		if (strcmp(d->name, argv[0]) == 0) {
+			(*d->cb)(argc, argv);
+			return;
 		}
 	}
+	ui_console_printf("undefined: %s", argv[0]);
 }
 
 
@@ -95,7 +95,7 @@ int script_exec(char *cmd)
 	char **tokens;
 	tokens = stb_tokens_quoted(cmd, " \t", &count);
 	if (count == 3 && strcmp(tokens[1], "=") == 0) {
-		printf("defining var %s as %s\n", tokens[0], tokens[2]);
+		ui_console_printf("%s = %s", tokens[0], tokens[2]);
 		void* prev = stb_sdict_change(vars, tokens[0], strdup(tokens[2]));
 		if (prev != NULL)
 			free(prev);
@@ -109,7 +109,7 @@ int script_exec(char *cmd)
 int script_dofile(const char* filename)
 {
 	if (!sys_isfile(filename)) {
-		printf("Script not found: %s\n", filename);
+		ui_console_printf("script not found: %s", filename);
 		return 0;
 	}
 	int len;
@@ -128,10 +128,11 @@ void script_defun(const char *name, void (*cb)(int argc, char** argv))
 		if (defuns[i].name == 0) {
 			defuns[i].name = name;
 			defuns[i].cb = cb;
+			ui_console_printf("def %s", name);
 			return;
 		}
 	}
-	printf("Max defuns reached\n");
+	ui_console_printf("max defuns reached when defining '%s'", name);
 }
 
 double script_get(const char *name)

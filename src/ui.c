@@ -422,6 +422,17 @@ void ui_add_console_line(const char* txt)
 	printf("> %s\n", txt);
 }
 
+void ui_console_printf(const char* fmt, ...)
+{
+	char buf[MAX_TEXT_LEN];
+	va_list va_args;
+	va_start(va_args, fmt);
+	vsnprintf(buf, MAX_TEXT_LEN, fmt, va_args);
+	va_end(va_args);
+	ui_add_console_line(buf);
+}
+
+
 void ui_execute_console_command(char* cmd)
 {
 	int ret = script_exec(cmd);

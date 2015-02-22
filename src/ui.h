@@ -21,3 +21,4 @@ void ui_console_toggle(bool enable);
 bool ui_console_enabled(void);
 bool ui_console_handle_event(SDL_Event* event);
 void ui_add_console_line(const char* txt);
+void ui_console_printf(const char* fmt, ...);
