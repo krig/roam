@@ -46,7 +46,6 @@ void game_init()
 {
 	script_init();
 	script_defun("vsync", vsync_onoff);
-	script_dofile("data/boot.script");
 	game.camera.pitch = 0;
 	game.camera.yaw = 0;
 	m_setvec3(game.camera.pos, 0, 0, 0);
@@ -56,6 +55,7 @@ void game_init()
 	game.camera.mode = CAMERA_FLIGHT;
 	game.enable_ground = true;
 	game.wireframe = false;
+	script_dofile("data/boot.script");
 
 	struct controls default_controls = {
 		.left = SDLK_a,
