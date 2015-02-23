@@ -88,19 +88,19 @@ void gen_noisemap(game_chunk* chunk)
 					if (p == BLOCK_AIR) {
 						snowseed = rand64(snowseed);
 						if (height > (60.0 - (snowseed % 10))) {
-							b = BLOCK_SNOWY_GRASS_1;
+							b = BLOCK_RICH_PURPLE;
 						} else if (height <= OCEAN_LEVEL + sand_height) {
-							b = BLOCK_GOLD_SAND;
+							b = BLOCK_LAVA;
 						} else {
-							b = BLOCK_WET_GRASS;
+							b = BLOCK_RED_LEAVES;
 						}
-					} else if (p == BLOCK_GOLD_SAND && sand_depth_c > 0) {
-						b = BLOCK_GOLD_SAND;
+					} else if (p == BLOCK_LAVA && sand_depth_c > 0) {
+						b = BLOCK_LAVA;
 						--sand_depth_c;
 					} else if (filly < OCEAN_LEVEL && filly > OCEAN_LEVEL + (sand_height - sand_depth)) {
-						b = BLOCK_GOLD_SAND;
+						b = BLOCK_LAVA;
 					} else {
-						b = BLOCK_WET_DIRT;
+						b = BLOCK_DARKORANGE_LEAVES;
 					}
 				} else if (filly <= OCEAN_LEVEL) {
 					if (filly - height < 3) {

@@ -52,11 +52,6 @@ struct blockinfo blockinfo[] = {
 	  .density = WATER_DENSITY,
 	  .flags = BLOCK_COLLIDER | BLOCK_ALPHA
 	},
-	{ .name = "red leaves",
-	  .img = { IMG_RED_LEAVES },
-	  .density = SOLID_DENSITY,
-	  .flags = BLOCK_COLLIDER
-	},
 	{ .name = "pig",
 	  .img = { IMG_PIGBACK, IMG_PIG_SKIN, IMG_PIGBACK, IMG_PIGBACK, IMG_PIG_HEAD, IMG_PIG_SKIN },
 	  .density = SOLID_DENSITY,
@@ -139,6 +134,46 @@ struct blockinfo blockinfo[] = {
 	},
 	{ .name = "gold sand",
 	  .img = { IMG_GOLD_SAND },
+	  .density = SOLID_DENSITY,
+	  .flags = BLOCK_COLLIDER
+	},
+	{ .name = "lava",
+	  .img = { IMG_LAVA },
+	  .density = SOLID_DENSITY,
+	  .flags = BLOCK_COLLIDER
+	},
+	{ .name = "rich purple",
+	  .img = { IMG_RICH_PURPLE },
+	  .density = SOLID_DENSITY,
+	  .flags = BLOCK_COLLIDER
+	},
+	{ .name = "pale pink",
+	  .img = { IMG_PALE_PINK },
+	  .density = SOLID_DENSITY,
+	  .flags = BLOCK_COLLIDER
+	},
+	{ .name = "green leaves",
+	  .img = { IMG_GREEN_LEAVES },
+	  .density = SOLID_DENSITY,
+	  .flags = BLOCK_COLLIDER
+	},
+	{ .name = "yellow leaves",
+	  .img = { IMG_YELLOW_LEAVES },
+	  .density = SOLID_DENSITY,
+	  .flags = BLOCK_COLLIDER
+	},
+	{ .name = "ORANGE leaves",
+	  .img = { IMG_ORANGE_LEAVES },
+	  .density = SOLID_DENSITY,
+	  .flags = BLOCK_COLLIDER
+	},
+	{ .name = "dark orange leaves",
+	  .img = { IMG_DARKORANGE_LEAVES },
+	  .density = SOLID_DENSITY,
+	  .flags = BLOCK_COLLIDER
+	},
+	{ .name = "red leaves",
+	  .img = { IMG_RED_LEAVES },
 	  .density = SOLID_DENSITY,
 	  .flags = BLOCK_COLLIDER
 	},
