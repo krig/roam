@@ -12,17 +12,6 @@
 #include <assert.h>
 
 
-#ifdef _MSC_VER
-#define __restrict__
-#define __typeof__ decltype
-#define noreturn
-#define inline __forceinline
-#define snprintf _snprintf
-#else
-#include <stdnoreturn.h>
-#endif
-
-
 #define M_CHECKGL_ENABLED 0
 
 
