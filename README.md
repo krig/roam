@@ -22,7 +22,6 @@ Right now, not much.
 * OpenGL 3.3
 * SDL 2
 * GLEW
-* CMake
 
 ## map / chunk structure redesign
 

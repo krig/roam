@@ -448,7 +448,7 @@ void game_loop(int64_t dt)
 }
 
 
-int main(int argc, char* argv[])
+int roam_main(int argc, char* argv[])
 {
 	GLenum rc;
 
