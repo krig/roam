@@ -312,7 +312,9 @@ void map_draw_alphapass()
 	material = game.materials + MAT_CHUNK_ALPHA;
 	m_tex2d_bind(&blocks_texture, 0);
 	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glBlendFunc(GL_ZERO, GL_SRC_COLOR);
+	//glBlendFunc(GL_ONE, GL_ONE);
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(GL_FALSE);
 	m_use(material);
