@@ -198,14 +198,14 @@ void gen_floating(struct game_map* map, game_chunk* chunk) {
 	int nitems = rand64(blockx + (blockz << 5)) % 10;
 	if (nitems > 6) {
 		int x = rand64((blockz << 5) + blockx) % CHUNK_SIZE;
-		int z = rand64(blockx ^ blockz);
+		int z = rand64(blockx ^ blockz) % CHUNK_SIZE;
 		int y = MAP_BLOCK_HEIGHT-1;
 		size_t idx0 = block_index(blockx + x, 0, blockz + z);
-		while (y && (blocks[idx0 + y] >> 28)) {
+		while (y && ((blocks[idx0 + y] >> 28) & 0xf)) {
 			--y;
 		}
 		if (y + 1 < MAP_BLOCK_HEIGHT) {
-			blocks[idx0 + y + 1] = BLOCK_PIG;
+			blocks[idx0 + y + 1] = BLOCK_MELON;
 		}
 	}
 }
