@@ -58,9 +58,6 @@ void gen_noisemap(game_chunk* chunk)
 
 #define NOISE_SCALE (1.0/((double)CHUNK_SIZE * 16))
 
-	uint64_t snowseed = game.map.seed ^ ((uint64_t)blockx << 32) ^ (uint64_t)blockz;
-	uint64_t sandseed = game.map.seed ^ ((uint64_t)blockz << 32) ^ (uint64_t)blockx;
-
 	uint32_t p, b;
 	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
 		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
@@ -70,46 +67,50 @@ void gen_noisemap(game_chunk* chunk)
 				abort();
 			}
 			uint32_t sunlight = 0xf;
-			double height = fbm_simplex_2d(fillx, fillz, 0.5, NOISE_SCALE, 2.1117, 5);
-			height = 32.0 + height * 24.0;
+			double noise1 = fbm_simplex_2d(fillx, fillz, 0.3, NOISE_SCALE, 2.1117, 5);
+			double noise2 = fbm_simplex_2d(fillx, fillz, 0.5, NOISE_SCALE*2.1331, 2.1117, 3);
+			double noise3 = fbm_simplex_2d(fillx + 90.0, fillz + 90.0, 0.8, NOISE_SCALE*0.3344, 2.1117, 4);
+			double height = 40.0 + ((noise1 - noise3*0.777) * 24.0 + noise2 * 24.0) * 0.5;
+			double dirtdepth = 2.0 + noise2 * 8.0;
+			double sanddepth = (noise1 * 6.0);
 			b = BLOCK_AIR;
 			p = BLOCK_AIR;
-			sandseed = rand64(sandseed);
-			int sand_height = 1 + (sandseed % 3);
-			int sand_depth = 3 + (sandseed % 3);
-			int sand_depth_c = sand_depth;
+
+			uint32_t base = BLOCK_SOLID_DIRT;
+			uint32_t dirt = BLOCK_WET_DIRT;
+			uint32_t shore = BLOCK_GOLD_SAND;
+			uint32_t ground = BLOCK_WET_GRASS;
+			uint32_t water = BLOCK_OCEAN3;
+
+			double depth = 0.0;
+
 			for (filly = MAP_BLOCK_HEIGHT-1; filly >= 0; --filly) {
-				if (filly > height && filly > OCEAN_LEVEL) {
-					b = BLOCK_AIR;
-				}
-				else if (filly < 2) {
+				if (filly < 2.0) {
 					b = BLOCK_BLACKROCK;
-				} else if (filly < height) {
+				} else if (filly > height) {
+					if (filly > OCEAN_LEVEL) {
+						b = BLOCK_AIR;
+					} else {
+						b = water;
+					}
+				} else if (filly > (double)OCEAN_LEVEL + sanddepth) {
 					if (p == BLOCK_AIR) {
-						snowseed = rand64(snowseed);
-						if (height > (60.0 - (snowseed % 10))) {
-							b = BLOCK_STONE;
-						} else if (height <= OCEAN_LEVEL + sand_height) {
-							b = BLOCK_SNOW;
-						} else {
-							b = BLOCK_GRASS;
-						}
-					} else if (p == BLOCK_SNOW && sand_depth_c > 0) {
-						b = BLOCK_SNOW;
-						--sand_depth_c;
-					} else if (filly < OCEAN_LEVEL && filly > OCEAN_LEVEL + (sand_height - sand_depth)) {
-						b = BLOCK_SNOW;
+						b = ground;
+					} else if (depth > dirtdepth) {
+						b = base;
 					} else {
-						b = BLOCK_GRASS;
+						b = dirt;
 					}
-				} else if (filly <= OCEAN_LEVEL) {
-					if (filly - height < 3) {
-						b = BLOCK_OCEAN2;
+				} else if (filly > (double)OCEAN_LEVEL - sanddepth) {
+					if (p == BLOCK_AIR || p == shore) {
+						b = shore;
 					} else {
-						b = BLOCK_OCEAN2;
+						b = base;
 					}
+				} else if (depth > dirtdepth) {
+					b = base;
 				} else {
-					b = BLOCK_AIR;
+					b = dirt;
 				}
 				if (b == BLOCK_AIR) {
 				} else if (sunlight > 0 && (blockinfo[b].density < SOLID_DENSITY)) {
@@ -118,6 +119,77 @@ void gen_noisemap(game_chunk* chunk)
 					sunlight = 0;
 				}
 				blocks[idx0 + filly] = b | (sunlight << 28);
+				p = b;
+				if (p != BLOCK_AIR && p != water)
+					depth += 1.0;
+			}
+		}
+	}
+}
+
+static
+void gen_floating(struct game_map* map, game_chunk* chunk) {
+
+	int x, z, blockx, blockz, fillx, filly, fillz;
+	uint32_t* blocks;
+
+	x = chunk->x;
+	z = chunk->z;
+	blocks = map_blocks;
+	blockx = x * CHUNK_SIZE;
+	blockz = z * CHUNK_SIZE;
+
+	for (fillz = blockz; fillz < blockz + CHUNK_SIZE; ++fillz) {
+		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
+			size_t idx0 = block_index(fillx, 0, fillz);
+			double noise2d = fbm_simplex_2d((double)fillx / MAP_BLOCK_HEIGHT, (double)fillz / MAP_BLOCK_HEIGHT,
+							0.4, 1.0, 2.0, 4);
+			noise2d = (noise2d + 1.0) * 0.5;
+			int groundy = (int)(40.0 * noise2d) + 40;
+
+			int watery = 50;
+
+			uint32_t p = BLOCK_AIR;
+			uint32_t sunlight = 0xf;
+
+			for (filly = MAP_BLOCK_HEIGHT-1; filly >= 0; --filly) {
+				uint32_t b = BLOCK_AIR;
+				if (filly < watery && (sunlight || p == BLOCK_OCEAN3)) {
+					b = BLOCK_OCEAN3;
+				}
+
+				if (filly > 16.0 && filly < groundy) {
+					double gradient = (double)filly / (double)MAP_BLOCK_HEIGHT;
+					double density = opensimplex_noise_3d(
+						(double)fillx / (double)MAP_BLOCK_HEIGHT * 15.0,
+						(double)filly / (double)MAP_BLOCK_HEIGHT * 15.0,
+						(double)fillz / (double)MAP_BLOCK_HEIGHT * 15.0);
+
+					double density01 = (density * 0.5) + 0.5;
+
+					if (density01 + (1.0 - gradient) < 0.8) {
+					} else if (filly < groundy) {
+						int dirt_depth = 2 + (rand64(fillx ^ filly ^ fillz) % 5);
+						if (sunlight && (fabs(filly - watery + (density * 3.0)) < 3.0)) {
+							b = BLOCK_GOLD_SAND;
+						} else if (sunlight == 0xf) {
+							b = BLOCK_WET_GRASS;
+						} else if (groundy - filly > dirt_depth) {
+							b = BLOCK_DEEP_ROCK;
+						} else {
+							b = BLOCK_WET_DIRT;
+						}
+					}
+				} else if (filly < groundy) {
+					b = BLOCK_WET_DIRT;
+				}
+				if (b == BLOCK_AIR) {
+				} else if (sunlight > 0 && (blockinfo[b].density < SOLID_DENSITY)) {
+					sunlight--;
+				} else {
+					sunlight = 0;
+				}
+				blocks[idx0 + filly] = b | sunlight << 28;
 				p = b;
 			}
 		}
@@ -149,8 +221,9 @@ void process_light_propagation()
 {
 }
 
-void gen_loadchunk(game_chunk* chunk)
+void gen_loadchunk(struct game_map* map, game_chunk* chunk)
 {
-	gen_testmap(chunk);
+	//gen_testmap(chunk);
 	//gen_noisemap(chunk);
+	gen_floating(map, chunk);
 }

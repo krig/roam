@@ -111,7 +111,7 @@ void ui_draw(SDL_Point* viewport)
 		int console_width = (640 > viewport->x) ? viewport->x : 640;
 		size_t max_display = console_width/UI_CHAR_W - 1;
 		size_t len, offset;
-		float elastic_fade = enQuinticInOut(console_fade);
+		float elastic_fade = enPerlinInOut(console_fade);
 		uint32_t alpha = (uint32_t)(ML_MAX(elastic_fade, 0.1f)*255.5f);
 		float yoffs = (float)(NLINES*UI_CHAR_H) * elastic_fade;
 		ui_rect(0, viewport->y - (int)yoffs, console_width, NLINES*UI_CHAR_H, ((alpha * 5 / 6)<<24)|0x2c3e50);

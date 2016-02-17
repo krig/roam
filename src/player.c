@@ -7,6 +7,9 @@
 
 static struct playervars pv;
 
+struct playervars* player_vars() {
+	return &pv;
+}
 
 static
 void player_look(float dt)
@@ -45,6 +48,29 @@ void player_dumb_collide()
         }
 }
 
+static
+void player_fps_collide(float dt)
+{
+	struct player *p = &game.player;
+	ivec3_t footblock = { round(p->pos.x), round(p->pos.y), round(p->pos.z) };
+
+	int groundblock = footblock.y;
+	while (is_collider(footblock.x, groundblock, footblock.z))
+                ++groundblock;
+	while (!is_collider(footblock.x, groundblock, footblock.z) && groundblock >= 0)
+                --groundblock;
+	if (groundblock < 0)
+		return;
+
+	float groundlevel = (float)groundblock + 0.5f;
+        if (p->pos.y - FEETDISTANCE < groundlevel) {
+	        p->pos.y = groundlevel + FEETDISTANCE;
+	        p->walking = true;
+        } else {
+		p->walking = false;
+	}
+}
+
 void player_init()
 {
 	struct player *p = &game.player;
@@ -77,7 +103,7 @@ void flight_move(struct player *p, float dt)
 	struct inputstate *in = &game.input;
 	player_look(dt);
 
-	float speed = pv.accel;//pv.flyspeed;
+	float speed = pv.flyspeed;
 	vec3_t movedir = {0, 0, 0};
 	if (in->move_left) movedir.x -= 1.f;
 	if (in->move_right) movedir.x += 1.f;
@@ -100,13 +126,49 @@ void flight_move(struct player *p, float dt)
 	player_dumb_collide();
 
 	// drag
-	p->vel = m_vec3scale(p->vel, 1.f - pv.friction);
+	p->vel = m_vec3scale(p->vel, 1.f - pv.flyfriction);
 
 	p->pos.x += p->vel.x * dt;
 	p->pos.y += p->vel.y * dt;
 	p->pos.z += p->vel.z * dt;
 }
 
+void fps_move(struct player *p, float dt)
+{
+	struct inputstate *in = &game.input;
+	player_look(dt);
+
+	float speed = pv.accel;
+	vec3_t movedir = {0, 0, 0};
+	if (in->move_left) movedir.x -= 1.f;
+	if (in->move_right) movedir.x += 1.f;
+	if (in->move_forward) movedir.z -= 1.f;
+	if (in->move_backward) movedir.z += 1.f;
+
+	if (p->walking && in->move_jump) movedir.y += pv.jumpspeed;
+
+	if (movedir.x != 0 || movedir.y != 0 || movedir.z != 0) {
+		// normalize move dir? but strafing feels good!
+		mat44_t m;
+		m_setidentity(&m);
+		m_rotate(&m, game.camera.yaw, 0, 1.f, 0);
+		vec3_t movevec = m_vec3scale(m_matmulvec3(&m, &movedir), speed*dt);
+
+		p->vel = m_vec3add(p->vel, movevec);
+	}
+
+	p->vel.y += pv.gravity;
+
+	player_fps_collide(dt);
+
+	p->pos.x += p->vel.x * dt;
+	p->pos.y += p->vel.y * dt;
+	p->pos.z += p->vel.z * dt;
+
+	// drag
+	p->vel = m_vec3scale(p->vel, 1.f - pv.friction);
+
+}
 
 void player_tick(float dt)
 {
@@ -114,6 +176,13 @@ void player_tick(float dt)
 	pv.accel = script_get("player.accel");
 	pv.friction = script_get("player.friction");
 	pv.gravity = script_get("player.gravity");
+	pv.flyspeed = script_get("player.flyspeed");
+	pv.flyfriction = script_get("player.flyfriction");
+	pv.height = script_get("player.height");
+	pv.crouchheight = script_get("player.crouchheight");
+	pv.camoffset = script_get("player.camoffset");
+	pv.crouchcamoffset = script_get("player.crouchcamoffset");
+	pv.jumpspeed = script_get("player.jumpspeed");
 
 	struct player *p = &game.player;
 	// update animations
@@ -126,6 +195,8 @@ void player_tick(float dt)
 	if (game.camera.mode == CAMERA_FLIGHT) {
 		flight_move(p, dt);
 		return;
+	} else if (game.camera.mode == CAMERA_FPS) {
+		fps_move(p, dt);
 	}
 
 	p->prev_chunk = p->chunk;

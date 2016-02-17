@@ -312,8 +312,8 @@ void map_draw_alphapass()
 	material = game.materials + MAT_CHUNK_ALPHA;
 	m_tex2d_bind(&blocks_texture, 0);
 	glEnable(GL_BLEND);
-	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glBlendFunc(GL_ZERO, GL_SRC_COLOR);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	//glBlendFunc(GL_ZERO, GL_SRC_COLOR);
 	//glBlendFunc(GL_ONE, GL_ONE);
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(GL_FALSE);
@@ -398,7 +398,7 @@ void chunk_load(int x, int z) {
 	chunk->x = x;
 	chunk->z = z;
 	chunk_destroy_mesh_ptr(chunk);
-	gen_loadchunk(chunk);
+	gen_loadchunk(&game.map, chunk);
 }
 
 void chunk_destroy_mesh_ptr(game_chunk* chunk)

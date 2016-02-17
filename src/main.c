@@ -52,7 +52,7 @@ void game_init()
 	game.fast_day_mode = false;
 	game.debug_mode = true;
 	game.collisions_on = true;
-	game.camera.mode = CAMERA_FLIGHT;
+	game.camera.mode = CAMERA_FPS;
 	game.enable_ground = true;
 	game.wireframe = false;
 	script_dofile("data/boot.script");
@@ -260,10 +260,11 @@ void camera_tick(float dt)
 	// offset camera from position
 	struct player *p = &game.player;
 	struct camera *cam = &game.camera;
+	struct playervars* pv = player_vars();
 	vec3_t offset = {0, 0, 0};
 	switch (cam->mode) {
 	case CAMERA_FLIGHT:
-		offset.y = CAMOFFSET;
+		offset.y = pv->camoffset;
 		break;
 	case CAMERA_3RDPERSON: {
 		vec3_t x, y, z;
@@ -272,7 +273,7 @@ void camera_tick(float dt)
 	} break;
 	default: {
 		float d = enCubicInOut(p->crouch_fade);
-		offset.y = CAMOFFSET * (1.f - d) + CROUCHCAMOFFSET * d;
+		offset.y = pv->camoffset * (1.f - d) + pv->crouchcamoffset * d;
 	} break;
 	}
 	cam->pos.x = p->pos.x + offset.x;
@@ -366,7 +367,8 @@ void game_draw(SDL_Point* viewport)
 	}
 
 	if (game.camera.mode == CAMERA_3RDPERSON) {
-		float ext = (game.player.crouching ? CROUCHHEIGHT : PLAYERHEIGHT) * 0.5f;
+		struct playervars* pv = player_vars();
+		float ext = (game.player.crouching ? pv->crouchheight : pv->height) * 0.5f;
 		float offs = (game.player.crouching ? CROUCHCENTEROFFSET : CENTEROFFSET);
 		vec3_t center = { game.player.pos.x - camera.x*CHUNK_SIZE,
 		                   game.player.pos.y + offs,

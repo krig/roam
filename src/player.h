@@ -5,6 +5,13 @@ struct playervars {
 	float accel;
 	float friction;
 	float gravity;
+	float flyspeed;
+	float flyfriction;
+	float crouchheight;
+	float height;
+	float camoffset;
+	float crouchcamoffset;
+	float jumpspeed;
 };
 
 
@@ -62,13 +69,9 @@ struct inputstate {
 void player_init(void);
 void player_tick(float dt);
 void player_move_to_spawn(void);
-
+struct playervars* player_vars();
 
 // TODO: Make tweakable
 #define FEETDISTANCE 0.5f
-#define CAMOFFSET 0.9f
-#define CROUCHCAMOFFSET 0.6f
 #define CROUCHCENTEROFFSET 0.1f
 #define CENTEROFFSET 0.4f // pos + centeroffset = center of player
-#define PLAYERHEIGHT 1.8f // half-height of player
-#define CROUCHHEIGHT 1.2f

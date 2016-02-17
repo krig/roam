@@ -62,6 +62,11 @@ void simplex_init(uint64_t seed);
 double simplex_noise_2d(double x, double y);
 
 
+/*
+  frequency: filter width
+  gain: scaling factor between successive octaves
+  lacunarity: frequency spacing between successive octaves
+ */
 static inline
 double fbm_simplex_2d(double x, double y, double gain, double frequency, double lacunarity, int octaves)
 {
@@ -69,8 +74,22 @@ double fbm_simplex_2d(double x, double y, double gain, double frequency, double 
 	double amplitude = 1.0;
 	for (int i = 0; i < octaves; ++i) {
 		sum += simplex_noise_2d(x * frequency, y * frequency) * amplitude;
-        frequency *= lacunarity;
-        amplitude *= gain;
+		frequency *= lacunarity;
+		amplitude *= gain;
+	}
+	return sum;
+}
+
+
+static inline
+double fbm_opensimplex_3d(double x, double y, double z, double gain, double frequency, double lacunarity, int octaves)
+{
+	double sum = 0.0;
+	double amplitude = 1.0;
+	for (int i = 0; i < octaves; ++i) {
+		sum += opensimplex_noise_3d(x * frequency, y * frequency, z * frequency) * amplitude;
+		frequency *= lacunarity;
+		amplitude *= gain;
 	}
 	return sum;
 }

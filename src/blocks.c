@@ -113,13 +113,18 @@ struct blockinfo blockinfo[] = {
 	  .flags = BLOCK_COLLIDER
 
 	},
-	{ .name = "ocean",
+	{ .name = "ocean1",
 	  .img = { IMG_OCEAN1 },
 	  .density = WATER_DENSITY,
 	  .flags = BLOCK_ALPHA
 	},
 	{ .name = "ocean2",
 	  .img = { IMG_OCEAN2 },
+	  .density = WATER_DENSITY,
+	  .flags = BLOCK_ALPHA
+	},
+	{ .name = "ocean3",
+	  .img = { IMG_OCEAN3 },
 	  .density = WATER_DENSITY,
 	  .flags = BLOCK_ALPHA
 	},
@@ -139,8 +144,8 @@ struct blockinfo blockinfo[] = {
 	},
 	{ .name = "lava",
 	  .img = { IMG_LAVA },
-	  .density = SOLID_DENSITY,
-	  .flags = BLOCK_COLLIDER
+	  .density = WATER_DENSITY,
+	  .flags = BLOCK_ALPHA
 	},
 	{ .name = "rich purple",
 	  .img = { IMG_RICH_PURPLE },
@@ -174,6 +179,11 @@ struct blockinfo blockinfo[] = {
 	},
 	{ .name = "red leaves",
 	  .img = { IMG_RED_LEAVES },
+	  .density = SOLID_DENSITY,
+	  .flags = BLOCK_COLLIDER
+	},
+	{ .name = "deep rock",
+	  .img = { IMG_DEEP_ROCK },
 	  .density = SOLID_DENSITY,
 	  .flags = BLOCK_COLLIDER
 	},

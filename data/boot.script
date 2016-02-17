@@ -1,6 +1,12 @@
 game.day_length = 1200
 game.fast_day_length = 5
-player.accel = 30
-player.friction = 0.05
+player.accel = 120
+player.friction = 0.2
 player.gravity = -10
-vsync off
+player.flyfriction = 0.05
+player.flyspeed = 30
+player.height = 1.9
+player.crouchheight = 1.2
+player.camoffset = 1.2
+player.crouchcamoffset = 0.8
+vsync on
