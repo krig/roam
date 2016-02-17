@@ -143,7 +143,7 @@ void gen_floating(struct game_map* map, game_chunk* chunk) {
 		for (fillx = blockx; fillx < blockx + CHUNK_SIZE; ++fillx) {
 			size_t idx0 = block_index(fillx, 0, fillz);
 			double noise2d = fbm_simplex_2d((double)fillx / MAP_BLOCK_HEIGHT, (double)fillz / MAP_BLOCK_HEIGHT,
-							0.4, 1.0, 2.0, 4);
+							0.45, 0.8, 2.0, 5);
 			noise2d = (noise2d + 1.0) * 0.5;
 			int groundy = (int)(40.0 * noise2d) + 40;
 
@@ -170,7 +170,7 @@ void gen_floating(struct game_map* map, game_chunk* chunk) {
 					if (density01 + (1.0 - gradient) < 0.8) {
 					} else if (filly < groundy) {
 						int dirt_depth = 2 + (rand64(fillx ^ filly ^ fillz) % 5);
-						if (sunlight && (fabs(filly - watery + (density * 3.0)) < 3.0)) {
+						if (sunlight && (fabs(filly - watery - (density * 3.0)) < 1.5)) {
 							b = BLOCK_GOLD_SAND;
 						} else if (sunlight == 0xf) {
 							b = BLOCK_WET_GRASS;
@@ -189,9 +189,23 @@ void gen_floating(struct game_map* map, game_chunk* chunk) {
 				} else {
 					sunlight = 0;
 				}
-				blocks[idx0 + filly] = b | sunlight << 28;
+				blocks[idx0 + filly] = b | (sunlight << 28);
 				p = b;
 			}
+		}
+	}
+
+	int nitems = rand64(blockx + (blockz << 5)) % 10;
+	if (nitems > 6) {
+		int x = rand64((blockz << 5) + blockx) % CHUNK_SIZE;
+		int z = rand64(blockx ^ blockz);
+		int y = MAP_BLOCK_HEIGHT-1;
+		size_t idx0 = block_index(blockx + x, 0, blockz + z);
+		while (y && (blocks[idx0 + y] >> 28)) {
+			--y;
+		}
+		if (y + 1 < MAP_BLOCK_HEIGHT) {
+			blocks[idx0 + y + 1] = BLOCK_PIG;
 		}
 	}
 }
