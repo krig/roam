@@ -6,7 +6,7 @@ Minecraft-like, but I'm going to go a different direction, I think.
 
 Released under the most liberal license I could find (see LICENSE).
 
-![screenshot](http://33.media.tumblr.com/3da5329f8ec1803e36ba3714187e169f/tumblr_ndqpxtSMMc1qbhw3go1_1280.jpg)
+![screenshot](https://raw.githubusercontent.com/krig/roam/78a696e2835fe0f5cd1d7557d1d687cee171a56c/data/screenshot.jpg)
 
 ## Features
 
