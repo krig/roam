@@ -228,8 +228,6 @@ void ui_text(float x, float y, uint32_t clr, const char* str, ...)
 
 	vec2_t rpos = { x, y };
 	for (size_t i = 0; i < len; ++i) {
-		if (buf[i] < 0 || buf[i] > 127)
-			continue;
 		if (buf[i] == '\n') {
 			rpos.x = x;
 			rpos.y -= scale;
