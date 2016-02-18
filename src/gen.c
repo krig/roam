@@ -80,7 +80,7 @@ void gen_noisemap(game_chunk* chunk)
 			uint32_t dirt = BLOCK_WET_DIRT;
 			uint32_t shore = BLOCK_GOLD_SAND;
 			uint32_t ground = BLOCK_WET_GRASS;
-			uint32_t water = BLOCK_OCEAN3;
+			uint32_t water = BLOCK_OCEAN1;
 
 			double depth = 0.0;
 
