@@ -161,10 +161,10 @@ void sky_tick(float dt)
 		fog[3] = MKRGB(f7847a);
 
 	const float fogdensity[4] = {
-		0.007,
-		0.01,
-		0.008,
-		0.02
+		0.007*0.25,
+		0.0133*0.25,
+		0.008*0.25,
+		0.0166*0.25
 	};
 
 	game.amb_light = sun_mix(ambient, day_amt, dusk_amt, night_amt, dawn_amt);

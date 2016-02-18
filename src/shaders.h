@@ -132,10 +132,10 @@ static const char* chunk_fshader = "#version 330\n"
 	"    vec3 light = clamp(out_color.xyz + (amb_light.xyz * out_color.w) + (vec3(0.5, 0.5, 0.5) * out_color2.xyz), 0, 1);\n"
 //	"    vec3 light = clamp(((amb_light.xyz * out_color.w)), 0, 1);\n"
 //	"    vec3 base = light.xyz;\n"
-	"    vec3 base = clamp(tex.xyz * light.xyz, 0, 1);\n"
+	"    vec3 base = clamp(pow(tex.xyz, vec3(2.2)) * light.xyz, 0, 1);\n"
 //	"    fragment = vec4(base.xyz, 1);\n"
 	"    vec3 fogged = fog(base, fog_color.xyz, out_depth, fog_color.w);\n"
-	"    fragment = vec4(fogged.rgb, 1);\n"
+	"    fragment = vec4(pow(fogged, vec3(1/2.2)), 1);\n"
 	"}\n";
 
 // TODO: color and alpha based on biome and depth
@@ -157,10 +157,10 @@ static const char* chunkalpha_fshader = "#version 330\n"
 	"    vec4 tex = texture(tex0, out_texcoord);\n"
 	"    if (tex.w == 0) discard;\n"
 	"    vec3 light = clamp(out_color.xyz + ((amb_light.xyz * out_color.w)), 0, 1);\n"
-	"    vec3 base = tex.xyz * light.xyz;\n"
+	"    vec3 base = pow(tex.xyz, vec3(2.2)) * light.xyz;\n"
 //	"    fragment = vec4(base.xyz, tex.w);\n"
 	"    vec3 fogged = fog(base, fog_color.xyz, out_depth, fog_color.w);\n"
-	"    fragment = vec4(fogged.rgb, tex.w);\n"
+	"    fragment = vec4(pow(fogged, vec3(1/2.2)), tex.w);\n"
 	"}\n";
 
 
