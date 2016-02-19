@@ -5,8 +5,9 @@ player.friction = 0.2
 player.gravity = -10
 player.flyfriction = 0.05
 player.flyspeed = 30
-player.height = 1.9
-player.crouchheight = 1.2
-player.camoffset = 1.2
+player.height = 2.0
+player.crouchheight = 1.5
+player.camoffset = 1.8
 player.crouchcamoffset = 0.8
+ui.scale = 2
 vsync on

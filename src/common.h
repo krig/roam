@@ -12,7 +12,7 @@
 #include <assert.h>
 
 
-#define M_CHECKGL_ENABLED 0
+#define M_CHECKGL_ENABLED 1
 
 
 #define ASIZE(a) ((sizeof(a)/sizeof((a)[0])))

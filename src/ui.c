@@ -14,7 +14,7 @@ static GLint ui_tex0_index = -1;
 static GLuint ui_vao = 0;
 static GLuint ui_vbo = 0;
 static GLsizei ui_count = 0;
-static float ui_scale = 1;
+static float ui_scale = 1.5;
 #define MAX_UI_VERTICES 8192
 static uivert_t ui_vertices[MAX_UI_VERTICES];
 static GLsizei ui_maxcount = 0;
@@ -92,6 +92,8 @@ void ui_exit()
 
 void ui_tick(float dt)
 {
+	ui_scale = script_get("ui.scale");
+
 	if (console_enabled)
 		console_fade = m_clamp(console_fade + dt*1.5f, 0, 1.f);
 	else
@@ -108,14 +110,15 @@ void ui_draw(SDL_Point* viewport)
 {
 	const int NLINES = 32;
 	if (console_enabled || console_fade > 0) {
-		int console_width = (640 > viewport->x) ? viewport->x : 640;
-		size_t max_display = console_width/UI_CHAR_W - 1;
+		int console_width = 640 * ui_scale;
+		console_width = ((console_width > viewport->x) ? viewport->x : console_width);
+		size_t max_display = console_width/UI_CHAR_W*ui_scale - 1;
 		size_t len, offset;
 		float elastic_fade = enPerlinInOut(console_fade);
 		uint32_t alpha = (uint32_t)(ML_MAX(elastic_fade, 0.1f)*255.5f);
-		float yoffs = (float)(NLINES*UI_CHAR_H) * elastic_fade;
-		ui_rect(0, viewport->y - (int)yoffs, console_width, NLINES*UI_CHAR_H, ((alpha * 5 / 6)<<24)|0x2c3e50);
-		ui_rect(0, viewport->y - (int)yoffs - UI_CHAR_H - 4, console_width, UI_CHAR_H + 4, (alpha<<24)|0x34495e);
+		float yoffs = (float)(NLINES*UI_CHAR_H*ui_scale) * elastic_fade;
+		ui_rect(0, viewport->y - (int)yoffs, console_width, NLINES*UI_CHAR_H*ui_scale, ((alpha * 5 / 6)<<24)|0x2c3e50);
+		ui_rect(0, viewport->y - (int)yoffs - UI_CHAR_H*ui_scale - 4, console_width, UI_CHAR_H*ui_scale + 4, (alpha<<24)|0x34495e);
 		int sby = viewport->y - (int)yoffs + 2;
 		int sbpos = (console_scrollback_pos - 1) % CONSOLE_SCROLLBACK;
 		if (sbpos < 0)
@@ -126,14 +129,14 @@ void ui_draw(SDL_Point* viewport)
 			len = strlen(console_scrollback[sbpos]);
 			offset = (len > max_display) ? (len - max_display) : 0;
 			ui_text(2, sby, (alpha<<24)|0xbdc3c7, "%s", console_scrollback[sbpos] + offset);
-			sby += UI_CHAR_H;
+			sby += UI_CHAR_H*ui_scale;
 			sbpos = (sbpos - 1) % CONSOLE_SCROLLBACK;
 			if (sbpos < 0)
 				sbpos = CONSOLE_SCROLLBACK - 1;
 		}
 		len = strlen(console_cmdline);
 		offset = (len > (max_display - 1)) ? (len - (max_display - 1)) : 0;
-		ui_text(2, viewport->y - (int)yoffs - UI_CHAR_H - 2, (alpha<<24)|0xeeeeec, "#%s", console_cmdline + offset);
+		ui_text(2, viewport->y - (int)yoffs - UI_CHAR_H*ui_scale - 2, (alpha<<24)|0xeeeeec, "#%s", console_cmdline + offset);
 	}
 
 	if (ui_count > 0) {

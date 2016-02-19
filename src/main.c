@@ -298,10 +298,141 @@ void game_tick(float dt)
 
 }
 
+static
+char* read_file(const char* name)
+{
+	FILE* f = fopen(name, "r");
+	char* data = NULL;
+	if (f == NULL)
+		return NULL;
+	fseek(f, 0, SEEK_END);
+	long len = ftell(f);
+	fseek(f, 0, SEEK_SET);
+	data = calloc(len+1, 1);
+	if (data == NULL)
+		goto exit;
+	size_t r = fread(data, 1, len, f);
+	if (r != (size_t)len) {
+		free(data);
+		data = NULL;
+	}
+exit:
+	fclose(f);
+	return data;
+}
+
+GLuint fbo, fbo_texture, rbo_depth;
+GLuint vbo_fbo_vertices, vao_quad;
+GLint program_postproc, attribute_v_coord_postproc, uniform_fbo_texture;
+
+static
+void init_fbo_resources(void)
+{
+	GLuint vs;
+	GLuint fs;
+	GLint link_ok, validate_ok;
+	char* vshader = read_file("data/postproc.vert");
+	char* fshader = read_file("data/postproc.frag");
+
+
+	M_CHECKGL(glActiveTexture(GL_TEXTURE0));
+	M_CHECKGL(glGenTextures(1, &fbo_texture));
+	M_CHECKGL(glBindTexture(GL_TEXTURE_2D, fbo_texture));
+	M_CHECKGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+	M_CHECKGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+	M_CHECKGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+	M_CHECKGL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+	M_CHECKGL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, game_viewport.x, game_viewport.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL));
+	M_CHECKGL(glBindTexture(GL_TEXTURE_2D, 0));
+	M_CHECKGL(glGenRenderbuffers(1, &rbo_depth));
+	M_CHECKGL(glBindRenderbuffer(GL_RENDERBUFFER, rbo_depth));
+	M_CHECKGL(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, game_viewport.x, game_viewport.y));
+	M_CHECKGL(glBindRenderbuffer(GL_RENDERBUFFER, 0));
+
+	M_CHECKGL(glGenFramebuffers(1, &fbo));
+	M_CHECKGL(glBindFramebuffer(GL_FRAMEBUFFER, fbo));
+	M_CHECKGL(glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, fbo_texture, 0));
+	M_CHECKGL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo_depth));
+
+	GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
+	M_CHECKGL(glDrawBuffers(1, DrawBuffers));
+
+	GLenum status;
+	if ((status = glCheckFramebufferStatus(GL_FRAMEBUFFER)) != GL_FRAMEBUFFER_COMPLETE) {
+		fprintf(stderr, "glCheckFramebufferStatus: error %x", status);
+		return;
+	}
+	M_CHECKGL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+
+	static const GLfloat g_quad_vertex_buffer_data[] = {
+		-1.0f, -1.0f, 0.0f,
+		1.0f, -1.0f, 0.0f,
+		-1.0f,  1.0f, 0.0f,
+		-1.0f,  1.0f, 0.0f,
+		1.0f, -1.0f, 0.0f,
+		1.0f,  1.0f, 0.0f,
+	};
+
+	glGenVertexArrays(1, &vao_quad);
+	M_CHECKGL(glGenBuffers(1, &vbo_fbo_vertices));
+	M_CHECKGL(glBindBuffer(GL_ARRAY_BUFFER, vbo_fbo_vertices));
+	M_CHECKGL(glBufferData(GL_ARRAY_BUFFER, sizeof(g_quad_vertex_buffer_data), g_quad_vertex_buffer_data, GL_STATIC_DRAW));
+
+	vs = m_compile_shader(GL_VERTEX_SHADER, vshader);
+	fs = m_compile_shader(GL_FRAGMENT_SHADER, fshader);
+	free(vshader);
+	free(fshader);
+
+	program_postproc = glCreateProgram();
+	M_CHECKGL(glAttachShader(program_postproc, vs));
+	M_CHECKGL(glAttachShader(program_postproc, fs));
+	glLinkProgram(program_postproc);
+	glGetProgramiv(program_postproc, GL_LINK_STATUS, &link_ok);
+	if (!link_ok) {
+		fprintf(stderr, "glLinkProgram:");
+		return;
+	}
+	glValidateProgram(program_postproc);
+	glGetProgramiv(program_postproc, GL_VALIDATE_STATUS, &validate_ok);
+	if (!validate_ok) {
+		fprintf(stderr, "glValidateProgram:");
+	}
+
+	const char* attribute_name = "v_coord";
+	attribute_v_coord_postproc = glGetAttribLocation(program_postproc, attribute_name);
+	if (attribute_v_coord_postproc == -1) {
+		fprintf(stderr, "Could not bind attribute %s\n", attribute_name);
+		return;
+	}
+
+	const char* uniform_name = "fbo_texture";
+	uniform_fbo_texture = glGetUniformLocation(program_postproc, uniform_name);
+	if (uniform_fbo_texture == -1) {
+		fprintf(stderr, "Could not bind uniform %s\n", uniform_name);
+		return;
+	}
+
+	M_CHECKGL(glBindBuffer(GL_ARRAY_BUFFER, vbo_fbo_vertices));
+	glBindVertexArray(vao_quad);
+	glEnableVertexAttribArray(attribute_v_coord_postproc);
+	glVertexAttribPointer(
+		attribute_v_coord_postproc,  // attribute
+		3,                  // number of elements per vertex, here (x,y)
+		GL_FLOAT,           // the type of each element
+		GL_FALSE,           // take our values as-is
+		0,                  // no extra data between each position
+		0                   // offset of first element
+		);
+	M_CHECKGL(glBindBuffer(GL_ARRAY_BUFFER, 0));
+}
 
 static
 void game_draw(SDL_Point* viewport)
 {
+
+	M_CHECKGL(glBindFramebuffer(GL_FRAMEBUFFER, fbo));
+	M_CHECKGL(glViewport(0, 0, viewport->x, viewport->y));
+
 	mat44_t view;
 	frustum_t frustum;
 
@@ -396,8 +527,7 @@ void game_draw(SDL_Point* viewport)
 		for (int fi = 0; fi < 4; ++fi)
 			fps += ft[fi] * 0.25;
 
-		ui_rect(2, 2, 450, 60, 0x66000000);
-		ui_text(4, 60 - 9, 0xffffffff,
+		ui_text(4, viewport->y - 20, 0xffffffff,
 			"pos: (%+4.4g, %+4.4g, %+4.4g)\n"
 			"cam: (%+4.4g, %+4.4g, %+4.4g) p: %+.3g, y: %.3g\n"
 			"vel: (%+4.4f, %+4.4f, %+4.4f)\n"
@@ -416,8 +546,43 @@ void game_draw(SDL_Point* viewport)
 	}
 	ui_draw_debug(&game.projection, &game.modelview);
 	ui_draw(viewport);
+
+	M_CHECKGL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+
+	//M_CHECKGL(glDisable(GL_CULL_FACE));
+
+	glClearColor(1.0, 0.0, 0.0, 1.0);
+	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+
+	M_CHECKGL(glDisable(GL_DEPTH_TEST));
+	M_CHECKGL(glUseProgram(program_postproc));
+	M_CHECKGL(glActiveTexture(GL_TEXTURE0));
+	M_CHECKGL(glBindTexture(GL_TEXTURE_2D, fbo_texture));
+	M_CHECKGL(glUniform1i(uniform_fbo_texture, 0));
+	M_CHECKGL(glBindVertexArray(vao_quad));
+
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+
+	SDL_GL_SwapWindow(window);
 }
 
+static
+void game_window_resize(void)
+{
+	SDL_GetWindowSize(window, &game_viewport.x, &game_viewport.y);
+	M_CHECKGL(glViewport(0, 0, game_viewport.x, game_viewport.y));
+
+	printf("resize: %d, %d\n", game_viewport.x, game_viewport.y);
+
+	// Rescale FBO and RBO as well
+	glBindTexture(GL_TEXTURE_2D, fbo_texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, game_viewport.x, game_viewport.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	glBindRenderbuffer(GL_RENDERBUFFER, rbo_depth);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, game_viewport.x, game_viewport.y);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+}
 
 static
 void game_loop(int64_t dt)
@@ -426,11 +591,9 @@ void game_loop(int64_t dt)
 	while (SDL_PollEvent(&event)) {
 		if (event.type == SDL_WINDOWEVENT) {
 			if (event.window.event == SDL_WINDOWEVENT_RESIZED) {
-				SDL_GetWindowSize(window, &game_viewport.x, &game_viewport.y);
-				M_CHECKGL(glViewport(0, 0, game_viewport.x, game_viewport.y));
+				game_window_resize();
 			} else if (event.window.event == SDL_WINDOWEVENT_MAXIMIZED) {
-				SDL_GetWindowSize(window, &game_viewport.x, &game_viewport.y);
-				M_CHECKGL(glViewport(0, 0, game_viewport.x, game_viewport.y));
+				game_window_resize();
 				m_perspective(m_getmatrix(&game.projection), ML_DEG2RAD(70.f),
 				              (float)game_viewport.x / (float)game_viewport.y,
 				              0.1f, 1024.f);
@@ -476,7 +639,7 @@ int roam_main(int argc, char* argv[])
 	window = SDL_CreateWindow("roam",
 	                               SDL_WINDOWPOS_UNDEFINED,
 	                               SDL_WINDOWPOS_UNDEFINED,
-	                               1100, 550,
+	                               1280, 720,
 	                               SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 	if (window == NULL)
 		fatal_error(SDL_GetError());
@@ -522,6 +685,7 @@ int roam_main(int argc, char* argv[])
 	              0.1f, 1024.f);
 
 	game_init();
+	init_fbo_resources();
 
 	int64_t currenttime, newtime, frametime;
 	int64_t t, dt, accumulator ;
@@ -549,7 +713,6 @@ int roam_main(int argc, char* argv[])
 		game_draw(&game_viewport);
 		game.stats.frames++;
 		game.stats.frametime = frametime;
-		SDL_GL_SwapWindow(window);
 	}
 	return 0;
 }
