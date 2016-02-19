@@ -365,12 +365,12 @@ void init_fbo_resources(void)
 	M_CHECKGL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 
 	static const GLfloat g_quad_vertex_buffer_data[] = {
-		-1.0f, -1.0f, 0.0f,
-		1.0f, -1.0f, 0.0f,
-		-1.0f,  1.0f, 0.0f,
-		-1.0f,  1.0f, 0.0f,
-		1.0f, -1.0f, 0.0f,
-		1.0f,  1.0f, 0.0f,
+		-1.0f, -1.0f,
+		1.0f, -1.0f,
+		-1.0f,  1.0f,
+		-1.0f,  1.0f,
+		1.0f, -1.0f,
+		1.0f,  1.0f,
 	};
 
 	glGenVertexArrays(1, &vao_quad);
@@ -417,7 +417,7 @@ void init_fbo_resources(void)
 	glEnableVertexAttribArray(attribute_v_coord_postproc);
 	glVertexAttribPointer(
 		attribute_v_coord_postproc,  // attribute
-		3,                  // number of elements per vertex, here (x,y)
+		2,                  // number of elements per vertex, here (x,y)
 		GL_FLOAT,           // the type of each element
 		GL_FALSE,           // take our values as-is
 		0,                  // no extra data between each position
