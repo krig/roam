@@ -124,7 +124,7 @@ void ui_draw(SDL_Point* viewport)
 		if (sbpos < 0)
 			sbpos = CONSOLE_SCROLLBACK - 1;
 		while (sbpos != console_scrollback_pos && sby < viewport->y) {
-			if (console_scrollback[sbpos] == '\0')
+			if (console_scrollback[sbpos][0] == '\0')
 				break;
 			len = strlen(console_scrollback[sbpos]);
 			offset = (len > max_display) ? (len - max_display) : 0;
