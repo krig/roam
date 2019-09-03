@@ -2,8 +2,8 @@ CC = gcc
 SOURCE = src/roam_linux.c
 FILES = $(wildcard src/*.c) $(wildcard src/*.h)
 
-OPTFLAGS = -O2 -g
-PROFFLAGS = -O2 -pg
+OPTFLAGS = -Og
+PROFFLAGS = -Og -pg
 CFLAGS = -Wall -Wextra -pedantic -Wno-unused-function -Wno-unused-parameter -mtune=native -fno-strict-aliasing -std=gnu11 -DNDEBUG
 GL_CFLAGS = `pkg-config --cflags gl`
 GL_LIBS = `pkg-config --libs gl`

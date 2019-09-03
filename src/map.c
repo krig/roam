@@ -9,6 +9,9 @@
 #include "gen.h"
 #include "easing.h"
 
+#define SUNLIGHT_MASK 0xf0000000
+#define NOSUNLIGHT_MASK 0x0fffffff
+
 static inline
 tc2us_t make_tc2us(vec2_t tc)
 {
@@ -22,10 +25,10 @@ tc2us_t make_tc2us(vec2_t tc)
 uint32_t block_at(int x, int y, int z)
 {
 	if (y < 0 || y >= MAP_BLOCK_HEIGHT)
-		return (0xf0000000|BLOCK_AIR);
+		return (SUNLIGHT_MASK|BLOCK_AIR);
 	size_t idx = block_index(x, y, z);
 	if (idx >= MAP_BUFFER_SIZE)
-		return (0xf0000000|BLOCK_AIR);
+		return (SUNLIGHT_MASK|BLOCK_AIR);
 	return map_blocks[idx];
 }
 
@@ -341,14 +344,14 @@ void map_update_block(ivec3_t block, uint32_t value)
 	size_t idx = block_by_coord(block);
 
 	// relight column down (fixes sunlight)
-	uint32_t sunlight = 0xf0000000;
+	uint32_t sunlight = SUNLIGHT_MASK;
 	map_blocks[idx] = value;
 	idx -= block.y;
 	for (int dy = MAP_BLOCK_HEIGHT-1; dy >= 0; --dy) {
 		uint32_t t = map_blocks[idx + dy];
 		if ((t & 0xff) != BLOCK_AIR)
 			sunlight = 0;
-		map_blocks[idx + dy] = (t & 0x0fffffff) | sunlight;
+		map_blocks[idx + dy] = (t & NOSUNLIGHT_MASK) | sunlight;
 	}
 	// TODO: need to re-propagate light from lightsources affected by this change
 
@@ -592,7 +595,7 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 				if (t == BLOCK_AIR) {
 					++nprocessed;
 					// in sunlight, no more blocks above
-					if ((t & 0xf0000000) == 0xf)
+					if ((map_blocks[idx0 + iy] & SUNLIGHT_MASK) == SUNLIGHT_MASK)
 						break;
 					else
 						continue;
@@ -605,7 +608,7 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 				}
 
 				if (by+iy+1 >= MAP_BLOCK_HEIGHT) {
-					n[2] = n[5] = n[8] = n[11] = n[14] = n[17] = n[20] = n[23] = n[26] = (0xf0000000|BLOCK_AIR);
+					n[2] = n[5] = n[8] = n[11] = n[14] = n[17] = n[20] = n[23] = n[26] = (SUNLIGHT_MASK|BLOCK_AIR);
 					GETCOL(0, 2, ix - 1, iy - 1, iz - 1);
 					GETCOL(3, 2, ix, iy - 1, iz - 1);
 					GETCOL(6, 2, ix + 1, iy - 1, iz - 1);
@@ -616,7 +619,7 @@ bool mesh_subchunk(mesh_t* mesh, int bufx, int bufz, int cy, size_t* alphai)
 					GETCOL(21, 2, ix, iy - 1, iz + 1);
 					GETCOL(24, 2, ix + 1, iy - 1, iz + 1);
 				} else if (by+iy-1 < 0) {
-					n[0] = n[3] = n[6] = n[9] = n[12] = n[15] = n[18] = n[21] = n[24] = (0xf0000000|BLOCK_AIR);
+					n[0] = n[3] = n[6] = n[9] = n[12] = n[15] = n[18] = n[21] = n[24] = (SUNLIGHT_MASK|BLOCK_AIR);
 					GETCOL(1, 2, ix - 1, iy, iz - 1);
 					GETCOL(4, 2, ix, iy, iz - 1);
 					GETCOL(7, 2, ix + 1, iy, iz - 1);
