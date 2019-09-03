@@ -4,7 +4,7 @@ FILES = $(wildcard src/*.c) $(wildcard src/*.h)
 
 OPTFLAGS = -Og
 PROFFLAGS = -Og -pg
-CFLAGS = -Wall -Wextra -pedantic -Wno-unused-function -Wno-unused-parameter -mtune=native -fno-strict-aliasing -std=gnu11 -DNDEBUG
+CFLAGS = -Wall -Wextra -pedantic -Wno-unused-function -Wno-unused-parameter -mtune=native -fno-strict-aliasing -std=gnu17 -DNDEBUG
 GL_CFLAGS = `pkg-config --cflags gl`
 GL_LIBS = `pkg-config --libs gl`
 GLEW_CFLAGS = `pkg-config --cflags glew`
