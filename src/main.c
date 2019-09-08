@@ -689,7 +689,7 @@ int roam_main(int argc, char* argv[])
 
 	int64_t currenttime, newtime, frametime;
 	int64_t t, dt, accumulator ;
-	game.stats.frametime = (1.f/60.f);
+	game.stats.frametime = (int64_t)((1.0 / 60.0) * 1000.0);
 
 	t = 0;
 	dt = 15;
