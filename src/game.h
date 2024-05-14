@@ -1,6 +1,7 @@
 #pragma once
 // shared data for the game
 
+#include "common.h"
 #include "map.h"
 #include "player.h"
 

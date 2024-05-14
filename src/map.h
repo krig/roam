@@ -1,4 +1,6 @@
 #pragma once
+#include "common.h"
+#include "math3d.h"
 
 /*
 

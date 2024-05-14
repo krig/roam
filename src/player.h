@@ -1,4 +1,5 @@
 #pragma once
+#include "math3d.h"
 
 // Updated from lua once per frame
 struct playervars {

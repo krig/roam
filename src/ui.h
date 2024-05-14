@@ -1,4 +1,6 @@
 #pragma once
+#include "common.h"
+#include "math3d.h"
 
 void ui_init(material_t* ui, material_t* debug);
 void ui_exit(void);

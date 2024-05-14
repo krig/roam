@@ -465,8 +465,8 @@ void game_draw(SDL_Point* viewport)
 	m_makefrustum(&frustum, m_getmatrix(&game.projection), &view);
 
 	// crosshair
-	ui_rect(viewport->x/2 - 1, viewport->y/2 - 5, 2, 10, 0x4fffffff);
-	ui_rect(viewport->x/2 - 5, viewport->y/2 - 1, 10, 2, 0x4fffffff);
+	ui_rect((float)viewport->x/2. - 1., (float)viewport->y/2. - 5., 2, 10, 0x4fffffff);
+	ui_rect((float)viewport->x/2. - 5., (float)viewport->y/2. - 1., 10, 2, 0x4fffffff);
 
 	if (game.enable_ground)
 		map_draw(&frustum);

@@ -3,6 +3,7 @@
 #include <GL/glew.h>
 #include <SDL.h>
 #include <SDL_opengl.h>
+#include "common.h"
 
 #define ML_PI 3.14159265358979323846	/* pi */
 #define ML_TWO_PI (3.14159265358979323846 * 2.0)
