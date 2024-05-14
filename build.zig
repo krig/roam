@@ -12,14 +12,20 @@ pub fn build(b: *std.Build) void {
     exe.linkLibC();
     exe.linkSystemLibrary("glew");
     exe.linkSystemLibrary("sdl2");
-    exe.linkFramework("OpenGL");
+    if (target.result.os.tag == .macos) {
+        exe.linkFramework("OpenGL");
+    } else {
+        exe.linkSystemLibrary("gl");
+    }
     exe.addIncludePath(.{ .cwd_relative = "stb/" });
     exe.addIncludePath(.{ .cwd_relative = "src/" });
+    const sources: []const []const u8 = if (target.result.os.tag == .windows)
+        &[_][]const u8{"roam_windows.c"}
+    else
+        &[_][]const u8{"roam_linux.c"};
     exe.addCSourceFiles(.{
         .root = b.path("src"),
-        .files = &.{
-            "roam_linux.c",
-        },
+        .files = sources,
         .flags = &.{
             "-Wall",
             "-Wextra",
@@ -33,11 +39,6 @@ pub fn build(b: *std.Build) void {
             "-DNDEBUG",
         },
     });
-
-    // TODO: handle linux vs. mac
-    // TODO: handle stb code quality
-    // TODO: handle STL2
-    // TODO: handle GLEW
 
     b.installArtifact(exe);
 
