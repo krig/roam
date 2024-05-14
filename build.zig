@@ -27,15 +27,7 @@ pub fn build(b: *std.Build) void {
         .root = b.path("src"),
         .files = sources,
         .flags = &.{
-            "-Wall",
-            "-Wextra",
-            "-pedantic",
-            "-Wno-unused-function",
-            "-Wno-unused-parameter",
-            "-mtune=native",
-            "-fno-strict-aliasing",
             "-fno-sanitize=undefined",
-            "-std=gnu17",
             "-DNDEBUG",
         },
     });
