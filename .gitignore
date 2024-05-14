@@ -4,4 +4,7 @@ roam
 *~
 TAGS
 roam-????-??-??-*.png
+zig-cache/
+zig-out/
+.cache/
 
