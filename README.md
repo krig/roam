@@ -18,10 +18,19 @@ Right now, not much.
 
 ## Dependencies
 
-* A C11-capable compiler (GCC or clang)
+* Zig 0.12.0 (for building)
 * OpenGL 3.3
 * SDL 2
 * GLEW
+
+## Building
+
+With all dependencies installed and zig somewhere in path (get it from ziglang.org),
+this command should build the project and launch the executable:
+
+```
+zig build run
+```
 
 ## map / chunk structure redesign
 
